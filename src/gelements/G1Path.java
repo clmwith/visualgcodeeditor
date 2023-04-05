@@ -270,7 +270,14 @@ public class G1Path extends GElement implements Iterable<GCode> {
         });
         informAboutChange();
     }
-
+   
+   void transform(AffineTransform t) {
+        lines.forEach((p) -> {
+           if ( p.isAPoint()) p.transform( t);
+        });
+        informAboutChange();    
+    }    
+   
     /** 
      * @return  the bounding box of this shape.*/
     @Override
@@ -1418,7 +1425,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
         lines.add(i, line); 
         informAboutChange();
     }
-    
+   
 }
 
  

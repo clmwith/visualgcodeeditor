@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.CubicCurve2D;
 import java.awt.geom.GeneralPath;
@@ -381,7 +382,15 @@ public class GSpline extends GElement {
         informAboutChange();
     }
    
-
+    @Override
+    void transform(AffineTransform t) {
+        start.transform(t);
+        end.transform(t);
+        if ( cp1 != null) cp1.transform(t);
+        if ( cp2 != null) cp2.transform(t);
+        informAboutChange();
+    }
+    
     @Override
     public Object remove(int i) { 
         return null; 

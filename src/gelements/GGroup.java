@@ -229,6 +229,10 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return a;
     }
 
+    /**
+     * Add all elements into this group without cloning anything
+     * @param paths 
+     */
     public void addAll(ArrayList<GElement> paths) {
         elements.addAll( paths);
         informAboutChange();
@@ -975,6 +979,23 @@ public class GGroup extends GElement implements Iterator<GElement> {
     @Override
     double getLength() {
         return Double.NaN;
+    }
+
+    /** 
+     * Remove empty group or group that contains only one element
+     */
+    public void removeExtraGroups() {
+        GElement g;
+        while ( (elements.size() == 1) && ((g=elements.get(0)) instanceof GGroup)) {
+            remove(0);
+            addAll(((GGroup)g).elements);
+        }
+        for( GElement e : elements) {
+            if ( e instanceof GGroup) {                
+                ((GGroup)e).removeExtraGroups();
+                if (((GGroup)e).isEmpty()) remove(e);
+            }
+        }
     }
 
 }

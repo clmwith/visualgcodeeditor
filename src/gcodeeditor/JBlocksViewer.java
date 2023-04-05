@@ -59,6 +59,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -66,6 +67,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -1133,16 +1136,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         }
     }
     
-    private static void traverseLevel(TreeWalker walker, String indent) {
-    Node noeud = walker.getCurrentNode();
-    if (noeud instanceof Element) {
-      System.out.println(indent + "- " + ((Element) noeud).getTagName());
-      for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
-        traverseLevel(walker, indent + "  ");
-      }
-    }
-    walker.setCurrentNode(noeud);
-  }
     
     /**
      * Update the current position accordint to the SVG d:path:element[number]
@@ -1157,186 +1150,244 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         int cn = number;
         while( cn < commands.length ) {
             String p = commands[cn++];
-            if ( p.contains(",") ) {
-                String[] coord = p.split(",");
-                 if ( absolute) 
-                    currentPosition.set(currentCommand=='M'?0:1,
-                                        currentCommand=='V'?currentPosition.getX():Double.parseDouble(coord[0]),
-                                        currentCommand=='H'?currentPosition.getY():Double.parseDouble(coord[1]) );
-                    else
-                        currentPosition.set(currentCommand=='m'?0:1, 
-                                        currentCommand=='V'? currentPosition.getX() : currentPosition.getX() + Double.parseDouble(coord[0]),
-                                        currentCommand=='H'? currentPosition.getY() : currentPosition.getY() + Double.parseDouble(coord[1]));
-                return cn;
-            } else {
-                System.err.println("ERROR: importSVG: next is not a point !");
+            if ( ! p.isBlank()) {
+                String[] coord = new String[2];
+                if ( p.contains(",") ) {
+                    coord = p.split(",");
+                    
+                } else {                    
+                    switch (currentCommand) {
+                        case 'H':
+                            coord[0] = p;
+                            coord[1] = absolute ? Double.toString(currentPosition.getY()) : "0";
+                            break;
+                        case 'V':
+                            coord[1] = p;
+                            coord[0] = absolute ? Double.toString(currentPosition.getX()) : "0";
+                            break;
+                        default:
+                            System.err.println("getNextSVGPosition() : unsupported command '"+currentCommand+"'");
+                            return cn;
+                    }
+                }
+                currentPosition.set(currentCommand=='M'?0:1,
+                                    Double.parseDouble(coord[0]) + (absolute ? 0 : currentPosition.getX()),
+                                    Double.parseDouble(coord[1]) + (absolute ? 0 : currentPosition.getY()));
+               
                 return cn;
             }
         }
-        return -1;
+        return Integer.MAX_VALUE;
     }
     
-    /**
-     * Extract Paths from SVG file
-     * @param fileName
-     * @return
-     * @throws FileNotFoundException
-     * @throws IOException 
-     * @throws javax.xml.parsers.ParserConfigurationException 
-     * @throws org.xml.sax.SAXException 
-     */
-    public static GGroup importSVG( String fileName) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
+    
+    private GCode currentPosition;
+    public GGroup importSVG( String fileName) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
+        System.out.println(fileName);
         int lineno=0;
         String name = (fileName.lastIndexOf('/') != -1) ? fileName.substring( fileName.lastIndexOf('/')+1) : fileName;    
         if ( name.lastIndexOf('.')!=-1) name = name.substring(0, name.lastIndexOf('.'));
         GGroup res = new GGroup(name);
        
-        
-        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse( new File(fileName));  
-        doc.getDocumentElement().normalize();  
-        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(fileName);
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new File( fileName));
+        document.getDocumentElement().normalize();  
         DocumentTraversal traversal = (DocumentTraversal) document;
         TreeWalker walker = traversal.createTreeWalker(
-        document.getDocumentElement(), NodeFilter.SHOW_ALL, null, true);
-        walker.getRoot();
-        traverseLevel(walker, "");
-     
-        
-        int patchNumber = 0, spNumber = 0;
-        GCode currentPosition = new GCode(0, 0, 0);
-               
-        Element eElement;
-        //Node xx = doc.getElementsByTagName("svg").item(0).getAttributes().getNamedItem("viewBox");
-        //System.out.println("SVG Box= " + xx.);
-        
-        // Element.get
-        //NodeList nodeList = doc.getElementsByTagName("g").item(0).getChildNodes();  
-        NodeList nodeList = doc.getElementsByTagName("svg").item(0).getChildNodes();  
-        // nodeList is not iterable, so we are using for loop  
-        for (int itr = 0; itr < nodeList.getLength(); itr++)   
-        {  
-            Node node = nodeList.item(itr);  
-            System.out.println("\nNode Name :" + node.getNodeName() + "  TYPE=" + node.getNodeType());  
-            System.out.println( node);
-            if ( node.getNodeType() == Node.ELEMENT_NODE) {
-               // Element 
-                        eElement = (Element) node;  
+                document.getDocumentElement(), NodeFilter.SHOW_ALL, null, true);
                 
-                if ( node.getNodeName().equals("path")) {
-                    String pathString = eElement.getAttribute("d");
-                    System.out.println( "Found path : " + pathString);
-                    String pathName = eElement.getAttribute("id") != null ? eElement.getAttribute("id") : ("path" + patchNumber++);
-                    GMixedPathPath path = new GMixedPathPath(pathName);
-                    
-                    char currentMode = '?';
-                    boolean absolute = false;
-                    GCode p, firstPoint = null, pt[] = new GCode[4], lastBezierPoint2 = null, lastBezierEnd = null;
-                    
-                    // TODO: change d="M65,10 a50,25 0 1,0 50,25" to d="M 65,10 a 50,25 0 1,0 50,25"
-                    String[] commands = pathString.split(" ");
-                    for( int cn = 0; cn < commands.length; ) {
-                        String s = commands[cn];
-                        System.out.println("S=["+s+"]");
-                        
-                        // get next command ?
-                        if ( ! s.isEmpty() ) {  
-                            char t = s.toUpperCase().charAt(0);
-                            
-                            if ( ! (((t>='0') && (t<='9')) || (t=='-'))) {
-                                currentMode = s.toUpperCase().charAt(0);
-                                absolute = s.charAt(0) == currentMode;
-                                
-                                if ( s.length() > 1) commands[cn] = s.substring(1);
-                                else cn++;
-                            }
-                        }
-                            
-                        // get next position ?
-                        switch( currentMode) {
-                                case 'M':
-                                case 'L':
-                                case 'H':
-                                case 'V':
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);                                   
-                                    path.add( p = currentPosition.clone());      
-                                    if ( firstPoint == null) firstPoint = p;
-                                    break;
-                                case 'C': // bezier
-                                    pt[0] = currentPosition.clone();
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    pt[1] = currentPosition.clone();
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierPoint2 = pt[2] = currentPosition.clone();
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierEnd = pt[3] = currentPosition.clone();
-                                    path.add(new GSpline("sp"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
-                                    break;
-                                case 'S': // bezier chained
-                                    pt[0] = lastBezierEnd.clone();
-                                    pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierPoint2 = pt[2] = currentPosition.clone();
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierEnd = pt[3] = currentPosition.clone();
-                                    path.add(new GSpline("s"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
-                                    break;
-                                case 'Q': // quad
-                                    pt[0] = currentPosition.clone();
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierPoint2 = pt[1] = currentPosition.clone();
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierEnd =  pt[2] = currentPosition.clone();
-                                    path.add(new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]));
-                                    break;
-                                case 'T': // quad chained
-                                    pt[0] = lastBezierEnd.clone();
-                                    lastBezierPoint2 = pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
-                                    cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                                    lastBezierEnd = pt[2] = currentPosition.clone();
-                                    break;
-                                case 'A': // elliptical Arc
-                                    // TODO: Not implemented, just make a line !
-                                    System.err.println("Warning: importSVG: elliptical Arc not implemented.");
-                                    cn = getNextSVGPosition( cn + 5, commands, currentMode, currentPosition, absolute);
-                                    path.add( currentPosition.clone());      
-                                    break;
-                                case 'Z':
-                                    if ( firstPoint != null) {
-                                        currentPosition = firstPoint.clone();
-                                        path.add( currentPosition.clone());
-                                    } 
-                                    cn++;
-                                    break;
-                                default:
-                                    System.err.println("importSVG: Error: no command found before coordinate.");
-                                    cn++;
-                            }
-                         
-                    }
-                    res.add( path);
-                    
-                } else {
-                    
-                    for ( int n = 0; n < eElement.getAttributes().getLength(); n++) {
-                        System.out.println( "ATTR:" + eElement.getAttributes().item(n)) ;
-                        
-                    }
-                }
-            }
-        }
-
+        Node xx = document.getElementsByTagName("svg").item(0).getAttributes().getNamedItem("viewBox");
+        if ( xx != null) System.out.println("SVG Box= " + xx.getNodeValue());
+        
+        readSVGtree(walker, "", res);  
+        
+        res.removeExtraGroups();
         return res;
     }
-    
-    public static void main(String args[]) {
-        try {
-            JBlocksViewer.importSVG("/tmp/soleil.svg");
-        } catch (IOException | ParserConfigurationException | SAXException ex) {
-            Logger.getLogger(JBlocksViewer.class.getName()).log(Level.SEVERE, null, ex);
+
+    private void readSVGtree(TreeWalker walker, String indent, GGroup parent) {
+        Node noeud = walker.getCurrentNode();
+        if (noeud instanceof Element) {
+            String id = ((Element) noeud).getAttribute("id");
+            System.out.println(indent + "- " + ((Element) noeud).getTagName() + "(" + id + ")");
+
+            switch ( ((Element) noeud).getTagName()) {
+                case "g":
+                    GGroup g = new GGroup( (id == null) ? "g" : id);
+                    parent.add(g);
+                    parent = g;
+                    break;
+                    
+                case "polyline":                        
+                case "path":
+                    String transform = ((Element) noeud).getAttribute("transform");
+                    GMixedPathPath pt;
+                    
+                    if ( ((Element) noeud).getTagName().equals("polyline")) {
+                    String pts = "M " + ((Element) noeud).getAttribute("points");
+                    pt = readSVGPath( id, pts);
+                    } else {
+                        String d = ((Element) noeud).getAttribute("d");
+                        pt = readSVGPath( id, d);
+                    }
+                    
+                    if ( (transform != null) && ! transform.isBlank() ) {
+                        Pattern pat = Pattern.compile("^([^\\(]+)\\(([^\\)]+)\\)"); 
+                        Matcher m = pat.matcher(transform);
+                        if( m.matches()) {
+                            System.out.println(m.group(1) + " et " + m.group(2));
+
+                            switch( m.group(1)) {
+                                case "matrix":
+                                    double matrix[] = new double[6];
+                                    int i = 0;
+                                    for( String s : m.group(2).split(","))
+                                        matrix[i++] = Double.parseDouble(s);
+                                    
+                                    AffineTransform t = new AffineTransform(matrix);
+                                    pt.transform( t);
+                                    
+                                    break;
+                                case "scale":
+                                    double sx, sy;
+                                    sx = Double.valueOf(m.group(2).split(",")[0]);
+                                    sy = m.group(2).contains(",") ? 
+                                                Double.valueOf(m.group(2).split(",")[1]) : sx;
+                                                                            
+                                    pt.scale(new Point2D.Double(), sx, sy);
+                                default: System.out.println("importSVG: unknow transform="+transform);
+                            }
+                        }                                                            
+                    } 
+                    parent.add( pt);
+                    break;
+
+
+                case "rect":
+                    double x = Double.valueOf(((Element) noeud).getAttribute("x"));
+                    double y = Double.valueOf(((Element) noeud).getAttribute("y"));
+                    double w = Double.valueOf(((Element) noeud).getAttribute("width"));
+                    double h = Double.valueOf(((Element) noeud).getAttribute("height"));                    
+                    G1Path p = new G1Path((id == null) ? "g" : id, 5);  
+                    p.add( new GCode(x, y));
+                    p.add( new GCode(x+w, y));
+                    p.add( new GCode(x+w, y+h));
+                    p.add( new GCode(x, y+h));
+                    p.add( new GCode(x, y));
+                    parent.add( p);
+                    break;
+                case "ellipse":
+                    double cx = Double.valueOf(((Element) noeud).getAttribute("cx"));
+                    double cy = Double.valueOf(((Element) noeud).getAttribute("cy"));
+                    double rx = Double.valueOf(((Element) noeud).getAttribute("rx"));
+                    double ry = Double.valueOf(((Element) noeud).getAttribute("ry"));   
+                    parent.add( G1Path.makeOval(new Point2D.Double(cx, cy), rx, ry, 0.1));                                    
+                default:
+                    //System.out.println("importSVG: ignoring <"+((Element) noeud).getTagName());              
+            }
+            for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
+              readSVGtree(walker, indent + "  ", parent);
+            }
+
         }
-    }
+        walker.setCurrentNode(noeud);
+    }      
+    
+
+    public GMixedPathPath readSVGPath( String name, String pathString) {
+        GMixedPathPath path = new GMixedPathPath( name);
+        currentPosition = new GCode(0,0,0);
         
+        char currentMode = '?';
+        boolean absolute = false;
+        GCode p, firstPoint = null, pt[] = new GCode[4], lastBezierPoint2 = null, lastBezierEnd = null;
+        int patchNumber = 0, spNumber = 0;
+        
+        String[] commands = pathString.split(" ");
+        for( int cn = 0; cn < commands.length; ) {
+            String s = commands[cn];
+            //System.out.println("S=["+s+"]");
+
+            // get next command ?
+            if ( ! s.isEmpty() ) {  
+                char t = s.toUpperCase().charAt(0);
+
+                if ( ! (((t>='0') && (t<='9')) || (t=='-'))) {                    
+                    currentMode = s.toUpperCase().charAt(0);    
+                    absolute = s.charAt(0) == currentMode; // absolute if cmd is UPPERCASE
+
+                    if ( s.length() > 1) commands[cn] = s.substring(1);
+                    else cn++;
+                }
+            }
+
+            // get next position ?
+            switch( currentMode) {
+                    case 'M':
+                        //if ( firstPoint != null) System.err.println("SVGImport : moveTo in path");
+                    case 'L':
+                    case 'H':
+                    case 'V':
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);                                   
+                        path.add( p = currentPosition.clone());      
+                        if ( firstPoint == null) firstPoint = p;
+                        break;
+                    case 'C': // bezier
+                        pt[0] = currentPosition.clone();
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        pt[1] = currentPosition.clone();
+                        if ( ! absolute) currentPosition.set( pt[0]);
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierPoint2 = pt[2] = currentPosition.clone();
+                        if ( ! absolute) currentPosition.set( pt[0]);
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierEnd = pt[3] = currentPosition.clone();
+                        path.add(new GSpline("sp"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
+                        break;
+                    case 'S': // bezier chained
+                        pt[0] = lastBezierEnd.clone();
+                        pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierPoint2 = pt[2] = currentPosition.clone();
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierEnd = pt[3] = currentPosition.clone();
+                        path.add(new GSpline("s"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
+                        break;
+                    case 'Q': // quad
+                        pt[0] = currentPosition.clone();
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierPoint2 = pt[1] = currentPosition.clone();
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierEnd =  pt[2] = currentPosition.clone();
+                        path.add(new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]));
+                        break;
+                    case 'T': // quad chained
+                        pt[0] = lastBezierEnd.clone();
+                        lastBezierPoint2 = pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        lastBezierEnd = pt[2] = currentPosition.clone();
+                        break;
+                    case 'A': // elliptical Arc
+                        // TODO: Not implemented, just make a line !
+                        System.err.println("Warning: importSVG: elliptical Arc not implemented.");
+                        cn = getNextSVGPosition( cn + 4, commands, currentMode, currentPosition, absolute);
+                        path.add( currentPosition.clone());      
+                        break;
+                    case 'Z':
+                        if ( firstPoint != null) {
+                            currentPosition.set(firstPoint.clone());
+                            path.add( currentPosition.clone());
+                        } 
+                        cn++;
+                        break;
+                    default:
+                        System.err.println("importSVG: Error: no command found before coordinate.");
+                        cn++;
+                }
+
+        }
+        return path;
+    }      
 
     public void saveDocument(String filename) throws IOException
     {
@@ -4193,7 +4244,11 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 }
             } else if ( editedGroup != document) {
                 if ( editedGroup.isEmpty()) {
-                    document.getParent(editedElement).remove(editedGroup);
+                    if ( editedElement == null) {
+                        document.remove(editedGroup) ;
+                        editedGroup = document;
+                    }
+                    else document.getParent(editedElement).remove(editedGroup);
                 } else {
                     GGroup p;
                     setEditedElement(document.getParent(p=editedGroup));

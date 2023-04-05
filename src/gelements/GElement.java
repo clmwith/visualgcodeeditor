@@ -20,6 +20,7 @@ import gcodeeditor.GCode;
 import gelements.GElement.GElementFactoryInterface;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
@@ -432,6 +433,10 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
 
     public GCode getPoint(int p) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    void transform(AffineTransform t) {
+        throw new UnsupportedOperationException(this.getClass() + ".transform(t) : Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
    
     /**

@@ -4,13 +4,13 @@
  * and open the template in the editor.
  */
 
-import gcodeeditor.JBlocksViewer;
 import gcodeeditor.gui.JEditorFrame;
 import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+
 
 
 /**
@@ -23,24 +23,22 @@ public class Main {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        
-       /* Set<Thread> threads = Thread.getAllStackTraces().keySet();
- 
-        for (Thread t : threads) {
-        // do something with each thread
-            System.out.println(t);
-        }*/
-        
-        // TODO code application logic here
-       // java.awt.EventQueue.invokeLater(() -> {
+          /* Set<Thread> threads = Thread.getAllStackTraces().keySet();
             
+            for (Thread t : threads) {
+            // do something with each thread
+            System.out.println(t);
+            }*/
+            
+            // TODO code application logic here
+            // java.awt.EventQueue.invokeLater(() -> {
+                   
             try {
             if ( System.getProperty("user.home").startsWith("/")) {
                 java.io.File prefRep = new java.io.File(System.getProperty("user.home")+"/.java/.userPrefs");
                 if (!prefRep.isDirectory()) prefRep.mkdir();
             }
             
-            //JEditorFrame f = new JEditorFrame("/home/clm/lamborghini.gcode");
             JEditorFrame f;
             try {
             if ( args.length > 1) {
@@ -65,10 +63,11 @@ public class Main {
                 EventQueue.invokeLater( new Runnable() {
                     @Override
                     public void run() {
-                        f.setVisible(true);
+                        f.setVisible(true);                        
                     }
                 });
                 
+                //f.addGElement(f.blocksviewer.importSVG("/tmp/coeur2.svg"));
             }
              } catch (IOException ex) {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -95,6 +94,8 @@ public class Main {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             }
             */
+            
+                
             } catch ( Exception e) {
                 JOptionPane.showMessageDialog(null, "An exception occured in the programm, please see the console.", "Error", JOptionPane.ERROR_MESSAGE);
                 e.printStackTrace();
@@ -140,5 +141,8 @@ public class Main {
     //    List<DXFCircle> arcs = layer.getDXFEntities(DXFConstants.ENTITY_TYPE_);
 */
     }
+       
     
 }
+
+

@@ -2312,7 +2312,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     lastImportDir = fc.getSelectedFile().getParentFile();
                 
                 if ( fc.getSelectedFile().getAbsolutePath().toLowerCase().endsWith(".svg")) 
-                        addGElement(JBlocksViewer.importSVG(fc.getSelectedFile().getAbsolutePath()));
+                        addGElement(blocksviewer.importSVG(fc.getSelectedFile().getAbsolutePath()));
                 else 
                     if ( fc.getSelectedFile().getAbsolutePath().toLowerCase().endsWith(".dxf"))
                         blocksviewer.importDXF(fc.getSelectedFile().getAbsolutePath());

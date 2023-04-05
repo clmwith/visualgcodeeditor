@@ -17,6 +17,7 @@ package gcodeeditor;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
@@ -454,6 +455,14 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
         x.value += delta.getX();
         y.value += delta.getY();
     }
+    
+    public void transform(AffineTransform t) {
+        if ( isAPoint()) {            
+            Point2D r = t.transform(new Point2D.Double(getX(), getY()), null);
+            setX( r.getX());
+            setY( r.getY());
+        }
+    }
 
     public void remove(char wordLetter) {
         if ( wordLetter == 'X') x = null;
@@ -581,4 +590,5 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     GCode getMirrorPoint(GCode pt) {
         return new GCode( getG(), pt.getX() - getX() * 2, pt.getY() - getY() * 2);
     }
+
 }

@@ -19,6 +19,7 @@ package gelements;
 import gcodeeditor.GCode;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
@@ -950,6 +951,15 @@ public class GMixedPathPath extends GElement {
 
     public boolean changeFirstPoint(GCode p) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    public void transform(AffineTransform t) {
+        gString.forEach((o) -> {
+            if ( o instanceof GCode) ((GCode)o).transform( t);
+            else if ( o instanceof GElement) ((GElement)o).transform( t);
+            else
+                 throw new AbstractMethodError( "" + o.getClass() + ".transform(t) not implemented");
+        });
     }
 
 }
