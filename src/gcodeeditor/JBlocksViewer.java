@@ -50,7 +50,10 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Arc2D;
 import java.awt.geom.Area;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -1137,50 +1140,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     }
     
     
-    /**
-     * Update the current position accordint to the SVG d:path:element[number]
-     * @param number            the current element in path
-     * @param commands          the elements of the path
-     * @param currentCommand    the current SVG:d:path command
-     * @param currentPosition   the current position
-     * @param absolute          read an absolute position ?
-     * @return the next element position to read after
-     */
-    private static int getNextSVGPosition(int number, String[] commands, char currentCommand, GCode currentPosition, boolean absolute) {
-        int cn = number;
-        while( cn < commands.length ) {
-            String p = commands[cn++];
-            if ( ! p.isBlank()) {
-                String[] coord = new String[2];
-                if ( p.contains(",") ) {
-                    coord = p.split(",");
-                    
-                } else {                    
-                    switch (currentCommand) {
-                        case 'H':
-                            coord[0] = p;
-                            coord[1] = absolute ? Double.toString(currentPosition.getY()) : "0";
-                            break;
-                        case 'V':
-                            coord[1] = p;
-                            coord[0] = absolute ? Double.toString(currentPosition.getX()) : "0";
-                            break;
-                        default:
-                            System.err.println("getNextSVGPosition() : unsupported command '"+currentCommand+"'");
-                            return cn;
-                    }
-                }
-                currentPosition.set(currentCommand=='M'?0:1,
-                                    Double.parseDouble(coord[0]) + (absolute ? 0 : currentPosition.getX()),
-                                    Double.parseDouble(coord[1]) + (absolute ? 0 : currentPosition.getY()));
-               
-                return cn;
-            }
-        }
-        return Integer.MAX_VALUE;
-    }
-    
-    
     private GCode currentPosition;
     public GGroup importSVG( String fileName) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
@@ -1225,10 +1184,10 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     
                     if ( ((Element) noeud).getTagName().equals("polyline")) {
                     String pts = "M " + ((Element) noeud).getAttribute("points");
-                    pt = readSVGPath( id, pts);
+                    g = readSVGPath( id, pts);
                     } else {
                         String d = ((Element) noeud).getAttribute("d");
-                        pt = readSVGPath( id, d);
+                        g = readSVGPath( id, d);
                     }
                     
                     if ( (transform != null) && ! transform.isBlank() ) {
@@ -1245,7 +1204,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                         matrix[i++] = Double.parseDouble(s);
                                     
                                     AffineTransform t = new AffineTransform(matrix);
-                                    pt.transform( t);
+                                    g.transform( t);
                                     
                                     break;
                                 case "scale":
@@ -1254,14 +1213,13 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                     sy = m.group(2).contains(",") ? 
                                                 Double.valueOf(m.group(2).split(",")[1]) : sx;
                                                                             
-                                    pt.scale(new Point2D.Double(), sx, sy);
+                                    g.scale(new Point2D.Double(), sx, sy);
                                 default: System.out.println("importSVG: unknow transform="+transform);
                             }
                         }                                                            
                     } 
-                    parent.add( pt);
+                    parent.add( g);
                     break;
-
 
                 case "rect":
                     double x = Double.valueOf(((Element) noeud).getAttribute("x"));
@@ -1269,13 +1227,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     double w = Double.valueOf(((Element) noeud).getAttribute("width"));
                     double h = Double.valueOf(((Element) noeud).getAttribute("height"));                    
                     G1Path p = new G1Path((id == null) ? "g" : id, 5);  
-                    p.add( new GCode(x, y));
-                    p.add( new GCode(x+w, y));
-                    p.add( new GCode(x+w, y+h));
-                    p.add( new GCode(x, y+h));
-                    p.add( new GCode(x, y));
-                    parent.add( p);
+                    parent.add( G1Path.newRectangle(new GCode(x, y), new GCode(x+w, y+h)));
                     break;
+                    
                 case "ellipse":
                     double cx = Double.valueOf(((Element) noeud).getAttribute("cx"));
                     double cy = Double.valueOf(((Element) noeud).getAttribute("cy"));
@@ -1294,43 +1248,66 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     }      
     
 
-    public GMixedPathPath readSVGPath( String name, String pathString) {
+    public GGroup readSVGPath( String name, String pathString) {
+        GGroup res = new GGroup(name);
         GMixedPathPath path = new GMixedPathPath( name);
+        
         currentPosition = new GCode(0,0,0);
         
         char currentMode = '?';
         boolean absolute = false;
         GCode p, firstPoint = null, pt[] = new GCode[4], lastBezierPoint2 = null, lastBezierEnd = null;
-        int patchNumber = 0, spNumber = 0;
+        int patchNumber = 0, spNumber = 0, idSubPath = 1;
         
         String[] commands = pathString.split(" ");
         for( int cn = 0; cn < commands.length; ) {
-            String s = commands[cn];
-            //System.out.println("S=["+s+"]");
+            
+            while ( commands[cn].isBlank() && (cn < commands.length)) cn++;
+            
+            if ( cn < commands.length) {
+                String s = commands[cn];
+                //System.out.println("S=["+s+"]");
 
-            // get next command ?
-            if ( ! s.isEmpty() ) {  
-                char t = s.toUpperCase().charAt(0);
+                // get next command ?
+                if ( ! s.isEmpty() ) {  
+                    char t = s.toUpperCase().charAt(0);
 
-                if ( ! (((t>='0') && (t<='9')) || (t=='-'))) {                    
-                    currentMode = s.toUpperCase().charAt(0);    
-                    absolute = s.charAt(0) == currentMode; // absolute if cmd is UPPERCASE
+                    if ( ! (((t>='0') && (t<='9')) || (t=='-'))) {                    
+                        currentMode = s.toUpperCase().charAt(0);    
+                        absolute = s.charAt(0) == currentMode; // absolute if cmd is UPPERCASE
 
-                    if ( s.length() > 1) commands[cn] = s.substring(1);
-                    else cn++;
+                        if ( s.length() > 1) commands[cn] = s.substring(1);
+                        else cn++;
+                    }
                 }
-            }
 
-            // get next position ?
-            switch( currentMode) {
-                    case 'M':
+                // get next position ?
+                switch( currentMode) {
                         //if ( firstPoint != null) System.err.println("SVGImport : moveTo in path");
+                    case 'H':                        
+                        p = currentPosition.clone();
+                        if ( absolute) p.setX(Double.parseDouble( commands[cn++]));
+                        else p.translate(Double.parseDouble( commands[cn++]), 0);
+                        path.add( p);
+                        break;
+                    case 'V':   
+                        p = currentPosition.clone();
+                        if ( absolute) p.setY(Double.parseDouble( commands[cn++]));
+                        else p.translate(0, Double.parseDouble( commands[cn++]));
+                        path.add( p);                        
+                        break;
+                    case 'M':   
+                        if ( firstPoint != null) {
+                            res.add( path);
+                            path = new GMixedPathPath( name + "." + idSubPath++);
+                        }                      
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        path.add( firstPoint = currentPosition.clone()); 
+                        currentMode = 'L'; // for polyline implementation
+                        break;
                     case 'L':
-                    case 'H':
-                    case 'V':
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);                                   
-                        path.add( p = currentPosition.clone());      
-                        if ( firstPoint == null) firstPoint = p;
+                        path.add( currentPosition.clone());      
                         break;
                     case 'C': // bezier
                         pt[0] = currentPosition.clone();
@@ -1366,29 +1343,175 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         lastBezierPoint2 = pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierEnd = pt[2] = currentPosition.clone();
+                        path.add(new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]));
                         break;
-                    case 'A': // elliptical Arc
-                        // TODO: Not implemented, just make a line !
-                        System.err.println("Warning: importSVG: elliptical Arc not implemented.");
-                        cn = getNextSVGPosition( cn + 4, commands, currentMode, currentPosition, absolute);
-                        path.add( currentPosition.clone());      
+                    case 'A': // elliptical Arc (rx,ry rotate LargeArcFlag SweepFlag fx,fy)
+                        Path2D sh = new Path2D.Double();
+                        sh.moveTo((float)currentPosition.getX(), (float)currentPosition.getY());
+                        
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        pt[0] = currentPosition.clone(); // radiusx
+                                                        
+                        float rotate = Float.parseFloat(commands[cn++]);
+                        boolean largeArcFlag = Integer.parseInt(commands[cn++]) == 1;
+                        boolean sweepFlag = Integer.parseInt(commands[cn++]) == 1;
+                                
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        pt[2] = currentPosition.clone(); // last point 
+                        
+                        // radiusx, radiusy, xAxisRotation, boolean largeArcFlag, boolean sweepFlag, x, y
+                        
+                        arcTo(sh, (float)pt[0].getX(), (float)pt[0].getY(), rotate, largeArcFlag, 
+                                        sweepFlag, (float)currentPosition.getX(), (float)currentPosition.getY());
+                        
+                        path.add( G1Path.makeFromShape( "ea"+GElement.getUniqID(), sh, "").get(0));                          
                         break;
                     case 'Z':
                         if ( firstPoint != null) {
                             currentPosition.set(firstPoint.clone());
-                            path.add( currentPosition.clone());
+                            path.add( currentPosition.clone());                           
                         } 
-                        cn++;
                         break;
                     default:
-                        System.err.println("importSVG: Error: no command found before coordinate.");
+                        System.err.println("importSVG: command '"+currentMode+"' in path is not implemented yet.");
                         cn++;
                 }
-
+            }
         }
-        return path;
+        res.add( path);
+        return res;
     }      
+    
+    /**
+     * Update the current position accordint to the SVG d:path:element[number]
+     * @param number            the current element in path
+     * @param commands          the elements of the path
+     * @param currentCommand    the current SVG:d:path command
+     * @param currentPosition   the current position
+     * @param absolute          read an absolute position ?
+     * @return the next element position to read after
+     */
+    private static int getNextSVGPosition(int number, String[] commands, char currentCommand, GCode currentPosition, boolean absolute) {
+        int cn = number;
+        while( cn < commands.length ) {
+            String p = commands[cn++];
+            if ( ! p.isBlank()) {
+                String[] coord = new String[2];
+                if ( p.contains(",") ) {
+                    coord = p.split(",");
+                    
+                } else {
+                    coord[0] = p;
+                    coord[1] = commands[cn++];
+                }
+                currentPosition.set(currentCommand=='M'?0:1,
+                                    Double.parseDouble(coord[0]) + (absolute ? 0 : currentPosition.getX()),
+                                    Double.parseDouble(coord[1]) + (absolute ? 0 : currentPosition.getY()));
+               
+                return cn;
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+    
 
+    public static final void arcTo(Path2D path, float rx, float ry, float theta, boolean largeArcFlag, boolean sweepFlag, float x, float y) {
+            // Ensure radii are valid
+            if (rx == 0 || ry == 0) {
+                    path.lineTo(x, y);
+                    return;
+            }
+            // Get the current (x, y) coordinates of the path
+            Point2D p2d = path.getCurrentPoint();
+            float x0 = (float) p2d.getX();
+            float y0 = (float) p2d.getY();
+            // Compute the half distance between the current and the final point
+            float dx2 = (x0 - x) / 2.0f;
+            float dy2 = (y0 - y) / 2.0f;
+            // Convert theta from degrees to radians
+            theta = (float) Math.toRadians(theta % 360f);
+
+            //
+            // Step 1 : Compute (x1, y1)
+            //
+            float x1 = (float) (Math.cos(theta) * (double) dx2 + Math.sin(theta)
+                            * (double) dy2);
+            float y1 = (float) (-Math.sin(theta) * (double) dx2 + Math.cos(theta)
+                            * (double) dy2);
+            // Ensure radii are large enough
+            rx = Math.abs(rx);
+            ry = Math.abs(ry);
+            float Prx = rx * rx;
+            float Pry = ry * ry;
+            float Px1 = x1 * x1;
+            float Py1 = y1 * y1;
+            double d = Px1 / Prx + Py1 / Pry;
+            if (d > 1) {
+                    rx = Math.abs((float) (Math.sqrt(d) * (double) rx));
+                    ry = Math.abs((float) (Math.sqrt(d) * (double) ry));
+                    Prx = rx * rx;
+                    Pry = ry * ry;
+            }
+
+            //
+            // Step 2 : Compute (cx1, cy1)
+            //
+            double sign = (largeArcFlag == sweepFlag) ? -1d : 1d;
+            float coef = (float) (sign * Math
+                            .sqrt(((Prx * Pry) - (Prx * Py1) - (Pry * Px1))
+                                            / ((Prx * Py1) + (Pry * Px1))));
+            float cx1 = coef * ((rx * y1) / ry);
+            float cy1 = coef * -((ry * x1) / rx);
+
+            //
+            // Step 3 : Compute (cx, cy) from (cx1, cy1)
+            //
+            float sx2 = (x0 + x) / 2.0f;
+            float sy2 = (y0 + y) / 2.0f;
+            float cx = sx2
+                            + (float) (Math.cos(theta) * (double) cx1 - Math.sin(theta)
+                                            * (double) cy1);
+            float cy = sy2
+                            + (float) (Math.sin(theta) * (double) cx1 + Math.cos(theta)
+                                            * (double) cy1);
+
+            //
+            // Step 4 : Compute the angleStart (theta1) and the angleExtent (dtheta)
+            //
+            float ux = (x1 - cx1) / rx;
+            float uy = (y1 - cy1) / ry;
+            float vx = (-x1 - cx1) / rx;
+            float vy = (-y1 - cy1) / ry;
+            float p, n;
+            // Compute the angle start
+            n = (float) Math.sqrt((ux * ux) + (uy * uy));
+            p = ux; // (1 * ux) + (0 * uy)
+            sign = (uy < 0) ? -1d : 1d;
+            float angleStart = (float) Math.toDegrees(sign * Math.acos(p / n));
+            // Compute the angle extent
+            n = (float) Math.sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy));
+            p = ux * vx + uy * vy;
+            sign = (ux * vy - uy * vx < 0) ? -1d : 1d;
+            float angleExtent = (float) Math.toDegrees(sign * Math.acos(p / n));
+            if (!sweepFlag && angleExtent > 0) {
+                    angleExtent -= 360f;
+            } else if (sweepFlag && angleExtent < 0) {
+                    angleExtent += 360f;
+            }
+            angleExtent %= 360f;
+            angleStart %= 360f;
+
+            Arc2D.Float arc = new Arc2D.Float();
+            arc.x = cx - rx;
+            arc.y = cy - ry;
+            arc.width = rx * 2.0f;
+            arc.height = ry * 2.0f;
+            arc.start = -angleStart;
+            arc.extent = -angleExtent;
+            path.append(arc, true);
+    }
+    
+    
     public void saveDocument(String filename) throws IOException
     {
         GCode lastPoint = null;
@@ -2739,7 +2862,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 break;
             
             case ACTION_REVERSE_SELECTION:
-                if (editedElement!=null) editedElement.reverse();
+                if (editedElement != null) editedElement.reverse();
                 else selectedElements.forEach((b) -> { b.reverse(); });
                 saveState(true);
                 break;
@@ -2997,8 +3120,10 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                 add(pos++, e2.clone(), true);                  
                                 nb++;
                             }
-                        }
-                        inform( nb + " elements(s) inserted");        
+                            inform( nb + " elements(s) inserted"); 
+                        } else {
+                            inform( "can't pase class :" + clipBoard.getClass());
+                        }     
                     }
                     
                 }

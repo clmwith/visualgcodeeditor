@@ -435,8 +435,8 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
-    void transform(AffineTransform t) {
-        throw new UnsupportedOperationException(this.getClass() + ".transform(t) : Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    public void transform(AffineTransform t) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
    
     /**

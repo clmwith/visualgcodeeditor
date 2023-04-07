@@ -271,7 +271,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
         informAboutChange();
     }
    
-   void transform(AffineTransform t) {
+   public void transform(AffineTransform t) {
         lines.forEach((p) -> {
            if ( p.isAPoint()) p.transform( t);
         });

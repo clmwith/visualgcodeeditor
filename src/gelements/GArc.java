@@ -247,8 +247,6 @@ public class GArc extends GElement {
         recalculateG23();   
         super.informAboutChange();
     }
-    
-    
 
     @Override
     public void scale(Point2D origin, double ratioX, double ratioY) {
@@ -305,16 +303,20 @@ public class GArc extends GElement {
     }
     
     @Override
-    public Object remove(int i) { return null; }
+    public Object remove(int i) { 
+        return null;
+    }
 
     @Override
-    public void removeAll(ArrayList<GCode> lines) { }
+    public void removeAll(ArrayList<GCode> lines) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
 
     @Override
     public void reverse() {
         GCode t = new GCode(start.getX(), start.getY());
         start.set(end);
-        end.set(start);
+        end.set(t);
         clockwise=!clockwise;
         informAboutChange();
     }

@@ -383,7 +383,7 @@ public class GSpline extends GElement {
     }
    
     @Override
-    void transform(AffineTransform t) {
+    public void transform(AffineTransform t) {
         start.transform(t);
         end.transform(t);
         if ( cp1 != null) cp1.transform(t);
