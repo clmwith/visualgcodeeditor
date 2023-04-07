@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Clément GERARDIN @ Marseille.fr
+ * Copyright (C) 2019 Clément Gérardin @ Marseille.fr
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2459,7 +2459,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private void jMenuItemAboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAboutActionPerformed
         JOptionPane.showMessageDialog(this, "A Simple 2D G-Code Visual Editor\n\n"+
                 "For laser engraving and simple milling projects\nInclude a realtime GRBL 1.1 controler\n\nVersion: "+
-                JBlocksViewer.SGVE_RELEASE+" - 2019\nAuthor: Clément GERARDIN @ Marseille.fr", "About this software"+
+                JBlocksViewer.SGVE_RELEASE+" - 2023\nAuthor: Clément Gérardin @ Marseille.fr", "About this software"+
                         "\n\nWithout any guarantee !!!", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_jMenuItemAboutActionPerformed
 

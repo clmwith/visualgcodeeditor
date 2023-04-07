@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Clément GERARDIN @ Marseille.fr
+ * Copyright (C) 2019 Clément Gérardin @ Marseille.fr
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ import java.util.Iterator;
 
 /**
  *
- * @author Clément GERARDIN @ Marseille.fr
+ * @author Clément Gérardin @ Marseille.fr
  */
 public class GSphericalPocket extends GPocket3D {
     

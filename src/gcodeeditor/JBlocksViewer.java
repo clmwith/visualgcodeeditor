@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Clément GERARDIN @ Marseille.fr
+ * Copyright (C) 2019 Clément Gérardin @ Marseille.fr
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -116,7 +116,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
 
     public static final String CONTENT_HEADER = "(Content-Type: ";
     public static final String SVGE_HEADER = "(Simple G-Code Visual Editor Project: ";
-    public static final String SGVE_RELEASE = "0.8.3";
+    public static final String SGVE_RELEASE = "0.8.4";
 
 
     
@@ -1359,8 +1359,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         pt[2] = currentPosition.clone(); // last point 
                         
-                        // radiusx, radiusy, xAxisRotation, boolean largeArcFlag, boolean sweepFlag, x, y
-                        
+                        // radiusx, radiusy, xAxisRotation, boolean largeArcFlag, boolean sweepFlag, x, y                     
                         arcTo(sh, (float)pt[0].getX(), (float)pt[0].getY(), rotate, largeArcFlag, 
                                         sweepFlag, (float)currentPosition.getX(), (float)currentPosition.getY());
                         
