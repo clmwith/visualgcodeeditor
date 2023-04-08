@@ -2611,6 +2611,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }           
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }//GEN-LAST:event_jMenuItemScaleActionPerformed
 

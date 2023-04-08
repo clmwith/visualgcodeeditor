@@ -120,7 +120,11 @@ public class UndoManager {
                     if ( g == null) {
                         // no parent, that is the root group
                         document.clear();
-                        document.addAll(((GGroup)last).cloneWithSameID().getAll());
+                        if ( last instanceof GGroup)
+                            document.addAll(((GGroup)last).cloneWithSameID().getAll());
+                        else
+                            document.add( last.cloneWithSameID());
+                        
                         document.modified = false;
                         res = document;
                     } else {

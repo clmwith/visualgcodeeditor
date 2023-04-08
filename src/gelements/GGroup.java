@@ -267,7 +267,12 @@ public class GGroup extends GElement implements Iterator<GElement> {
     }
 
     @Override
-    public int size() { return elements.size(); }
+    /**
+     * Return number of elements in this group
+     */
+    public int size() { 
+        return elements.size();
+    }
 
 
     @Override

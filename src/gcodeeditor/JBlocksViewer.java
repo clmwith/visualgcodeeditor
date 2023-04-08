@@ -118,8 +118,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     public static final String SVGE_HEADER = "(Simple G-Code Visual Editor Project: ";
     public static final String SGVE_RELEASE = "0.8.4";
 
-
-    
     Configuration conf = new Configuration();
     JBlockViewerListenerInterface listener;
     
@@ -1180,7 +1178,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 case "polyline":                        
                 case "path":
                     String transform = ((Element) noeud).getAttribute("transform");
-                    GMixedPathPath pt;
                     
                     if ( ((Element) noeud).getTagName().equals("polyline")) {
                     String pts = "M " + ((Element) noeud).getAttribute("points");
@@ -1209,35 +1206,35 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                     break;
                                 case "scale":
                                     double sx, sy;
-                                    sx = Double.valueOf(m.group(2).split(",")[0]);
+                                    sx = Double.parseDouble(m.group(2).split(",")[0]);
                                     sy = m.group(2).contains(",") ? 
-                                                Double.valueOf(m.group(2).split(",")[1]) : sx;
+                                                Double.parseDouble(m.group(2).split(",")[1]) : sx;
                                                                             
                                     g.scale(new Point2D.Double(), sx, sy);
                                 default: System.out.println("importSVG: unknow transform="+transform);
                             }
                         }                                                            
                     } 
-                    parent.add( g);
+                    if ( g.size() == 1) parent.add( g.get(0));
+                    else parent.add( g);
                     break;
 
                 case "rect":
-                    double x = Double.valueOf(((Element) noeud).getAttribute("x"));
-                    double y = Double.valueOf(((Element) noeud).getAttribute("y"));
-                    double w = Double.valueOf(((Element) noeud).getAttribute("width"));
-                    double h = Double.valueOf(((Element) noeud).getAttribute("height"));                    
-                    G1Path p = new G1Path((id == null) ? "g" : id, 5);  
+                    double x = Double.parseDouble(((Element) noeud).getAttribute("x"));
+                    double y = Double.parseDouble(((Element) noeud).getAttribute("y"));
+                    double w = Double.parseDouble(((Element) noeud).getAttribute("width"));
+                    double h = Double.parseDouble(((Element) noeud).getAttribute("height"));                     
                     parent.add( G1Path.newRectangle(new GCode(x, y), new GCode(x+w, y+h)));
                     break;
                     
                 case "ellipse":
-                    double cx = Double.valueOf(((Element) noeud).getAttribute("cx"));
-                    double cy = Double.valueOf(((Element) noeud).getAttribute("cy"));
-                    double rx = Double.valueOf(((Element) noeud).getAttribute("rx"));
-                    double ry = Double.valueOf(((Element) noeud).getAttribute("ry"));   
+                    double cx = Double.parseDouble(((Element) noeud).getAttribute("cx"));
+                    double cy = Double.parseDouble(((Element) noeud).getAttribute("cy"));
+                    double rx = Double.parseDouble(((Element) noeud).getAttribute("rx"));
+                    double ry = Double.parseDouble(((Element) noeud).getAttribute("ry"));   
                     parent.add( G1Path.makeOval(new Point2D.Double(cx, cy), rx, ry, 0.1));                                    
                 default:
-                    //System.out.println("importSVG: ignoring <"+((Element) noeud).getTagName());              
+                    System.out.println("importSVG: ignoring <"+((Element) noeud).getTagName());              
             }
             for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
               readSVGtree(walker, indent + "  ", parent);
@@ -2754,13 +2751,13 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 break;
                 
             case ACTION_DELETE:
-                if ( editedElement != null) {
+             if ( editedElement != null) {
                     ArrayList<GCode> lines = new ArrayList<>();
                     for ( int i : editListViewer.getSelectedIndices())
                         if ( i < editedElement.size())
                             lines.add(editedElement.getLine(i));
 
-                    
+                    // TODO: remove selected points from GSPLine in MixedPath
                     editedElement.removeAll(lines);                    
                     clearSelectedPoints(); 
                 } else

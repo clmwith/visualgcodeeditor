@@ -423,7 +423,7 @@ public class GSpline extends GElement {
     public void scale(Point2D origin, double ratioX, double ratioY) {
         start.scale(origin, ratioX, ratioY);
         end.scale(origin, ratioX, ratioY);
-        cp1.scale(origin, ratioX, ratioY);
+        if ( cp1 != null) cp1.scale(origin, ratioX, ratioY);
         if ( cp2 != null) cp2.scale(origin, ratioX, ratioY);
         informAboutChange();
     }
