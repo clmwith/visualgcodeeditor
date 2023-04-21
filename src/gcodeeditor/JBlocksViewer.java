@@ -117,7 +117,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
 
     public static final String CONTENT_HEADER = "(Content-Type: ";
     public static final String SVGE_HEADER = "(Simple G-Code Visual Editor Project: ";
-    public static final String SGVE_RELEASE = "0.8.4";
+    public static final String SVGE_RELEASE = "0.8.5";
 
     Configuration conf = new Configuration();
     JBlockViewerListenerInterface listener;
@@ -1523,7 +1523,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         java.io.FileWriter fw;
 
         fw = new java.io.FileWriter(filename);
-        fw.append(SVGE_HEADER + SGVE_RELEASE + ")\n");
+        fw.append(SVGE_HEADER + SVGE_RELEASE + ")\n");
         if ( backgroundPictureParameter != null) 
             fw.append(backgroundPictureParameter.toString()+"\n");
         fw.append(document.properties.toString()+"\n");

@@ -99,7 +99,7 @@ public class GCodeDocumentRender implements Runnable {
             state = grbl.getParserState();
             
             currentZ = currentZStart = currentZEnd = currentZPassDepth = Double.NaN;
-            sendCmd("; Generated with SimpleGCodeVisualEditor " + JBlocksViewer.SGVE_RELEASE);
+            sendCmd("; Generated with SimpleGCodeVisualEditor " + JBlocksViewer.SVGE_RELEASE);
 
             if ( laserMode) {
                 sendCmd(conf.adaptativePower ? "M4" : "M3");

@@ -685,7 +685,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public static void exportToDXF(String DXFfileName, GElement element, boolean flattenSpline) throws FileNotFoundException, IOException {
         OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(DXFfileName));       
 	// header
-        out.write("999\nDXF created by SimpleGCodeVisualEditor v"+JBlocksViewer.SGVE_RELEASE+"\n");
+        out.write("999\nDXF created by SimpleGCodeVisualEditor v"+JBlocksViewer.SVGE_RELEASE+"\n");
         out.write("  0\nSECTION\n");
         out.write("  2\nHEADER\n");
         out.write("  9\n$ACADVER\n1\nAC1006\n");
