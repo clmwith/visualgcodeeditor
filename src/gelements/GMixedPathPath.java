@@ -85,6 +85,10 @@ public class GMixedPathPath extends GElement {
         copy.forEach((l) -> { add(l); });
     }
 
+    /**
+     * Generate a clone of this path
+     * @return
+     */
     @Override
     public GElement clone() {
         GMixedPathPath clone = new GMixedPathPath(name);
@@ -142,7 +146,7 @@ public class GMixedPathPath extends GElement {
     }
     
     @Override
-    public GElement flatten() {
+    public G1Path flatten() {
         
         G1Path f = new G1Path("flatten-"+name);
         gString.forEach((o) -> {
@@ -669,7 +673,13 @@ public class GMixedPathPath extends GElement {
         return res;
     }
 
- 
+    @Override
+    public boolean movePoint(GCode point, double dx, double dy) {
+        ArrayList<GCode> l = new ArrayList<>();
+        l.add(point);
+        return movePoints(l, dx, dy);
+    }
+
     
     @Override
     public boolean movePoints(ArrayList<GCode> points, double dx, double dy) {
@@ -688,7 +698,6 @@ public class GMixedPathPath extends GElement {
                             moveNext = false;
                 } else {
                     if ( ! moveNext ) {
-                        final GElement e = (GElement)o;
                         if (((GElement)o).contains(p)) {
                             if (((GElement)o).movePoint(p, dx, dy)) {
                             moved = true;    
@@ -698,7 +707,6 @@ public class GMixedPathPath extends GElement {
                         }
                     } else {
                         if ( points.contains(((GElement)o).getFirstPoint())) {
-                            moveNext=false;
                             break;
                         }
                         if ( o instanceof GSpline) {
@@ -708,7 +716,6 @@ public class GMixedPathPath extends GElement {
                             ((GArc)o).translateFirstPoint(dx, dy);
                         }
                         moved = true;
-                        moveNext = false;
                         break;
                     }
                 }
@@ -717,6 +724,7 @@ public class GMixedPathPath extends GElement {
         if ( moved) informAboutChange();
         return moved;
     }
+    
     
     @Override
     public void paint(PaintContext pc) {
@@ -953,6 +961,7 @@ public class GMixedPathPath extends GElement {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    @Override
     public void transform(AffineTransform t) {
         gString.forEach((o) -> {
             if ( o instanceof GCode) ((GCode)o).transform( t);
@@ -960,6 +969,11 @@ public class GMixedPathPath extends GElement {
             else
                  throw new AbstractMethodError( "" + o.getClass() + ".transform(t) not implemented");
         });
+    }
+
+    @Override
+    public GCode getPoint(int p) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
 }

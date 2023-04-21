@@ -122,7 +122,7 @@ public final class GDrillPoint extends G1Path {
     }
     
     @Override
-    public GElement flatten() {
+    public G1Path flatten() {
         G1Path res = new G1Path("flatten-"+name);
         res.add((GCode) lines.get(DRILL_GCODE_LINE_NUMBER).clone());
         if ( properties != null) res.properties = properties.clone();

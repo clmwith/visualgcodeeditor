@@ -111,6 +111,14 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemSelectAllActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemInvertSelection">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Invert selection"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemInvertSelectionActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator16">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemUndo">
@@ -170,6 +178,28 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemPasteActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator4">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExtract">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="E"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Extract"/>
+                <Property name="toolTipText" type="java.lang.String" value="Split selection"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExtractActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemRemoveSelection">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="DELETE"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Remove"/>
+              </Properties>
+            </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator12">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemSetCursor">
@@ -185,7 +215,10 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemSetCursorTo">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Set cursot to..."/>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Ctrl+SPACE"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Set cursot to ..."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemSetCursorToActionPerformed"/>
@@ -194,7 +227,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemCursorAtCenter">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Shift+C"/>
+                  <KeyStroke key="Shift+SPACE"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Cursor to center"/>
                 <Property name="toolTipText" type="java.lang.String" value="Set 2D cursor at center of selection or 2 or 3 points or any mouse segment."/>
@@ -205,6 +238,9 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemCursorAtHead">
               <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Alt+SPACE"/>
+                </Property>
                 <Property name="text" type="java.lang.String" value="Cursor to machine head"/>
                 <Property name="toolTipText" type="java.lang.String" value="Set 2D Cursor to GRBL Head Position"/>
               </Properties>
@@ -238,18 +274,6 @@
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator11">
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExtract">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="E"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Extract"/>
-                <Property name="toolTipText" type="java.lang.String" value="Split selection"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExtractActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemGroup">
               <Properties>
@@ -577,12 +601,13 @@
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddRectangleActionPerformed"/>
                   </Events>
                 </MenuItem>
-                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddSquare">
+                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddPolygon">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Square"/>
+                    <Property name="text" type="java.lang.String" value="Polygon"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Add a polygon centered around 2DCursor"/>
                   </Properties>
                   <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddSquareActionPerformed"/>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddPolygonActionPerformed"/>
                   </Events>
                 </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddText">
@@ -615,7 +640,7 @@
                 </MenuItem>
                 <Menu class="javax.swing.JMenu" name="jMenuMakeCutPath">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Cut path"/>
+                    <Property name="text" type="java.lang.String" value="Offset Cut path"/>
                     <Property name="toolTipText" type="java.lang.String" value="To cut around selection"/>
                   </Properties>
                   <SubComponents>
@@ -801,15 +826,15 @@
                 </MenuItem>
               </SubComponents>
             </Menu>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemMove">
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemDuplicate">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Ctrl+M"/>
+                  <KeyStroke key="Ctrl+D"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Duplique ..."/>
+                <Property name="text" type="java.lang.String" value="Duplicate ..."/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemMoveActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemDuplicateActionPerformed"/>
               </Events>
             </MenuItem>
             <Menu class="javax.swing.JMenu" name="jMenu4">
@@ -864,6 +889,17 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemMoveWithMouseActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemMove">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Ctrl+M"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Move ..."/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemMoveActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemMoveCenter">
@@ -1060,7 +1096,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddIntersectionPoints">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Add from intersection"/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Insert &lt;b&gt;in the first selected path&lt;/b&gt; all the intersection points with all others paths.&lt;br&gt;&#xa;The first path selected must be a flat path."/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Insert &lt;b&gt;in the first selected path&lt;/b&gt; all the intersection points with all others paths.&lt;br&gt; The first path selected must be a flat path.(G1)"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddIntersectionPointsActionPerformed"/>
@@ -1264,24 +1300,6 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExecuteSelectedActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator4">
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemQuickTest">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="pour le programmeur ;)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemQuickTestActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemSpeedTest">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Speed Test"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemSpeedTestActionPerformed"/>
               </Events>
             </MenuItem>
           </SubComponents>
@@ -1741,7 +1759,7 @@
             <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
               <Image iconType="3" name="/icons/Line.gif"/>
             </Property>
-            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Add a path in the current group&lt;br&gt;Shortcut key : &lt;b&gt;L&lt;/b&gt;&lt;/html&gt;"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Add a path in the current group or a line in edited element.&lt;br&gt;Insert new point with right buton&lt;p&gt;Shortcut key : &lt;b&gt;L&lt;/b&gt;&lt;/html&gt;"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>

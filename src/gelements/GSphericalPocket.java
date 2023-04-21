@@ -57,23 +57,14 @@ public class GSphericalPocket extends GPocket3D {
         this.radius = radius;
         this.inlayDepth = inlayDepth;
         center = new GCode(x, y);
+        lines.add( new GCode("; sp"));
         recalculate();
-    }
-    
-    /**
-     * Used to reload a pre-saved cylinder.
-     * @param savedParamLine 
-     */
-    @Override
-    public boolean add( GCode savedParamLine) {
-        add( lines.size(), savedParamLine);
-        return false;
     }
 
     final void recalculate() {
         if ( startPoint == null) {
             double r0 = Math.sqrt(radius * radius - (radius-inlayDepth) * (radius-inlayDepth));
-            startPoint = new GCode(0, center.getX() + r0, center.getY());
+            startPoint = new GCode(0, center.getX() + r0, center.getY());          
         } else {
             double r = center.distance(startPoint);
             radius = (r*r+inlayDepth*inlayDepth)/(2*inlayDepth);
@@ -104,7 +95,9 @@ public class GSphericalPocket extends GPocket3D {
 
     @Override
     public double getDistanceTo(GCode point) {       
-        return Math.abs(center.distance(startPoint) - center.distance(point));
+        return Math.min(
+                Math.abs(center.distance(startPoint) - center.distance(point)),
+                center.distance(point));
     }
     
     @Override
@@ -166,26 +159,31 @@ public class GSphericalPocket extends GPocket3D {
     public void setLine(int row, GCode paramLine) {
         switch ( row) {
             case 0:
-                final double r = parseDoubleValue(paramLine);
+                final double r = parseParameterDouble(paramLine);
                 if ( ! Double.isNaN(r)) {
                     radius = r;
                     startPoint=null;
-                    informAboutChange();
                 }
             case 1: 
-                final double iD = parseDoubleValue(paramLine);
-                if ((iD > 0) && (iD < radius) && (iD != inlayDepth)) {
+                final double iD = parseParameterDouble(paramLine);
+                if (! Double.isNaN(iD) && (iD > 0) && (iD < radius) && (iD != inlayDepth)) {
                     inlayDepth = iD;
                     startPoint = null;
-                    informAboutChange();
                 }
                 break;
             case 2: 
                 if ( paramLine.isAPoint()) {
-                    startPoint.setLocation(paramLine.getX(), paramLine.getY());
-                    informAboutChange();
+                    startPoint.setLocation(paramLine.getX(), paramLine.getY());                  
                 }
+            case 3:
+                if ( paramLine.isAnArc()) {
+                    final GArc t = new GArc("tmp", startPoint,  paramLine);
+                    clockwise = t.clockwise;  
+                }
+            default:
+                return;
         }
+        informAboutChange();
     }
     
     @Override
@@ -198,7 +196,7 @@ public class GSphericalPocket extends GPocket3D {
      * @return a G1Path object representing the bound of the pocket.
      */
     @Override
-    public GElement flatten() {
+    public G1Path flatten() {
         final G1Path flatten = G1Path.makeCircle((Point2D)center, (int)(2* Math.PI * radius), radius, clockwise, true);
         flatten.add(0, new GCode(";InlayDepth="+inlayDepth));
         if ( properties != null) flatten.properties = properties.clone();
@@ -310,10 +308,25 @@ public class GSphericalPocket extends GPocket3D {
     public GCode saveToStream(FileWriter fw, GCode lastPosition) throws IOException {
         fw.append(HEADER_STRING + name + ")\n");
         fw.append(properties.toString()+"\n");
-        fw.append("; C="+center.getX()+","+center.getY()+"\n");
         fw.append("; R="+radius+"\n");
         fw.append("; Depth="+inlayDepth+"\n");
+        fw.append(getFirstPoint()+"\n");
+        fw.append(getElementAt(3)+"\n");
         return getLastPoint();
+    }
+    
+    @Override
+    public String loadFromStream(BufferedReader stream, GCode lastGState) throws IOException {
+        String line = super.loadFromStream(stream, null);
+        radius = parseParameterDouble( lines.get(0));
+        inlayDepth = parseParameterDouble( lines.get(1));
+        startPoint=lines.get(2);
+        GCode end = new GCode( line);
+        clockwise = (end.getG() == 2);
+        center = end.getArcCenter(startPoint);
+        recalculate();
+        lastGState.set( getLastPoint());
+        return stream.readLine();
     }
     
     @Override
@@ -443,15 +456,8 @@ public class GSphericalPocket extends GPocket3D {
         }
         return false;
     }
-    
-    @Override
-    public String loadFromStream(BufferedReader stream, GCode lastGState) throws IOException {
-        String line = super.loadFromStream(stream, null);
-        for( int i = 0; i < 4; i++) { 
-            setLine(i, new GCode(line));
-            line = stream.readLine();
-        }
-        lastGState.set( getLastPoint());
-        return line;
+      
+    public double getSphereRadius() {
+        return radius;
     }
 }

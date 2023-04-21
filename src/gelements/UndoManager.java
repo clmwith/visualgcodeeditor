@@ -61,6 +61,7 @@ public class UndoManager {
             group.modified = false;
             if ( ! onlyClear) 
                 modified.add(group);
+            
             group.getAll().forEach((e) -> {  
                 if ( e instanceof GGroup) 
                     getModified((GGroup)e, null, true);

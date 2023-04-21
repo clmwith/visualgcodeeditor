@@ -51,19 +51,19 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     
     /** Create a G-Code Line from a string(add Gx if not present, according to lastGState)
      * @param line the line to decode
-     * @param lastGState */
-    public GCode( String line, GCode lastGState) {
+     * @param defaultValues */
+    public GCode( String line, GCode defaultValues) {
         words = new ArrayList<>();
         set(line);
         if ((getG() == -1) && ((x!=null)||(y!=null)))
-            words.add(0, new GWord('G', lastGState.getG()));
+            words.add(0, new GWord('G', defaultValues.getG()));
         
         if ( isAMove() && ((x==null)^(y==null)))
         {
-            if ( ((x==null) || (y==null)) && (lastGState == null))
-                System.out.println("error");
-            if ((x == null)&&(lastGState!=null)) setX( lastGState.getX());
-            if ((y == null)&&(lastGState!=null)) setY( lastGState.getY());
+            assert(((x==null) || (y==null)) && (defaultValues == null));               
+            
+            if ((x == null)&&(defaultValues!=null)) setX( defaultValues.getX());
+            if ((y == null)&&(defaultValues!=null)) setY( defaultValues.getY());
         }
     }
     
@@ -268,12 +268,16 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     
     /**
      * @param point
-     * @return true is pos X,Y are same with <i>point</i> (doesn't compare others words).
+     * @return true is pos X,Y are "same" (near 10e-7) with <i>point</i> (doesn't compare others words). 
+     *         the result unsure if not a point (without X and Y) !
      */
     public boolean isAtSamePosition(Point2D point) {
-        if ( java.lang.Double.isNaN(point.getX()) && ! java.lang.Double.isNaN(getX())) return false;
-        if ( java.lang.Double.isNaN(point.getY()) && ! java.lang.Double.isNaN(getY())) return false;       
-        return (Math.abs(getX() - point.getX()) < 0.0000001) && (Math.abs(getY() - point.getY()) < 0.00000001);
+        if ( point == null) return false;
+        
+        final double px = point.getX();
+        final double py = point.getY();
+        return (java.lang.Double.isNaN(px) || (Math.abs(getX() - px) < 0.00000001)) &&
+               (java.lang.Double.isNaN(py) || (Math.abs(getY() - py) < 0.00000001));      
     }
     
     public boolean isComment() {

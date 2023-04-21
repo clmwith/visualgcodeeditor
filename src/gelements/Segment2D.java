@@ -155,8 +155,11 @@ public class Segment2D {
         return "Seg{y="+a +"X +" + b + " (" + p1.getX() + "," + p1.getY() + ")-(" + p2.getX() + "," + p2.getY() + ")}";
     }
 
+    /**
+     * sort Y for the calculation of the intersectionPoint
+     */
     void sortPointsByY() {
-        if ( p2.getY() < p1.getY()) { // sort Y for the calculation of the intersectionPoint
+        if ( p2.getY() < p1.getY()) {
             final GCode t = p1;
             p1 = p2;
             p2 = t;

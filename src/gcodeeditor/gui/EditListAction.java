@@ -17,12 +17,15 @@
 package gcodeeditor.gui;
 
 /**
- *
+ * Used to edit Gcode lines
  * @author Clément, inspired by https://tips4java.wordpress.com/2008/10/19/list-editor/
  */
 
 import gelements.GGroup;
 import gcodeeditor.JBlocksViewer;
+import gelements.GElement;
+import gelements.GTextOnPath;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -76,9 +79,23 @@ public class EditListAction extends AbstractAction
             ListModel model = list.getModel();
             if ( list.getSelectedIndex() == -1) return;
 
-            if ( (model instanceof GGroup) || (model instanceof JBlocksViewer.DocumentListModel)) { // we are not in a block then no line to edit
+            // Enter in a Group ?
+            if ( (model instanceof GGroup) || (model instanceof JBlocksViewer.DocumentListModel)) { 
+                // we are not in a block then no line to edit
                 shapeviewer.editElement(list.getSelectedIndex());
                 return;
+            }
+                   
+            if ( (model instanceof GTextOnPath) && (list.getSelectedIndex() == 0)) {
+                // Edit the Font (line 0) of this TextOnPath
+                Container p = shapeviewer.getParent();
+                do {
+                    p = p.getParent();
+                    if ( p instanceof JEditorFrame ) {
+                        ((JEditorFrame)p).editFontOf((GElement)model);
+                        return;
+                    }
+                } while (p != null);
             }
 
             //  Do a lazy creation of the popup editor
@@ -92,8 +109,14 @@ public class EditListAction extends AbstractAction
             editPopup.show(list, r.x, r.y);
 
             //  Prepare the text field for editing
-            editTextField.setText( list.getSelectedValue().toString() );
-            editTextField.selectAll();
+            String t = list.getSelectedValue().toString();
+            editTextField.setText( t );
+            if ( t.startsWith(";") && t.contains("=") ) {
+                // select only the value of param
+                editTextField.select( t.indexOf('=')+1, t.length());
+            } else 
+                editTextField.selectAll();
+            
             editTextField.requestFocus();
 	}
 
@@ -125,8 +148,8 @@ public class EditListAction extends AbstractAction
                     String value = editTextField.getText();
                     ListModel model = list.getModel();
                     int row = list.getSelectedIndex();
-                    shapeviewer.updateEditedRow(value, model, row);
                     editPopup.setVisible(false);
+                    shapeviewer.updateEditedRow(value, model, row);                    
                 });
 
 		//  Add the editor to the popup

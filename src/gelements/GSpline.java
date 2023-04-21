@@ -579,9 +579,9 @@ public class GSpline extends GElement {
     }
 
     @Override
-    public GElement flatten() {
+    public G1Path flatten() {
         updateFlatten();
-        GElement res = flatten.clone();
+        G1Path res = (G1Path)flatten.clone();
         if ( properties != null) res.properties = properties.clone();
         return res;
     }
@@ -689,5 +689,10 @@ public class GSpline extends GElement {
     boolean isALine() {
         return ((cp1==null)||cp1.isAtSamePosition(start)||cp1.isAtSamePosition(end)) &&
                 ((cp2==null)||cp2.isAtSamePosition(start)||cp2.isAtSamePosition(end));
+    }
+
+    @Override
+    public GCode getPoint(int p) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 }

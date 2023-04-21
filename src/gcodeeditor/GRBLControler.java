@@ -177,7 +177,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     /** Realtime GRBL states. */
     int grblState = GRBL_STATE_DISCONNECTED;
     
-    int grblBufferFree = 128, grblBufferSize=128, grblSpindle, grblFeed, grblErrorAlarmNo;
+    int grblBufferFree = 128, grblBufferSize=128, grblSpindle, grblFeed;
     
     /** Contains all the ligne sended to GRBL that have not been executed (no <i>ok</i> returned). */
     ArrayList<String> grblBufferContent = new ArrayList<>();
@@ -518,7 +518,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     private void updateGRBLSetting( String oneGRBLSetting) {
         String v[] = oneGRBLSetting.substring(1).split("=");
         grblSettings.put(Integer.valueOf(v[0]), Double.valueOf(v[1]));
-        if ( Integer.valueOf(v[0]) == LAST_GRBL_SETTING_NUMBER)
+        if ( Integer.parseInt(v[0]) == LAST_GRBL_SETTING_NUMBER)
             listeners.forEach((t) -> { t.settingsReady(); });
     }
     
@@ -575,7 +575,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 case "MPOS": // Machine position
                     //System.err.println("GRBL Machine Pos : " + p[1]);
                             c = p[1].split(",");
-                            pt = new Point3D(Double.valueOf(c[0]),Double.valueOf(c[1]),Double.valueOf(c[2]));
+                            pt = new Point3D(Double.parseDouble(c[0]),Double.parseDouble(c[1]),Double.parseDouble(c[2]));
                             if ( (grblMPos == null) || (pt.distance(grblMPos) > 0.00001)) {
                                 grblMPos = pt;
                                 // WPos = MPos - WCO
@@ -591,7 +591,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 case "WPOS": // Work position
                             //System.err.println("GRBL workpos : " + p[1]);
                             c = p[1].split(",");
-                            pt = new Point3D(Double.valueOf(c[0]),Double.valueOf(c[1]),Double.valueOf(c[2]));
+                            pt = new Point3D(Double.parseDouble(c[0]),Double.parseDouble(c[1]),Double.parseDouble(c[2]));
                             if ( (grblWPos == null) || (pt.distance(grblWPos) > 0.00001)) {
                                 grblWPos = pt;                                
                                 listeners.forEach(GRBLCommListennerInterface::wPosChanged);
@@ -604,21 +604,21 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 case "BF":  // Buffer states (BF:15,128)
                             String v[] = p[1].split(",");
                             //if ( grblCmdQueue.isEmpty() && (Integer.parseInt(v[1]) != 128))     
-                            //    grblBufferFree = Integer.valueOf(v[1]);                           
+                            //    grblBufferFree = Integer.parseInt(v[1]);                           
                             //System.serialWriter.println(String.format("GRBL Buffer %s blocks, %s bytes free", v[0], v[1]));                                  
                             break;
                 case "LN":  // Line number currently being executed
                             System.out.println("GRBL line number : " + args[n]);
                             break;
                 case "F":   // Current feed
-                            grblFeed = Integer.valueOf(p[1]);
+                            grblFeed = Integer.parseInt(p[1]);
                             listeners.forEach(GRBLCommListennerInterface::feedSpindleChanged);
                             break;
                 case "FS":  // Current feed and speed
                             String v2[] = p[1].split(",");
-                            if (( grblFeed != Integer.valueOf(v2[0])) || (grblSpindle != Integer.valueOf(v2[1]))) {
-                                grblFeed = Integer.valueOf(v2[0]);
-                                grblSpindle = Integer.valueOf(v2[1]);
+                            if (( grblFeed != Integer.parseInt(v2[0])) || (grblSpindle != Integer.parseInt(v2[1]))) {
+                                grblFeed = Integer.parseInt(v2[0]);
+                                grblSpindle = Integer.parseInt(v2[1]);
                                 listeners.forEach(GRBLCommListennerInterface::feedSpindleChanged);
                             }
                             break;
@@ -627,7 +627,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                             boolean changed = false;
                             String[] ov = p[1].split(",");                           
                             for(int i = 0; i < ov.length; i++) {
-                                int val = Integer.valueOf(ov[i]);
+                                int val = Integer.parseInt(ov[i]);
                                 if ( val != grblOverride[i]) {
                                     grblOverride[i] = val;
                                     changed = true;
@@ -660,7 +660,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     private void updateWCO(String wco) {
         String c[] = wco.split(",");
         Point3D oldWCO = grblWCO;
-        grblWCO = new Point3D(Double.valueOf(c[0]),Double.valueOf(c[1]),Double.valueOf(c[2]));
+        grblWCO = new Point3D(Double.parseDouble(c[0]),Double.parseDouble(c[1]),Double.parseDouble(c[2]));
         
         // if WCO has changed, reset lastTrueDestination
         if ( (oldWCO != null) && (oldWCO.distance(grblWCO) > 0.00001) && (lastTrueDestination != null)) {
@@ -763,7 +763,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     else if ( l.startsWith("[OPT:")) {
                         String f[] = (grblOptions=l.substring(1, l.length()-1).split(":")[1]).split(",");
                         if ( f.length == 3) 
-                            grblBufferSize = Integer.valueOf(f[2])-3; // TODO: why -3 ??
+                            grblBufferSize = Integer.parseInt(f[2])-3; // TODO: why -3 ??
                         
                     } else if ( l.startsWith("[GC:")) {
                         String ps = l.substring(4, l.length()-1);
@@ -771,7 +771,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                         listeners.forEach(GRBLCommListennerInterface::stateChanged);
                         
                     } else if ( (m=WCO_PATTERN.matcher(l)).matches()) {
-                        final int gNum = Integer.valueOf(m.group(1));
+                        final int gNum = Integer.parseInt(m.group(1));
                         final Point3D p3d = new Point3D(m.group(2));
                         grblWCOValues.put( gNum, p3d);
                         // Use this as WCO ... is it good idea ?
@@ -790,7 +790,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                         
                         setState( GRBL_STATE_ALARM);
                         listeners.forEach((li) -> {
-                            li.receivedAlarm(Integer.valueOf(l.split(":")[1])); 
+                            li.receivedAlarm(Integer.parseInt(l.split(":")[1])); 
                         });
 
                         clearCmdQueue(); 
@@ -800,7 +800,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                         String wrongLine = grblBufferContent.remove(0);
                         grblBufferFree += wrongLine.length(); 
                         listeners.forEach((li) -> {
-                            li.receivedError(Integer.valueOf(l.split(":")[1]), wrongLine);
+                            li.receivedError(Integer.parseInt(l.split(":")[1]), wrongLine);
                         });
                            
                         if ( ! grblCmdQueue.isEmpty()) restartSenderThread();
@@ -852,9 +852,9 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
             try { Thread.sleep(1000); } catch (InterruptedException e) { }          
         }
         @SuppressWarnings("unchecked") 
-        TreeMap<Integer,Double> settings = new TreeMap<Integer, Double>();
+        TreeMap<Integer,Double> settings = new TreeMap<>();
         grblSettings.keySet().forEach((k) -> {
-            settings.put(k, new Double(grblSettings.get(k)));
+            settings.put(k, grblSettings.get(k));
         });
         return settings;
     }
@@ -1117,7 +1117,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
      */
     public static String getErrorMsg(int errorno) {
         for( int i = 0; i < GRBL_ERROR_MSG.length; i+= 2)
-            if ( errorno == Integer.valueOf(GRBL_ERROR_MSG[i]))
+            if ( errorno == Integer.parseInt(GRBL_ERROR_MSG[i]))
                 return GRBL_ERROR_MSG[i+1];
         return null;
     }
@@ -1128,7 +1128,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
      */
     public static String getAlarmMsg(int alarmno) {
         for( int i = 0; i < GRBL_ALARM_MSG.length; i+= 2)
-            if ( alarmno == Integer.valueOf(GRBL_ALARM_MSG[i]))
+            if ( alarmno == Integer.parseInt(GRBL_ALARM_MSG[i]))
                 return GRBL_ALARM_MSG[i+1];
         return null;
     }
@@ -1139,7 +1139,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
      */
     public static String getSettingDescription(int settingNumber) {
         for( int i = 0; i < GRBL_SETTING_STR.length; i+= 2)
-            if ( settingNumber == Integer.valueOf(GRBL_SETTING_STR[i]))
+            if ( settingNumber == Integer.parseInt(GRBL_SETTING_STR[i]))
                 return GRBL_SETTING_STR[i+1];
         return null;
     }

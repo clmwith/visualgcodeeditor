@@ -18,6 +18,7 @@ package gelements;
 
 import gcodeeditor.GCode;
 import gcodeeditor.GFont;
+import gcodeeditor.GWord;
 import java.awt.Color;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
@@ -34,8 +35,7 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 /**
- *
- * @author Clément Gérardin @ Marseille.fr
+ * @author Clément
  */
 public class GTextOnPath extends GElement implements ListDataListener {
     
@@ -44,6 +44,10 @@ public class GTextOnPath extends GElement implements ListDataListener {
     public static final String FONT_NAME_HEADER = "(Font: ";
     public static final String TEXT_HEADER = "(Text: ";
     public static final String HEIGHT_HEADER = "(Height: ";
+    
+    public static final String LINE_FONT_HEADER = ";Font=";
+    public static final String LINE_TEXT_HEADER = ";Text=";
+    public static final String LINE_HEIGHT_HEADER = ";Height=";
     
     private String text;
     private GFont font;
@@ -82,7 +86,7 @@ public class GTextOnPath extends GElement implements ListDataListener {
     public final void setTextHeight(double textHeight) {
         if ( Double.isNaN(textHeight) || (textHeight < 0.1)) return;
         Rectangle2D b = rawTextPaths.getBounds();
-        if ( b.getHeight() != textHeight) {
+        if ( ! GWord.equals(b.getHeight(), textHeight)) {
             double s = textHeight/b.getHeight();
             rawTextPaths.scale(new Point2D.Double(0,0), s, s);
             this.textHeight = textHeight;
@@ -207,7 +211,7 @@ public class GTextOnPath extends GElement implements ListDataListener {
         try {
             GTextOnPath clone = new GTextOnPath(name);
             clone.properties = properties.clone();
-            clone.text =text;
+            clone.text = ""+text;
             clone.textHeight = textHeight;
             clone.font = GFont.decode(font.getName());
             clone.pathGuide = pathGuide.clone();
@@ -221,27 +225,82 @@ public class GTextOnPath extends GElement implements ListDataListener {
 
     @Override
     public String toString() {
-        return text +"(MText)";
+        return getName() + "(MText)";
     }
+    
     @Override
     public Object getElementAt(int index) {
-        if ( index == 0) return new GCode(";Text=" + text);
-        if ( index == 1) return new GCode(";Height=" + rawTextPaths.getBounds().getHeight());
-        return pathGuide.getElementAt(index-2);
+        if ( index == 0) return new GCode(";Font=" + font);
+        if ( index == 1) return new GCode(";Text=" + text);
+        if ( index == 2) return new GCode(";Height=" + GWord.roundForGCODE(rawTextPaths.getBounds().getHeight()));
+        return pathGuide.getElementAt(index-3);
     }
     @Override
     public GCode getLine(int i) {
-        if ( i == 0) return new GCode(";Text="+text);
-        if ( i == 1) return new GCode(";Height=" + rawTextPaths.getBounds().getHeight());
-        return pathGuide.getLine(i-1);
+        if ( i == 0) return new GCode(";Font=" + font);
+        if ( i == 1) return new GCode(";Text="+text);
+        if ( i == 2) return new GCode(";Height=" + GWord.roundForGCODE(rawTextPaths.getBounds().getHeight()));
+        return pathGuide.getLine(i-3);
+    }
+    @Override
+    public void setLine(int row, GCode value) {
+        String s;
+        switch (row) {
+            case 0:
+                //throw AssertionError("Can't modify this line");
+                break;
+            case 1:
+                if ((s=value.toString()).startsWith(LINE_TEXT_HEADER)) {
+                    rawTextPaths = font.getTextPaths(text = s.split("=",2)[1]);
+                    setTextHeight(textHeight);
+                    informAboutChange();
+                } else {
+                    // Assume all is the text
+                  rawTextPaths = font.getTextPaths(text = s);
+                    //informAboutChange();
+                    break;
+                }
+                
+            case 2:
+                if ((s=value.toString()).contains("=")) {
+                    try {
+                        double h = Double.parseDouble( s.split("=")[1]);
+                        setTextHeight(h);
+                    } catch ( NumberFormatException e) { }
+                }
+                break;
+            default:
+                pathGuide.setLine(row-3, value);
+                break;
+        }
     }
     @Override
     public int getSize() {
-        return pathGuide.getSize()+2;
+        return pathGuide.getSize()+3;
     }
     @Override
     public Iterator<GCode> iterator() {
-        return pathGuide.iterator();
+        Iterator<GCode> it = new Iterator<GCode>() {
+            private int currentIndex = 0;
+            @Override
+            public boolean hasNext() {
+                return currentIndex < path.size();
+            }
+            @Override
+            public GCode next() {
+                return path.getLine(currentIndex++);
+            }
+            @Override
+            public void remove() {
+                path.remove(currentIndex);
+            }
+            GTextOnPath path;
+            public Iterator<GCode> setPath( GTextOnPath p) {
+                path=p;
+                return this;
+            }
+        }.setPath(this);
+        return it;
     }
     @Override
     public Iterable<GCode> getPointsIterator() {
@@ -253,7 +312,7 @@ public class GTextOnPath extends GElement implements ListDataListener {
     }
     @Override
     public void add(int pos, GCode line) {
-        if ( pos < 2) pos=2;
+        if ( pos < 3) pos=3;
         pathGuide.add(pos, line);
     }
     @Override
@@ -297,8 +356,8 @@ public class GTextOnPath extends GElement implements ListDataListener {
         return pathGuide.getLenOfSegmentTo(point);
     }
     @Override
-    public int getIndexOfPoint(GCode highlitedPoint) {
-        return pathGuide.getIndexOfPoint(highlitedPoint) + 2;
+    public int getIndexOfPoint(GCode point) {
+        return pathGuide.getIndexOfPoint(point) + 3;
     }
     @Override
     public double getDistanceTo(GCode pt) {
@@ -309,13 +368,17 @@ public class GTextOnPath extends GElement implements ListDataListener {
         return pathGuide.movePoints(selectedPoints, dx, dy);
     }
     @Override
+    public boolean movePoint(GCode point, double dx, double dy) {
+        return pathGuide.movePoint(point, dx, dy);
+    }
+    @Override
     public void translate(double dx, double dy) {
         pathGuide.translate(dx, dy);
     }
     @Override
     public Object remove(int i) {
-        if ( i < 2) return null;
-        return pathGuide.remove(i-2);
+        if ( i < 3) return null;
+        return pathGuide.remove(i-3);
     }
     @Override
     public void removeAll(ArrayList<GCode> lines) {        
@@ -342,36 +405,23 @@ public class GTextOnPath extends GElement implements ListDataListener {
     public void simplify(double angleMin, double distanceMax) {
         pathGuide.simplify(angleMin, distanceMax);
     }
-    @Override
-    public void setLine(int row, GCode value) {
-        String s;
-        switch (row) {
-            case 0:
-                if ((s=value.toString()).contains("=")) {
-                    rawTextPaths = font.getTextPaths(text = s.split("=")[1]);
-                    setTextHeight(textHeight);
-                    informAboutChange();
-                }   break;
-            case 1:
-                if ((s=value.toString()).contains("=")) {
-                    try {
-                        double h = Double.parseDouble( s.split("=")[1]);
-                        setTextHeight(h);
-                    } catch ( NumberFormatException e) { }
-                }
-                break;
-            default:
-                pathGuide.setLine(row-2, value);
-                break;
-        }
+
+    
+    public void changeFont(GFont choosedFont, double height) {
+        font = choosedFont;
+        rawTextPaths = font.getTextPaths(text);      
+        setTextHeight(textHeight = ((height == Double.NaN) ? textHeight : height));
+        informAboutChange();  
     }
+
+
     @Override
     public GCode insertPoint(GCode pt) {
         return pathGuide.insertPoint(pt);
     }
     @Override
     public int size() {
-        return pathGuide.size()+2;
+        return pathGuide.size()+3;
     }
 
     @Override
@@ -383,10 +433,12 @@ public class GTextOnPath extends GElement implements ListDataListener {
     public boolean isClosed() {
         return pathGuide.isClosed();
     }
+    
     @Override
     public String getSummary() {
         return "<html>Text on path:<br>"+text+"</html>";
     }
+    
     @Override
     public boolean isEmpty() {
         return pathGuide.isEmpty();
@@ -407,11 +459,13 @@ public class GTextOnPath extends GElement implements ListDataListener {
         remapText();
         mappedText.toDXF(out);
     }
+    
     @Override
     public CharSequence toSVG(Rectangle2D origin) {
         remapText();
         return mappedText.toSVG(origin);
     }
+    
     @Override
     public Area getOffsetArea(double param) {
         remapText();
@@ -432,7 +486,7 @@ public class GTextOnPath extends GElement implements ListDataListener {
      * Return the true GElements corresponding to the text to render.
      * @return
      */
-    GGroup getText() {
+    GGroup getGText() {
         remapText();
         return mappedText;
     }
@@ -440,5 +494,32 @@ public class GTextOnPath extends GElement implements ListDataListener {
     @Override
     double getLength() {
         return Double.NaN;
+    }
+
+    @Override
+    public GCode getPoint(int p) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public GFont getFont() {
+        return font;
+    }
+
+    public double getFontSize() {
+        return textHeight;
+    }
+
+    /**
+     * @return the text to paint
+     */
+    public String getText() {
+        return "" + text;
+    }
+
+    /** Change the text to paint on path */
+    public void setText(String choosedText) {
+        text = "" + choosedText;
+        rawTextPaths = font.getTextPaths(text);
+        informAboutChange();
     }
 }

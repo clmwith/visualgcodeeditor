@@ -1,5 +1,6 @@
 # visualgcodeeditor
-java Visual GCODE Editor laser engraver (Netbeans project)
+java Visual GCODE Editor and CAD for laser engraver and simple milling (Netbeans project)
+
 Written to use my home made CNC.
 Work with GRBL Arduino (with multiple configurations)
 
@@ -15,6 +16,7 @@ With Some interesting things :
 It use some external library :
 - RXTXcomm.jar
 - kabeja-0.4.jar
+- exp4j-0.4.8.jar
 
 It is my personal project that I share without any guarantee, it is absolutely not finished, and will never be finished.
 

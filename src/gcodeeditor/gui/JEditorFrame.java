@@ -16,6 +16,12 @@
  */
 package gcodeeditor.gui;
 
+import gcodeeditor.gui.dialogs.CylindricalPocketInputPanel;
+import gcodeeditor.gui.dialogs.SphericalPocketInputPanel;
+import gcodeeditor.gui.dialogs.JScalePanel;
+import gcodeeditor.gui.dialogs.JRotationPanel;
+import gcodeeditor.gui.dialogs.JPolygonPanel;
+import gcodeeditor.gui.dialogs.JDuplicatePanel;
 import gcodeeditor.BackgroundPictureParameters;
 import gelements.GSpline;
 import gelements.EngravingProperties;
@@ -36,6 +42,8 @@ import gnu.io.NoSuchPortException;
 import gnu.io.PortInUseException;
 import gnu.io.UnsupportedCommOperationException;
 import gcodeeditor.GRBLControler;
+import gcodeeditor.gui.dialogs.DialogManager;
+import gcodeeditor.gui.dialogs.JMovePanel;
 import gelements.GTextOnPath;
 import java.awt.Color;
 import java.awt.Component;
@@ -103,21 +111,21 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private String savedFileName;
     
     private static Window activeWindow; // the active window display GRBL receivedMessage
+    private final DialogManager dialogManager = new DialogManager(this);
+    
     private static GRBLControler grbl;
     private final GRBLControler.GRBLCommListennerInterface grblListenner;
+    private BackgroundPicturePanel backgroundPicturePanel;
+    private SphericalPocketInputPanel spherePocketEditor;
+    
     private JLogFrame jLogFrame;
     private JJoGFrame jogWindow;
     
     private boolean showLaserPosition;
-    private JRotationPanel rotatePanel;
-    private JScalePanel scalePanel;
+    
     private EngravingProperties curentEditedProperties;
     
     public static File lastImportDir = null;
-    
-    private BackgroundPicturePanel backgroundPicturePanel;
-    private SphericalPocketInputPanel spherePocketEditor;
-    private JMovePanel moveDialog;
     
     /**
      * Creates new form NewJFrame
@@ -203,19 +211,19 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 blocksviewer.editParentOrClearSelection();
             }
         });
-        la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_MASK), new AbstractAction() {
+        la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 blocksviewer.doAction(JBlocksViewer.ACTION_CUT, 0, null);
             }
         });
-        la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_V, KeyEvent.CTRL_MASK), new AbstractAction() {
+        la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 blocksviewer.doAction(JBlocksViewer.ACTION_PASTE, 0, null);
             }
         });
-        la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_MASK), new AbstractAction() {
+        la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 blocksviewer.doAction(JBlocksViewer.ACTION_COPY, 0, null);
@@ -248,7 +256,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         la.setAction(ListAction.F2, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {               
-                String name = JOptionPane.showInputDialog(null, "New name", blocksviewer.getSelectedBlockName());
+                String name = JOptionPane.showInputDialog(blocksviewer, "New name", blocksviewer.getSelectedBlockName());
                 if ( name != null) blocksviewer.renameSelection(name);
             }
         });
@@ -287,7 +295,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     default:
                         jLabelGRBLState.setForeground(Color.black);
                 }
-                SwingUtilities.invokeLater(() -> { updateStatus(null); });
+                SwingUtilities.invokeLater(() -> { updateGUIAndStatus(null); });
             }
             @Override
             public void receivedError(int errorno, String line) {
@@ -373,7 +381,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
         configurationChanged();
         updateRecentFilesMenu();
-        updateStatus("");
+        updateGUIAndStatus("");
         updateTitle();
     }
     
@@ -401,11 +409,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private void closeWindows() { 
         
         if ( ((blocksviewer.getState() & JBlocksViewer.STATE_DOCUMENT_MODIFIED) != 0)) {
-            switch ( JOptionPane.showConfirmDialog(null, "Save this document before closing ?", 
+            switch ( JOptionPane.showConfirmDialog(this, "Save this document before closing ?", 
                     "Save document ?", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)) {
                 case JOptionPane.YES_OPTION:
                         jMenuItemSaveGCodeActionPerformed(null);
+                case JOptionPane.NO_OPTION:
+                        break;
                 case JOptionPane.CANCEL_OPTION:
+                default:
                         return;
             }
         }  
@@ -516,6 +527,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemQuit = new javax.swing.JMenuItem();
         jMenuEdit = new javax.swing.JMenu();
         jMenuItemSelectAll = new javax.swing.JMenuItem();
+        jMenuItemInvertSelection = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JPopupMenu.Separator();
         jMenuItemUndo = new javax.swing.JMenuItem();
         jMenuItemRedo = new javax.swing.JMenuItem();
@@ -523,6 +535,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemCut = new javax.swing.JMenuItem();
         jMenuItemCopy = new javax.swing.JMenuItem();
         jMenuItemPaste = new javax.swing.JMenuItem();
+        jSeparator4 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemExtract = new javax.swing.JMenuItem();
+        jMenuItemRemoveSelection = new javax.swing.JMenuItem();
         jSeparator12 = new javax.swing.JPopupMenu.Separator();
         jMenuItemSetCursor = new javax.swing.JMenuItem();
         jMenuItemSetCursorTo = new javax.swing.JMenuItem();
@@ -532,7 +547,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jCheckBoxMenuItemSnapGrid = new javax.swing.JCheckBoxMenuItem();
         jCheckBoxMenuItemSnapPoints = new javax.swing.JCheckBoxMenuItem();
         jSeparator11 = new javax.swing.JPopupMenu.Separator();
-        jMenuItemExtract = new javax.swing.JMenuItem();
         jMenuItemGroup = new javax.swing.JMenuItem();
         jMenuItemUngroup = new javax.swing.JMenuItem();
         jSeparator25 = new javax.swing.JPopupMenu.Separator();
@@ -571,7 +585,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemAddSpiral = new javax.swing.JMenuItem();
         jMenuItemAddStar = new javax.swing.JMenuItem();
         jMenuItemAddRectangle = new javax.swing.JMenuItem();
-        jMenuItemAddSquare = new javax.swing.JMenuItem();
+        jMenuItemAddPolygon = new javax.swing.JMenuItem();
         jMenuItemAddText = new javax.swing.JMenuItem();
         jMenuItemAddTextOnPath = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JPopupMenu.Separator();
@@ -598,13 +612,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemAlignLeft = new javax.swing.JMenuItem();
         jMenuItemAlignRight = new javax.swing.JMenuItem();
         jMenuItemAlignTop = new javax.swing.JMenuItem();
-        jMenuItemMove = new javax.swing.JMenuItem();
+        jMenuItemDuplicate = new javax.swing.JMenuItem();
         jMenu4 = new javax.swing.JMenu();
         jMenuItemFlipH = new javax.swing.JMenuItem();
         jMenuItemFlipV = new javax.swing.JMenuItem();
         jMenuItemReverse = new javax.swing.JMenuItem();
         jMenuItemJoin = new javax.swing.JMenuItem();
         jMenuItemMoveWithMouse = new javax.swing.JMenuItem();
+        jMenuItemMove = new javax.swing.JMenuItem();
         jMenuItemMoveCenter = new javax.swing.JMenuItem();
         jMenuItemRename = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JPopupMenu.Separator();
@@ -656,9 +671,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemGRBLShowBoundaries = new javax.swing.JMenuItem();
         jMenuItemExecuteAll = new javax.swing.JMenuItem();
         jMenuItemExecuteSelected = new javax.swing.JMenuItem();
-        jSeparator4 = new javax.swing.JPopupMenu.Separator();
-        jMenuItemQuickTest = new javax.swing.JMenuItem();
-        jMenuItemSpeedTest = new javax.swing.JMenuItem();
         jMenuHelp = new javax.swing.JMenu();
         jMenuItemAbout = new javax.swing.JMenuItem();
 
@@ -959,7 +971,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jToolBar1.add(jSeparator15);
 
         jToggleButtonAddLines.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/Line.gif"))); // NOI18N
-        jToggleButtonAddLines.setToolTipText("<html>Add a path in the current group<br>Shortcut key : <b>L</b></html>");
+        jToggleButtonAddLines.setToolTipText("<html>Add a path in the current group or a line in edited element.<br>Insert new point with right buton<p>Shortcut key : <b>L</b></html>");
         jToggleButtonAddLines.setFocusable(false);
         jToggleButtonAddLines.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         jToggleButtonAddLines.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -1229,7 +1241,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
         jMenuEdit.setText("Edit");
 
-        jMenuItemSelectAll.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemSelectAll.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemSelectAll.setText("Select all");
         jMenuItemSelectAll.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1237,9 +1249,17 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         });
         jMenuEdit.add(jMenuItemSelectAll);
+
+        jMenuItemInvertSelection.setText("Invert selection");
+        jMenuItemInvertSelection.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemInvertSelectionActionPerformed(evt);
+            }
+        });
+        jMenuEdit.add(jMenuItemInvertSelection);
         jMenuEdit.add(jSeparator16);
 
-        jMenuItemUndo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemUndo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemUndo.setText("Undo");
         jMenuItemUndo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1248,7 +1268,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemUndo);
 
-        jMenuItemRedo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Y, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemRedo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Y, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemRedo.setText("Redo");
         jMenuItemRedo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1258,7 +1278,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuEdit.add(jMenuItemRedo);
         jMenuEdit.add(jSeparator27);
 
-        jMenuItemCut.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemCut.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemCut.setText("Cut");
         jMenuItemCut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1267,7 +1287,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemCut);
 
-        jMenuItemCopy.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemCopy.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemCopy.setText("Copy");
         jMenuItemCopy.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1276,7 +1296,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemCopy);
 
-        jMenuItemPaste.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemPaste.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemPaste.setText("Paste");
         jMenuItemPaste.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1284,6 +1304,21 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         });
         jMenuEdit.add(jMenuItemPaste);
+        jMenuEdit.add(jSeparator4);
+
+        jMenuItemExtract.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_E, 0));
+        jMenuItemExtract.setText("Extract");
+        jMenuItemExtract.setToolTipText("Split selection");
+        jMenuItemExtract.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemExtractActionPerformed(evt);
+            }
+        });
+        jMenuEdit.add(jMenuItemExtract);
+
+        jMenuItemRemoveSelection.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DELETE, 0));
+        jMenuItemRemoveSelection.setText("Remove");
+        jMenuEdit.add(jMenuItemRemoveSelection);
         jMenuEdit.add(jSeparator12);
 
         jMenuItemSetCursor.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
@@ -1295,7 +1330,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemSetCursor);
 
-        jMenuItemSetCursorTo.setText("Set cursot to...");
+        jMenuItemSetCursorTo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jMenuItemSetCursorTo.setText("Set cursot to ...");
         jMenuItemSetCursorTo.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemSetCursorToActionPerformed(evt);
@@ -1303,7 +1339,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemSetCursorTo);
 
-        jMenuItemCursorAtCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.SHIFT_MASK));
+        jMenuItemCursorAtCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jMenuItemCursorAtCenter.setText("Cursor to center");
         jMenuItemCursorAtCenter.setToolTipText("Set 2D cursor at center of selection or 2 or 3 points or any mouse segment.");
         jMenuItemCursorAtCenter.addActionListener(new java.awt.event.ActionListener() {
@@ -1313,6 +1349,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemCursorAtCenter);
 
+        jMenuItemCursorAtHead.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, java.awt.event.InputEvent.ALT_DOWN_MASK));
         jMenuItemCursorAtHead.setText("Cursor to machine head");
         jMenuItemCursorAtHead.setToolTipText("Set 2D Cursor to GRBL Head Position");
         jMenuItemCursorAtHead.addActionListener(new java.awt.event.ActionListener() {
@@ -1343,17 +1380,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuEdit.add(jCheckBoxMenuItemSnapPoints);
         jMenuEdit.add(jSeparator11);
 
-        jMenuItemExtract.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_E, 0));
-        jMenuItemExtract.setText("Extract");
-        jMenuItemExtract.setToolTipText("Split selection");
-        jMenuItemExtract.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemExtractActionPerformed(evt);
-            }
-        });
-        jMenuEdit.add(jMenuItemExtract);
-
-        jMenuItemGroup.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_G, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemGroup.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_G, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemGroup.setText("Group");
         jMenuItemGroup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1362,7 +1389,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemGroup);
 
-        jMenuItemUngroup.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_U, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemUngroup.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_U, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemUngroup.setText("Ungroup");
         jMenuItemUngroup.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1428,7 +1455,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuView.add(jCheckBoxMenuItemShowHeadPosition);
 
-        jCheckBoxMenuItemShowGrid.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_G, java.awt.event.InputEvent.SHIFT_MASK));
+        jCheckBoxMenuItemShowGrid.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_G, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jCheckBoxMenuItemShowGrid.setSelected(true);
         jCheckBoxMenuItemShowGrid.setText("Grid");
         jCheckBoxMenuItemShowGrid.addActionListener(new java.awt.event.ActionListener() {
@@ -1438,7 +1465,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuView.add(jCheckBoxMenuItemShowGrid);
 
-        jCheckBoxMenuItemShowMoves.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.SHIFT_MASK));
+        jCheckBoxMenuItemShowMoves.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jCheckBoxMenuItemShowMoves.setText("Moves");
         jCheckBoxMenuItemShowMoves.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1639,13 +1666,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuAdds.add(jMenuItemAddRectangle);
 
-        jMenuItemAddSquare.setText("Square");
-        jMenuItemAddSquare.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemAddPolygon.setText("Polygon");
+        jMenuItemAddPolygon.setToolTipText("Add a polygon centered around 2DCursor");
+        jMenuItemAddPolygon.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddSquareActionPerformed(evt);
+                jMenuItemAddPolygonActionPerformed(evt);
             }
         });
-        jMenuAdds.add(jMenuItemAddSquare);
+        jMenuAdds.add(jMenuItemAddPolygon);
 
         jMenuItemAddText.setText("Text");
         jMenuItemAddText.addActionListener(new java.awt.event.ActionListener() {
@@ -1674,7 +1702,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuAdds.add(jMenuItemAddBounds);
 
-        jMenuMakeCutPath.setText("Cut path");
+        jMenuMakeCutPath.setText("Offset Cut path");
         jMenuMakeCutPath.setToolTipText("To cut around selection");
 
         jMenuItemMakeCutPathI.setText("Inner");
@@ -1836,14 +1864,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
         jMenuBlocks.add(jMenuAlign);
 
-        jMenuItemMove.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.CTRL_MASK));
-        jMenuItemMove.setText("Duplique ...");
-        jMenuItemMove.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemDuplicate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_D, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jMenuItemDuplicate.setText("Duplicate ...");
+        jMenuItemDuplicate.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemMoveActionPerformed(evt);
+                jMenuItemDuplicateActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemMove);
+        jMenuBlocks.add(jMenuItemDuplicate);
 
         jMenu4.setText("Flip");
 
@@ -1892,6 +1920,15 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuBlocks.add(jMenuItemMoveWithMouse);
 
+        jMenuItemMove.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jMenuItemMove.setText("Move ...");
+        jMenuItemMove.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemMoveActionPerformed(evt);
+            }
+        });
+        jMenuBlocks.add(jMenuItemMove);
+
         jMenuItemMoveCenter.setText("Move to 2D Cursor");
         jMenuItemMoveCenter.setToolTipText("Move the center of the selection on 2D cursor.");
         jMenuItemMoveCenter.addActionListener(new java.awt.event.ActionListener() {
@@ -1911,7 +1948,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuBlocks.add(jMenuItemRename);
         jMenuBlocks.add(jSeparator2);
 
-        jMenuItemRotate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemRotate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemRotate.setText("Rotate ...");
         jMenuItemRotate.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1929,7 +1966,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuBlocks.add(jMenuItemRotateCenter);
 
-        jMenuItemRotateP.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_MASK));
+        jMenuItemRotateP.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jMenuItemRotateP.setText("Rotate around 2D cursor");
         jMenuItemRotateP.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1939,7 +1976,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuBlocks.add(jMenuItemRotateP);
         jMenuBlocks.add(jSeparator10);
 
-        jMenuItemScale.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemScale.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemScale.setText("Scale ...");
         jMenuItemScale.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1957,7 +1994,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuBlocks.add(jMenuItemScaleCenter);
 
-        jMenuItemScaleP.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.SHIFT_MASK));
+        jMenuItemScaleP.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jMenuItemScaleP.setText("Scale from 2D cursor");
         jMenuItemScaleP.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2041,7 +2078,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuPoints.add(jMenuItemAddPoints);
 
-        jMenuItemAddFromHeadPos.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_MASK));
+        jMenuItemAddFromHeadPos.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jMenuItemAddFromHeadPos.setText("Add from current head position");
         jMenuItemAddFromHeadPos.setToolTipText("");
         jMenuItemAddFromHeadPos.addActionListener(new java.awt.event.ActionListener() {
@@ -2052,7 +2089,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuPoints.add(jMenuItemAddFromHeadPos);
 
         jMenuItemAddIntersectionPoints.setText("Add from intersection");
-        jMenuItemAddIntersectionPoints.setToolTipText("<html>Insert <b>in the first selected path</b> all the intersection points with all others paths.<br>\nThe first path selected must be a flat path.");
+        jMenuItemAddIntersectionPoints.setToolTipText("<html>Insert <b>in the first selected path</b> all the intersection points with all others paths.<br> The first path selected must be a flat path.(G1)");
         jMenuItemAddIntersectionPoints.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemAddIntersectionPointsActionPerformed(evt);
@@ -2127,7 +2164,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuGRBL.add(jMenuItemGRBLSettings);
 
-        jMenuItemGRBLKillAlarm.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemGRBLKillAlarm.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemGRBLKillAlarm.setText("Kill Alarm");
         jMenuItemGRBLKillAlarm.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2145,7 +2182,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuGRBL.add(jMenuItemGRBLSoftReset);
         jMenuGRBL.add(jSeparator30);
 
-        jMenuItemGRBLHome.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_MASK));
+        jMenuItemGRBLHome.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemGRBLHome.setText("Home");
         jMenuItemGRBLHome.setToolTipText("Execute an homming cycle");
         jMenuItemGRBLHome.addActionListener(new java.awt.event.ActionListener() {
@@ -2243,23 +2280,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         });
         jMenuGRBL.add(jMenuItemExecuteSelected);
-        jMenuGRBL.add(jSeparator4);
-
-        jMenuItemQuickTest.setText("pour le programmeur ;)");
-        jMenuItemQuickTest.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemQuickTestActionPerformed(evt);
-            }
-        });
-        jMenuGRBL.add(jMenuItemQuickTest);
-
-        jMenuItemSpeedTest.setText("Speed Test");
-        jMenuItemSpeedTest.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemSpeedTestActionPerformed(evt);
-            }
-        });
-        jMenuGRBL.add(jMenuItemSpeedTest);
 
         jMenuBar.add(jMenuGRBL);
 
@@ -2339,9 +2359,12 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemJoinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemJoinActionPerformed
         try {
-            double tolerance = Double.valueOf( JOptionPane.showInputDialog(this, "Tolerance", "0.0002"));
+            double tolerance = 0;
+            if (! blocksviewer.isInEditMode()) // Not in Edit mode
+                tolerance = Double.valueOf( JOptionPane.showInputDialog(this, "Maximal distance", "0.0002"));
             blocksviewer.doAction(JBlocksViewer.ACTION_JOIN, tolerance, null);
         } catch (NumberFormatException e) { 
+            updateGUIAndStatus("wrong distance");
         }
     }//GEN-LAST:event_jMenuItemJoinActionPerformed
 
@@ -2413,7 +2436,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             String fname = f.getSelectedFile().getAbsolutePath();
             if ( fname.indexOf('.') == -1) fname = fname.concat(".svg");
             if (new File( fname).exists())
-                if ( JOptionPane.showConfirmDialog(null, fname+"\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
+                if ( JOptionPane.showConfirmDialog(this, fname+"\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;    
             try {
                 blocksviewer.exportToSVG( fname, res == 0);
@@ -2476,12 +2499,50 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         openGCODE(null);
     }//GEN-LAST:event_jMenuItemOpenGCodeActionPerformed
 
-    private void jMenuItemAddSquareActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddSquareActionPerformed
+    private void jMenuItemAddPolygonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddPolygonActionPerformed
       
-        String res = JOptionPane.showInputDialog(this, "Enter length", "50");
+        JPolygonPanel polyPanel = (JPolygonPanel)dialogManager.showDialogFor( JPolygonPanel.class, null);                 
+        if ( polyPanel != null) {
+            
+            G1Path p;
+            if ( polyPanel.radius > 0)
+                p = G1Path.makeCircle(blocksviewer.get2DCursor(),
+                         (polyPanel.nbEdge > 0) ? polyPanel.nbEdge : (int)(2 * Math.PI* polyPanel.radius), polyPanel.radius, polyPanel.clockwise, false);
+            else {              
+                p = G1Path.makeCircle(blocksviewer.get2DCursor(),
+                         polyPanel.nbEdge, Math.abs((double)polyPanel.edgeLen / (2. * Math.sin(180/polyPanel.nbEdge))), polyPanel.clockwise, false);
+                double d = 100. / p.getFirstPoint().distance( p.getPoint(1));
+                p.scale( blocksviewer.get2DCursor(), d, d);
+            }
+             
+            p.name = "poly"+polyPanel.nbEdge+"-"+GElement.getUniqID();
+            if ( polyPanel.rotate && (polyPanel.nbEdge > 0)) {
+                double da = 360. / polyPanel.nbEdge;
+                double maxY = Double.NEGATIVE_INFINITY;
+                int point = 0;
+                
+                // TODO: find the right way for any points
+                double angle = 90;
+                double a1 = da * (polyPanel.nbEdge/2);
+                double a2 = a1 + da;
+                double r = (a1+a2)/2;
+                if ( Math.abs(r - 180.) < 10e-8) {
+                    // equals, just rotate 90°
+                    angle = 90;
+                }
+                else
+                    angle = 180 - r;
+
+                p.rotate( blocksviewer.get2DCursor(), Math.toRadians(angle));
+            }           
+            addGElement( p);
+        }
+            
+       /* String res = JOptionPane.showInputDialog(this, "Enter length", "50");
         double len;
         try {
             len = Double.parseDouble(res);
+            G1Path.makePolygon( );
             G1Path s = new G1Path("square"+GElement.getUniqID());
             s.add( new Point(0, 0, 0));
             s.add( new Point(len, 0, 0));
@@ -2492,13 +2553,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             addGElement( s);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_jMenuItemAddSquareActionPerformed
+        }*/
+    }//GEN-LAST:event_jMenuItemAddPolygonActionPerformed
 
     private void jMenuItemAddCircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCircleActionPerformed
         try {    
             double diameter = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter diameter", "10.0"));
-            int np = Integer.valueOf(JOptionPane.showInputDialog(this, "<html>Number of point in the circle ?<br><i>(Choose a multiple of four for best accuray)</i></html>", 12*(int)(2*Math.PI*diameter/6)));         
+            int np = Integer.valueOf(JOptionPane.showInputDialog(this, "<html>Number of point in the circle ?<br><i>(Choose a multiple of 2,3,4,5,6,8,9 for best accuray)</i></html>", 12*(int)(2*Math.PI*diameter/6)));         
             addGElement(G1Path.makeCircle(blocksviewer.get2DCursor(), np, diameter/2, true, false));
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
@@ -2560,9 +2621,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemAddStarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddStarActionPerformed
         try {
-            int b = Integer.valueOf(JOptionPane.showInputDialog(this, "Number of branches ", "5"));
+            int b = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of branches ", "5"));
             double br = Double.parseDouble(JOptionPane.showInputDialog(this, "Branches radius", "20"));
-            double r = Double.valueOf(JOptionPane.showInputDialog(this, "Center radius", "6.66666666"));
+            double r = Double.parseDouble(JOptionPane.showInputDialog(this, "Center radius", "6.66666666"));
             double angle=Math.PI/2, a = 2* Math.PI/b, x, y;
 
             G1Path s = new G1Path("star"+GElement.getUniqID());
@@ -2599,20 +2660,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemScalePActionPerformed
 
     private void jMenuItemScaleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScaleActionPerformed
-        try {
-            if ( scalePanel == null) {
-                JDialog d = new JDialog(this, "Scale selection", true);
-                d.getContentPane().add( scalePanel = new JScalePanel(d));
-                d.pack();
-            }         
-            if ( scalePanel.showDialog(this, blocksviewer.getSelectionBoundary(false))) {              
+        JScalePanel scalePanel = (JScalePanel)dialogManager.showDialogFor(
+                JScalePanel.class, blocksviewer.getSelectionBoundary(false));
+                     
+        if (scalePanel != null) {
                 blocksviewer.scaleSelection( scalePanel.xScale, scalePanel.yScale, scalePanel.copies,
                                              scalePanel.fromCenter, scalePanel.keepOriginal);
-            }           
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-        }
+        }           
+        
     }//GEN-LAST:event_jMenuItemScaleActionPerformed
 
     private void jMenuItemSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveAsActionPerformed
@@ -2634,7 +2689,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             if ( fname.indexOf('.') == -1) 
                 fname = fname.concat(".gcode");
             if (new File( fname).exists())
-                if ( JOptionPane.showConfirmDialog(null, fname + "\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
+                if ( JOptionPane.showConfirmDialog(this, fname + "\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;
             
             try {
@@ -2654,20 +2709,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemAddPointsActionPerformed
 
     private void jMenuItemRotateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotateActionPerformed
-        try {
-            if ( rotatePanel == null) {
-                JDialog d = new JDialog(this, "Rotate selection", true);
-                d.getContentPane().add( rotatePanel = new JRotationPanel(d));
-                d.pack();
-            }
-            if ( rotatePanel.showDialog(this)) {
-                blocksviewer.rotateSelection( Math.toRadians(rotatePanel.angle), 
-                        rotatePanel.copies, rotatePanel.fromCenter, rotatePanel.keepOriginal, rotatePanel.keepOrientation);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Invalid angle value :\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        JRotationPanel rotatePanel = (JRotationPanel)dialogManager.showDialogFor(JRotationPanel.class, null);
+     
+        if ( rotatePanel != null) {
+            blocksviewer.rotateSelection( Math.toRadians(rotatePanel.angle), 
+                    rotatePanel.copies, rotatePanel.fromCenter, rotatePanel.keepOriginal, rotatePanel.keepOrientation);
         }
+        
     }//GEN-LAST:event_jMenuItemRotateActionPerformed
 
     private void jMenuItemSelectAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSelectAllActionPerformed
@@ -2737,18 +2785,20 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             s.add( new Point(0, 0, 0));
             for ( GCode pt : s) pt.translate(blocksviewer.get2DCursor());
             addGElement( s);
+            blocksviewer.setEditedElement(s);
         } catch (Exception e) {
             //JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_jMenuItemAddRectangleActionPerformed
 
-    private void jMenuItemMoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveActionPerformed
-        if ( moveDialog == null) {
-            moveDialog = new JMovePanel();
-        }
-        if ( moveDialog.askForParameters(this, !((blocksviewer.getState()&JBlocksViewer.STATE_EDIT_MODE_FLAG)==JBlocksViewer.STATE_EDIT_MODE_FLAG))) 
-            blocksviewer.moveCopySelection(moveDialog.deltaX, moveDialog.deltaY, moveDialog.nbCopies, moveDialog.packed, moveDialog.grouped, true);
-    }//GEN-LAST:event_jMenuItemMoveActionPerformed
+    private void jMenuItemDuplicateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemDuplicateActionPerformed
+        JDuplicatePanel moveDialog = (JDuplicatePanel)dialogManager.showDialogFor( JDuplicatePanel.class, null);
+        if ( moveDialog != null) {
+            blocksviewer.moveCopySelection(moveDialog.deltaX == Double.POSITIVE_INFINITY ? 0 : moveDialog.deltaX,
+                                           moveDialog.deltaY == Double.POSITIVE_INFINITY ? 0 : moveDialog.deltaY,
+                                           moveDialog.nbCopies, moveDialog.packed, moveDialog.grouped, true);
+        }        
+    }//GEN-LAST:event_jMenuItemDuplicateActionPerformed
 
     private void jCheckBoxMenuItemShowHeadPositionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowHeadPositionActionPerformed
         blocksviewer.setShowGRBLHead( jCheckBoxMenuItemShowHeadPosition.isSelected());       
@@ -3058,6 +3108,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             stopShowBoundariesThread = true;
             while( ! threadFinished)
                 try { Thread.sleep(1000); } catch (InterruptedException ex) { }
+            
             System.out.println("Boundary Thread finished.");
             if ( showLaserPosition) grbl.pushCmd("G1F100M3S1");
         } else
@@ -3117,49 +3168,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private void jMenuItemGRBLSetMPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLSetMPosActionPerformed
         blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_MPOS, 0, null);
     }//GEN-LAST:event_jMenuItemGRBLSetMPosActionPerformed
-
-    private void jMenuItemQuickTestActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemQuickTestActionPerformed
-        /*GArc a; 
-        String glyph = " 2273 56E`WNVLTKQKOLNMMPMSNUPVSVUUVS RQKOMNPNSOUPV RWKVSVUXVZV\\T]Q]O\\L[JYHWGTFQFNGLHJJILHOHRIUJWLYNZQ[T[WZYYZX RXKWSWUXV";
-        HersheyGlyph hg = new HersheyGlyph('@', glyph);
-        addGElement(hg.toGGroup("@"));
-        System.out.println("File=" + getClass().getResource("/hershey-fonts/rowmant.jhf").getFile());
-        */
-        /*
-        try {
-            HersheyFont f;
-            f = new HersheyFont("rowmant", getClass().getResourceAsStream("/hershey-fonts/rowmant.jhf"));
-            addGElement( f.getTextPaths("Bonjour"));
-        } catch (IOException ex) {
-            Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        System.out.println(glyph + "\n" + hg.toHershey());
-        */
-        /*if ( blocksviewer.isEmpty()) {
-            jMenuItemGRBLShowLogWindowActionPerformed(null);
-            jMenuItemGRBLConnectActionPerformed(null);
-            G1Path b = new G1Path("test");
-            b.addGElement( new Point(0,0,0));        
-            b.addGElement( new Point(10,0,0));        
-            b.addGElement( new Point(0,10,0));        
-            addGElement(b);
-        }
-        blocksviewer.executeGCODE(this, 0);
-
-        GeneralPath s = new GeneralPath();
-        s.append(new CubicCurve2D.Double(0, 0, 50, 50, 100,50, 200,0), true);
-        s.append(new CubicCurve2D.Double(0, 100, 50, 250, 100,250, 200,100), false);
-        addAll(G1Path.makeFromShape("test", s ));
-*/
-  //      addGElement( a = new GArc("Arc", false, new GCode(0, 0), new GCode(200, 100), new GCode(100, 0)));
-   //     addGElement( a.flatten());
-        System.out.println(blocksviewer.getSelectionSurfaceValue());
-    }//GEN-LAST:event_jMenuItemQuickTestActionPerformed
-
-    private void jMenuItemSpeedTestActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSpeedTestActionPerformed
-        new MotorSpeedTestFrame(grbl).setVisible(true);
-        
-    }//GEN-LAST:event_jMenuItemSpeedTestActionPerformed
 
     private void jMenuItemAddPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddPocketActionPerformed
         String l = JOptionPane.showInputDialog(this, "Offset distance (near tool diameter) ?", blocksviewer.getConfiguration().toolDiameter/2);
@@ -3506,7 +3514,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             String fname = f.getSelectedFile().getAbsolutePath();
             if ( fname.indexOf('.') == -1) fname = fname.concat(".dxf");
             if (new File( fname).exists())
-                if ( JOptionPane.showConfirmDialog(null, fname + " \nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
+                if ( JOptionPane.showConfirmDialog(this, fname + " \nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;           
             try {
                 blocksviewer.exportToDXF(fname, res == 0, 
@@ -3578,11 +3586,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jTextFieldEditedBlockFocusLost
 
     private void jMenuItemAddCylindricalPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCylindricalPocketActionPerformed
-        GCylindricalPocket cp = new GCylindricalPocket("cylinder", blocksviewer.get2DCursor(), 10, 5, 100, 30);
-        if ( new CylindricalPocketInputPanel(this).edit(cp)) {
+        GCylindricalPocket cp = new GCylindricalPocket("cylinder-"+ GElement.getUniqID(), blocksviewer.get2DCursor(), 10, 5, 100, 30);
+        
+        if ( dialogManager.showDialogFor( CylindricalPocketInputPanel.class, cp) != null) {
             addGElement( cp);
         }
-        
     }//GEN-LAST:event_jMenuItemAddCylindricalPocketActionPerformed
 
     private void jMenuItemAddDrillActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddDrillActionPerformed
@@ -3783,11 +3791,12 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         
         GGroup g = hFontChooser.showFontChooserWindow();
         if ( g != null) {
+            
             g.translate( blocksviewer.get2DCursor());
             addGElement(g);
         }
     }//GEN-LAST:event_jMenuItemAddTextActionPerformed
-
+    
     private void jToggleButtonHoldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonHoldActionPerformed
         if ( grbl.getState() != GRBLControler.GRBL_STATE_HOLD) grbl.hold();
         else grbl.cycleStartResume();    
@@ -3799,10 +3808,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemAddSphericalPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddSphericalPocketActionPerformed
         final Point2D p = blocksviewer.get2DCursor();
-        GSphericalPocket sp = new GSphericalPocket("s"+GElement.getUniqID(), p.getX(), p.getY(), 20, 10);
-        if ( spherePocketEditor == null) spherePocketEditor = new SphericalPocketInputPanel(this);
-        if ( spherePocketEditor.edit(sp))
-            addGElement(sp);
+        GSphericalPocket sp = new GSphericalPocket("sp-"+GElement.getUniqID(), p.getX(), p.getY(), 20, 10);
+        
+        spherePocketEditor = (SphericalPocketInputPanel)dialogManager.showDialogFor( SphericalPocketInputPanel.class, sp);
+        if ( spherePocketEditor != null) addGElement(sp);
     }//GEN-LAST:event_jMenuItemAddSphericalPocketActionPerformed
 
     private void jMenuItemAddIntersectionPointsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddIntersectionPointsActionPerformed
@@ -3827,6 +3836,23 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         }
     }//GEN-LAST:event_jMenuItemAddTextOnPathActionPerformed
 
+    public void editFontOf(GElement gElement) {
+        if ( gElement instanceof GTextOnPath) {
+            GTextOnPath e = ((GTextOnPath)gElement);
+            
+            if ( hFontChooser == null)
+            hFontChooser = new JFontChooserPanel();
+        
+            hFontChooser.setText( e.getText());
+            hFontChooser.setFont(e.getFont(), e.getFontSize());
+            
+            if ( hFontChooser.showFontChooserWindow() != null) {
+                e.setText( hFontChooser.getChoosedText());
+                e.changeFont( hFontChooser.getChoosedFont(), hFontChooser.getChoosedSize());
+            }
+        }
+    }
+    
     private void jMenuItemAddMixedPathActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddMixedPathActionPerformed
         blocksviewer.doAction(JBlocksViewer.ACTION_ADD_MIXED_PATH, 0, null);               
     }//GEN-LAST:event_jMenuItemAddMixedPathActionPerformed
@@ -3834,6 +3860,19 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private void jMenuItemMoveCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveCenterActionPerformed
         blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_CENTER, 0, null);
     }//GEN-LAST:event_jMenuItemMoveCenterActionPerformed
+
+    private void jMenuItemInvertSelectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemInvertSelectionActionPerformed
+        blocksviewer.doAction(JBlocksViewer.ACTION_INVERT_SELECTION, 0, null);   
+    }//GEN-LAST:event_jMenuItemInvertSelectionActionPerformed
+
+    private void jMenuItemMoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveActionPerformed
+        JMovePanel p = (JMovePanel)dialogManager.showDialogFor( JMovePanel.class, null);
+        if ( p != null) {
+            blocksviewer.moveCopySelection(p.deltaX == Double.POSITIVE_INFINITY ? 0 : p.deltaX,
+                                           p.deltaY == Double.POSITIVE_INFINITY ? 0 : p.deltaY,
+                                           0, false, false, false);
+        }
+    }//GEN-LAST:event_jMenuItemMoveActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -3939,7 +3978,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }
     
     @Override
-    public final void updateStatus(String msg) {
+    public final void updateGUIAndStatus(String msg) {
                
         if ( msg != null) {
             jLabelMessage.setText(msg);
@@ -4013,7 +4052,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jCheckBoxMenuItemSnapPoints.setSelected(noEdition && ((s & JBlocksViewer.STATE_SNAP_TO_POINTS_FLAG) != 0));
         jCheckBoxMenuItemShowMoves.setSelected(((s & JBlocksViewer.STATE_SHOW_MOVES_FLAG) !=0));
         jMenuAdds.setEnabled(noEdition);
-        jMenuAlign.setEnabled( (block|blocks)& noEdition);
+        jMenuAlign.setEnabled( (block|blocks| (edit & lines))& noEdition);
         jMenuMakeCutPath.setEnabled( (block|blocks)& noEdition);        
         jMenuItemGroup.setEnabled(blocks && noEdition);
         jMenuItemUngroup.setEnabled((block|blocks) && noEdition);
@@ -4041,7 +4080,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemGRBLHome.setEnabled( grbl_ok && grbl.canHome());
         jMenuItemGRBLConnect.setEnabled(!grbl_open);
         jMenuItemGRBLDisconnect.setEnabled(grbl_open);
-        jMenuItemSpeedTest.setEnabled(grbl_ok);
         jMenuItemGRBLSetMPos.setEnabled(grbl_ok);
         jMenuItemGRBLWPosAsMPos.setEnabled(grbl_ok);
         jMenuItemUndo.setEnabled(canUndo && noEdition);
@@ -4057,8 +4095,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemFlipV.setEnabled((block|blocks)&& noEdition);
         jMenuItemSort.setEnabled((block|blocks)&& noEdition);
         jMenuItemReverse.setEnabled((block|blocks|edit)&& noEdition);
-        jMenuItemMove.setEnabled((point|points|block|blocks)&& noEdition);
+        jMenuItemDuplicate.setEnabled((point|points|block|blocks)&& noEdition);
         jMenuItemMoveCenter.setEnabled((block|blocks)&& noEdition);
+        jMenuItemMove.setEnabled((block|blocks)&& noEdition);
         jMenuItemMoveWithMouse.setEnabled((point|points|block|blocks)&& noEdition);
         jMenuItemJoin.setEnabled((points|blocks|block)&& noEdition);
         jMenuItemRotateCenter.setEnabled((block|blocks)&& noEdition);
@@ -4089,11 +4128,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jToggleButtonAddCircles.setSelected(! edit && blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_OVAL); 
         jToggleButtonAddLines.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_LINES);  
     }
-    
 
     @Override
     public void updateMouseCoord(int x, int y, double rx, double ry) {
-        updateStatus(null);
+        updateGUIAndStatus(null);
         jLabelMousePosition.setText("("+String.format(Locale.ROOT,"%.5f",rx)+", "+String.format(Locale.ROOT,"%.5f",ry)+")");
     }
     
@@ -4283,7 +4321,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                         fname = fname.concat(filter.getExtensions()[0]);
 
                 if ((new File( fname)).exists() )
-                    if ((JOptionPane.showConfirmDialog(null, fname + " \nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION))
+                    if ((JOptionPane.showConfirmDialog(this, fname + " \nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION))
                         return null; 
             } else {
                 if (! (new File( fname)).exists() ) {
@@ -4294,8 +4332,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             return fname;
         }
         return null;
-    }
-    
+    }  
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonCopy;
@@ -4373,12 +4410,12 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemAddOval;
     private javax.swing.JMenuItem jMenuItemAddPocket;
     private javax.swing.JMenuItem jMenuItemAddPoints;
+    private javax.swing.JMenuItem jMenuItemAddPolygon;
     private javax.swing.JMenuItem jMenuItemAddRectangle;
     private javax.swing.JMenuItem jMenuItemAddRipple;
     private javax.swing.JMenuItem jMenuItemAddRoubndRect;
     private javax.swing.JMenuItem jMenuItemAddSphericalPocket;
     private javax.swing.JMenuItem jMenuItemAddSpiral;
-    private javax.swing.JMenuItem jMenuItemAddSquare;
     private javax.swing.JMenuItem jMenuItemAddStar;
     private javax.swing.JMenuItem jMenuItemAddText;
     private javax.swing.JMenuItem jMenuItemAddTextOnPath;
@@ -4397,6 +4434,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemCursorAtHead;
     private javax.swing.JMenuItem jMenuItemCut;
     private javax.swing.JMenuItem jMenuItemDistance;
+    private javax.swing.JMenuItem jMenuItemDuplicate;
     private javax.swing.JMenuItem jMenuItemExecuteAll;
     private javax.swing.JMenuItem jMenuItemExecuteSelected;
     private javax.swing.JMenuItem jMenuItemExportDXF;
@@ -4421,6 +4459,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemGRBLWPosAsMPos;
     private javax.swing.JMenuItem jMenuItemGroup;
     private javax.swing.JMenuItem jMenuItemImport;
+    private javax.swing.JMenuItem jMenuItemInvertSelection;
     private javax.swing.JMenuItem jMenuItemJoin;
     private javax.swing.JMenuItem jMenuItemMakeCutPathI;
     private javax.swing.JMenuItem jMenuItemMakeCutPathO;
@@ -4433,9 +4472,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemNew;
     private javax.swing.JMenuItem jMenuItemOpenGCode;
     private javax.swing.JMenuItem jMenuItemPaste;
-    private javax.swing.JMenuItem jMenuItemQuickTest;
     private javax.swing.JMenuItem jMenuItemQuit;
     private javax.swing.JMenuItem jMenuItemRedo;
+    private javax.swing.JMenuItem jMenuItemRemoveSelection;
     private javax.swing.JMenuItem jMenuItemRename;
     private javax.swing.JMenuItem jMenuItemReverse;
     private javax.swing.JMenuItem jMenuItemRotate;
@@ -4455,7 +4494,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemSimplifyByDistance;
     private javax.swing.JMenuItem jMenuItemSimplifyP;
     private javax.swing.JMenuItem jMenuItemSort;
-    private javax.swing.JMenuItem jMenuItemSpeedTest;
     private javax.swing.JMenuItem jMenuItemUndo;
     private javax.swing.JMenuItem jMenuItemUngroup;
     private javax.swing.JMenu jMenuMakeCutPath;

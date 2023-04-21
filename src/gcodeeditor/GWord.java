@@ -198,7 +198,20 @@ public class GWord {
         return value;
     }
     
-    boolean isIntValue( double d) {
+    /**
+     * @param d
+     * @return true if nearly same as an integer near 10e-9
+     */
+    public static boolean isIntValue( double d) {
         return Math.abs(d-(int)d) < 0.00000001;
+    }
+    
+    /**
+     * @param d1
+     * @param d2
+     * @return true if abs(d1,d2) &lt; 10e-9
+     */
+    public static boolean equals( double d1, double d2) {
+        return (Math.abs(d2 - d1) < 0.0000001);
     }
 }

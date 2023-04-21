@@ -14,36 +14,63 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor.gui;
+package gcodeeditor.gui.dialogs;
 
-import java.awt.Window;
+
 import java.awt.geom.Rectangle2D;
 import java.util.Locale;
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 /**
  * A frame to choose scale elements options.
  * @author Clément
  */
-public class JScalePanel extends javax.swing.JPanel {
+public class JScalePanel extends ManagedPanel {
 
-    Window parent;
+    public double xScale, yScale;
+    public int copies;
+    public boolean keepOriginal;
+    public boolean fromCenter;
     
-    boolean doAction;
-    double xScale, yScale;
-    int copies;
-    boolean keepOriginal;
-    boolean fromCenter;
     private Rectangle2D dim;
 
-    /**
-     * Creates new form JScalePanel
-     */
-    public JScalePanel( Window parent) {
-        this.parent = parent;
+    public JScalePanel() {
+        super("Scale selection");
         initComponents();
     }
+
+    @Override
+    void setParam(Object param) {
+        assert( param instanceof Rectangle2D);
+        dim = (Rectangle2D)param;
+        jTextFieldWidth.setText( String.format(Locale.ROOT, "%.3f", dim.getWidth()));
+        jTextFieldHeight.setText( String.format(Locale.ROOT, "%.3f", dim.getHeight()));
+    }     
+    
+    @Override
+    public boolean validateFields() {
+        fromCenter = jRadioButtonOCenter.isSelected();  
+        
+        if ( jTabbedPane1.getSelectedComponent() == jPanelFactor) {
+            xScale = containsValidNumber(jTextFieldXFactor, false);
+            yScale = containsValidNumber(jTextFieldYFactor, false);
+            copies = containsValidInteger(jTextFieldCopies, false);
+            keepOriginal = jCheckBoxKeepOrig.isSelected();
+            if ( isNaN(copies)) return false;
+            
+        } else {            
+            xScale = containsValidNumber(jTextFieldWidth, false);
+            if ( ! isNaN(xScale)) xScale /= dim.getWidth();
+            
+            yScale = containsValidNumber(jTextFieldHeight, false);
+            if ( ! isNaN(yScale)) yScale /= dim.getHeight();
+            
+            copies = 1;
+            keepOriginal = false;
+        }
+        return ! (isNaN(xScale) || isNaN(yScale));
+    }
+
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -59,7 +86,7 @@ public class JScalePanel extends javax.swing.JPanel {
         jRadioButtonO2D = new javax.swing.JRadioButton();
         jRadioButtonOCenter = new javax.swing.JRadioButton();
         jTabbedPane1 = new javax.swing.JTabbedPane();
-        jPanel2 = new javax.swing.JPanel();
+        jPanelFactor = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         jTextFieldYFactor = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
@@ -67,22 +94,18 @@ public class JScalePanel extends javax.swing.JPanel {
         jLabel2 = new javax.swing.JLabel();
         jTextFieldCopies = new javax.swing.JTextField();
         jCheckBoxKeepOrig = new javax.swing.JCheckBox();
-        jButtonOK = new javax.swing.JButton();
-        jButtonCancel = new javax.swing.JButton();
         jLabelWidth = new javax.swing.JLabel();
         jLabelHeight = new javax.swing.JLabel();
-        jPanel3 = new javax.swing.JPanel();
+        jPanelDimension = new javax.swing.JPanel();
         jTextFieldWidth = new javax.swing.JTextField();
         jTextFieldHeight = new javax.swing.JTextField();
         jLabel4 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
-        jButtonCancel1 = new javax.swing.JButton();
-        jButtonOK1 = new javax.swing.JButton();
         jCheckBoxIso = new javax.swing.JCheckBox();
 
         setLayout(new java.awt.BorderLayout());
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Scale origin"));
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Origin"));
 
         jRadioButtonO2D.setSelected(true);
         jRadioButtonO2D.setText("2D Cursor");
@@ -120,15 +143,15 @@ public class JScalePanel extends javax.swing.JPanel {
 
         add(jPanel1, java.awt.BorderLayout.NORTH);
 
-        jPanel2.setLayout(new java.awt.GridBagLayout());
+        jPanelFactor.setLayout(new java.awt.GridBagLayout());
 
-        jLabel3.setText("Y x");
+        jLabel3.setText("Y *");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 2;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
-        jPanel2.add(jLabel3, gridBagConstraints);
+        jPanelFactor.add(jLabel3, gridBagConstraints);
 
         jTextFieldYFactor.setColumns(6);
         jTextFieldYFactor.addActionListener(new java.awt.event.ActionListener() {
@@ -144,15 +167,15 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.ipadx = 66;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 12, 0, 0);
-        jPanel2.add(jTextFieldYFactor, gridBagConstraints);
+        jPanelFactor.add(jTextFieldYFactor, gridBagConstraints);
 
-        jLabel1.setText("X x");
+        jLabel1.setText("X *");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(18, 12, 0, 0);
-        jPanel2.add(jLabel1, gridBagConstraints);
+        jPanelFactor.add(jLabel1, gridBagConstraints);
 
         jTextFieldXFactor.setColumns(6);
         jTextFieldXFactor.setToolTipText("Angle in degre");
@@ -169,7 +192,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.ipadx = 66;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
-        jPanel2.add(jTextFieldXFactor, gridBagConstraints);
+        jPanelFactor.add(jTextFieldXFactor, gridBagConstraints);
 
         jLabel2.setText("Count");
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -178,7 +201,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.gridwidth = 2;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
-        jPanel2.add(jLabel2, gridBagConstraints);
+        jPanelFactor.add(jLabel2, gridBagConstraints);
 
         jTextFieldCopies.setColumns(6);
         jTextFieldCopies.setText("1");
@@ -195,7 +218,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.ipadx = 66;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 12, 0, 0);
-        jPanel2.add(jTextFieldCopies, gridBagConstraints);
+        jPanelFactor.add(jTextFieldCopies, gridBagConstraints);
 
         jCheckBoxKeepOrig.setText("Keep original");
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -204,55 +227,26 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.gridwidth = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 12, 0, 0);
-        jPanel2.add(jCheckBoxKeepOrig, gridBagConstraints);
-
-        jButtonOK.setText("Apply");
-        jButtonOK.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonOKActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 3;
-        gridBagConstraints.gridy = 7;
-        gridBagConstraints.ipadx = 33;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(36, 6, 12, 12);
-        jPanel2.add(jButtonOK, gridBagConstraints);
-
-        jButtonCancel.setText("Close");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancelActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 7;
-        gridBagConstraints.gridwidth = 6;
-        gridBagConstraints.ipadx = 34;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(36, 28, 12, 0);
-        jPanel2.add(jButtonCancel, gridBagConstraints);
+        jPanelFactor.add(jCheckBoxKeepOrig, gridBagConstraints);
 
         jLabelWidth.setText(" ");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 4;
         gridBagConstraints.gridy = 0;
         gridBagConstraints.insets = new java.awt.Insets(12, 0, 0, 0);
-        jPanel2.add(jLabelWidth, gridBagConstraints);
+        jPanelFactor.add(jLabelWidth, gridBagConstraints);
 
         jLabelHeight.setText(" ");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 4;
         gridBagConstraints.gridy = 2;
         gridBagConstraints.insets = new java.awt.Insets(12, 0, 0, 0);
-        jPanel2.add(jLabelHeight, gridBagConstraints);
+        jPanelFactor.add(jLabelHeight, gridBagConstraints);
 
-        jTabbedPane1.addTab("Factor", jPanel2);
+        jTabbedPane1.addTab("Factor", jPanelFactor);
 
-        jPanel3.setMinimumSize(new java.awt.Dimension(218, 0));
-        jPanel3.setLayout(new java.awt.GridBagLayout());
+        jPanelDimension.setMinimumSize(new java.awt.Dimension(218, 0));
+        jPanelDimension.setLayout(new java.awt.GridBagLayout());
 
         jTextFieldWidth.setColumns(6);
         jTextFieldWidth.addActionListener(new java.awt.event.ActionListener() {
@@ -268,7 +262,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.ipadx = 110;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 18, 0, 0);
-        jPanel3.add(jTextFieldWidth, gridBagConstraints);
+        jPanelDimension.add(jTextFieldWidth, gridBagConstraints);
 
         jTextFieldHeight.setColumns(6);
         jTextFieldHeight.addActionListener(new java.awt.event.ActionListener() {
@@ -284,7 +278,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.ipadx = 110;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 18, 0, 0);
-        jPanel3.add(jTextFieldHeight, gridBagConstraints);
+        jPanelDimension.add(jTextFieldHeight, gridBagConstraints);
 
         jLabel4.setText("Width");
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -292,7 +286,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.gridy = 1;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
-        jPanel3.add(jLabel4, gridBagConstraints);
+        jPanelDimension.add(jLabel4, gridBagConstraints);
 
         jLabel5.setText("Height");
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -301,36 +295,7 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.gridwidth = 2;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
-        jPanel3.add(jLabel5, gridBagConstraints);
-
-        jButtonCancel1.setText("Close");
-        jButtonCancel1.setMaximumSize(new java.awt.Dimension(80, 27));
-        jButtonCancel1.setMinimumSize(new java.awt.Dimension(80, 27));
-        jButtonCancel1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancel1ActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
-        gridBagConstraints.insets = new java.awt.Insets(10, 0, 0, 0);
-        jPanel3.add(jButtonCancel1, gridBagConstraints);
-
-        jButtonOK1.setText("Apply");
-        jButtonOK1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonOK1ActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 2;
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.ipadx = 33;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(10, 5, 0, 0);
-        jPanel3.add(jButtonOK1, gridBagConstraints);
+        jPanelDimension.add(jLabel5, gridBagConstraints);
 
         jCheckBoxIso.setSelected(true);
         jCheckBoxIso.setText("keep ratio");
@@ -340,9 +305,9 @@ public class JScalePanel extends javax.swing.JPanel {
         gridBagConstraints.gridwidth = 4;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
-        jPanel3.add(jCheckBoxIso, gridBagConstraints);
+        jPanelDimension.add(jCheckBoxIso, gridBagConstraints);
 
-        jTabbedPane1.addTab("Dimension", jPanel3);
+        jTabbedPane1.addTab("Dimension", jPanelDimension);
 
         add(jTabbedPane1, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
@@ -366,32 +331,13 @@ public class JScalePanel extends javax.swing.JPanel {
         jTextFieldCopies.setText("1");
     }//GEN-LAST:event_jTextFieldCopiesActionPerformed
 
-    private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed
-        doAction = false;
-        parent.setVisible(false);
-    }//GEN-LAST:event_jButtonCancelActionPerformed
-
-    private void jButtonOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOKActionPerformed
-        try {
-            xScale = Double.parseDouble(jTextFieldXFactor.getText());
-            yScale = Double.parseDouble(jTextFieldYFactor.getText());
-            copies = Integer.valueOf(jTextFieldCopies.getText());
-            keepOriginal = jCheckBoxKeepOrig.isSelected();
-            fromCenter = jRadioButtonOCenter.isSelected();
-            doAction = true;
-            parent.setVisible(false);
-        } catch ( NumberFormatException e) {
-            JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_jButtonOKActionPerformed
-
     private void jTextFieldXFactorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldXFactorActionPerformed
         try {
             xScale = Double.parseDouble(jTextFieldXFactor.getText());
             jLabelWidth.setText(String.format(Locale.ROOT, "= %.3f", xScale * dim.getWidth()));
             jTextFieldYFactor.requestFocus();
         } catch ( NumberFormatException e) {
-            JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(dialog, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
         }// TODO add your handling code here:
     }//GEN-LAST:event_jTextFieldXFactorActionPerformed
 
@@ -401,28 +347,9 @@ public class JScalePanel extends javax.swing.JPanel {
             jLabelHeight.setText(String.format(Locale.ROOT, "= %.3f", yScale * dim.getHeight()));
             jTextFieldCopies.requestFocus();
         } catch ( NumberFormatException e) {
-            JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(dialog, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
         }// TODO add your handling code here:
     }//GEN-LAST:event_jTextFieldYFactorActionPerformed
-
-    private void jButtonCancel1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancel1ActionPerformed
-        doAction = false;
-        parent.setVisible(false);
-    }//GEN-LAST:event_jButtonCancel1ActionPerformed
-
-    private void jButtonOK1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOK1ActionPerformed
-        try {
-            xScale = Double.parseDouble(jTextFieldWidth.getText()) / dim.getWidth();
-            yScale = Double.parseDouble(jTextFieldHeight.getText()) / dim.getHeight();
-            copies = 1;
-            keepOriginal = false;
-            fromCenter = jRadioButtonOCenter.isSelected();
-            doAction = true;
-            parent.setVisible(false);
-        } catch ( NumberFormatException e) {
-            JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_jButtonOK1ActionPerformed
 
     private void jTextFieldWidthActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldWidthActionPerformed
         if ( jCheckBoxIso.isSelected()) {
@@ -431,7 +358,7 @@ public class JScalePanel extends javax.swing.JPanel {
                 jTextFieldHeight.setText( String.format(Locale.ROOT, "%f", xScale * dim.getHeight()));
                 jTextFieldHeight.requestFocus();
             } catch ( NumberFormatException e) { 
-                JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }//GEN-LAST:event_jTextFieldWidthActionPerformed
@@ -443,17 +370,13 @@ public class JScalePanel extends javax.swing.JPanel {
                 jTextFieldWidth.setText( String.format(Locale.ROOT, "%f", yScale * dim.getWidth()));
                 jTextFieldWidth.requestFocus();
             } catch ( NumberFormatException e) { 
-                JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }//GEN-LAST:event_jTextFieldHeightActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButtonCancel;
-    private javax.swing.JButton jButtonCancel1;
-    private javax.swing.JButton jButtonOK;
-    private javax.swing.JButton jButtonOK1;
     private javax.swing.JCheckBox jCheckBoxIso;
     private javax.swing.JCheckBox jCheckBoxKeepOrig;
     private javax.swing.JLabel jLabel1;
@@ -464,8 +387,8 @@ public class JScalePanel extends javax.swing.JPanel {
     private javax.swing.JLabel jLabelHeight;
     private javax.swing.JLabel jLabelWidth;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanelDimension;
+    private javax.swing.JPanel jPanelFactor;
     private javax.swing.JRadioButton jRadioButtonO2D;
     private javax.swing.JRadioButton jRadioButtonOCenter;
     private javax.swing.JTabbedPane jTabbedPane1;
@@ -475,13 +398,4 @@ public class JScalePanel extends javax.swing.JPanel {
     private javax.swing.JTextField jTextFieldXFactor;
     private javax.swing.JTextField jTextFieldYFactor;
     // End of variables declaration//GEN-END:variables
-
-    boolean showDialog(JFrame parent, Rectangle2D dimension) {
-        dim = dimension;
-        jTextFieldWidth.setText( String.format(Locale.ROOT, "%.3f", dim.getWidth()));
-        jTextFieldHeight.setText( String.format(Locale.ROOT, "%.3f", dim.getHeight()));
-        this.parent.setLocationRelativeTo(parent);
-        this.parent.setVisible(true);
-        return doAction;
-    }
 }

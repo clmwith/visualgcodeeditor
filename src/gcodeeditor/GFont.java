@@ -52,4 +52,12 @@ public abstract class GFont {
         if ( f[0].equals("System")) return new SystemFont(f[1]);
         return null;
     }
+
+    public boolean isBold() {
+        return false;
+    }
+
+    public boolean isItalic() {
+        return false;
+    }
 }

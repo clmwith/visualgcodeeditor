@@ -18,8 +18,9 @@ package gelements;
 
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
+import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import java.awt.font.TextLayout;
@@ -39,6 +40,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.function.Consumer;
 import javax.swing.event.ListDataEvent;
 import org.kabeja.dxf.helpers.Point;
 
@@ -56,6 +58,8 @@ public class G1Path extends GElement implements Iterable<GCode> {
     /** The current bounding box value. */
     protected Rectangle2D.Double bounds;
     private double length = Double.NaN;
+    
+    GeneralPath.Double renderedShape;
        
     public G1Path(String name) {
         this(name, 10);
@@ -89,6 +93,10 @@ public class G1Path extends GElement implements Iterable<GCode> {
         if ( end != null) lines.add(new GCode(end.getX(), end.getY()));
     }
 
+    /**
+     * Only used by JListViewerModel
+     * @return the number of gcode lines + 1
+     */
     @Override
     public int getSize() {
         return lines.size()+1; // show a line to insert at end of path
@@ -176,7 +184,10 @@ public class G1Path extends GElement implements Iterable<GCode> {
         if (point == null) return null;
         GCode near = null;
         for( GCode p : lines) {
-            if (p.isAPoint() && ! excludeFirst && ! p.isIn(discareIt)) { // (discareIt==null)||(discareIt.indexOf(p)==-1))) {
+            if (p.isAPoint() && ! excludeFirst &&
+                    //! p.isIn(discareIt)
+                    ! ((discareIt!=null) && discareIt.contains(p))
+                    ) { // (discareIt==null)||(discareIt.indexOf(p)==-1))) {
                 double d = point.distance(p);
                 if ( dmin > d) {
                     dmin = d;
@@ -295,11 +306,17 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return (Rectangle2D) bounds.clone();        
     }
 
+    /**
+     * @return true if no gcode lines (and comments) in this element
+     */
     @Override
     public boolean isEmpty() {
         return lines.isEmpty();
     }
 
+    /**
+     * @return the number of gcode lines in this element
+     */
     @Override
     public int size() {
         return lines.size();
@@ -317,7 +334,6 @@ public class G1Path extends GElement implements Iterable<GCode> {
             res.add(getElementAt(i));
         return res;
     }
-
 
     @Override
     public void add(int i, GCode line) {
@@ -374,28 +390,44 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return moved;       
     }
     
-    public boolean joinPoints( ArrayList<GCode> selectedPoints) {
-        if ( selectedPoints.size() < 2) return false;
-        
-        double sx=0, sy=0;
-        int n=0, pos=-1;
-        for( GCode p : selectedPoints) if ( lines.contains(p)) {
-            sx+=p.getX();
-            sy+=p.getY();
-            n++;
-            pos = lines.indexOf(p);
-            lines.remove(p);
-        }
-        if ( pos > -1) {
-            lines.add(pos, new GCode(1, sx/n, sy/n));
-            informAboutChange();
+    @Override
+    public boolean movePoint(GCode p, double dx, double dy) {
+        if (lines.contains(p)) {     
+            p.setLocation( p.getX() + dx, p.getY() + dy);
             return true;
         }
         return false;
     }
     
+    public boolean joinPoints( ArrayList<GCode> selectedPoints) {
+        if ( selectedPoints.size() < 2) return false;
+        
+        double sx=0, sy=0;
+        int n=0, pos=-1;
+        //calculate center
+        for( GCode p : selectedPoints) {
+            sx+=p.getX();
+            sy+=p.getY();
+            n++;
+        }
+        
+        boolean changed = false;
+        for( GCode p : selectedPoints) if ( lines.contains(p)) {
+            p.setLocation(sx/n, sy/n);        
+            changed= true;
+        }
+        
+        if ( changed) {
+            removeByDistance(null, 10e-9);
+            informAboutChange();
+        }
+        return changed;
+    }
+    
     @Override
     protected void informAboutChange() {
+        modified=true;
+        renderedShape=null;
         bounds=null;
         length = Double.NaN;
         super.informAboutChange();
@@ -417,12 +449,9 @@ public class G1Path extends GElement implements Iterable<GCode> {
     
     @Override
     public void removeAll(ArrayList<GCode> points) {
-        points.forEach((p) -> {
-            remove(p);
-        });
-        dataListener.forEach((l) -> { 
-            l.intervalRemoved(new ListDataEvent(this, ListDataEvent.CONTENTS_CHANGED, 0, size()));
-        });
+        lines.removeAll(points);
+        GCode l = getFirstPoint();
+        if ( (l!=null) && (l.getG() != 0)) l.setG(0);
         informAboutChange();
     }
 
@@ -432,22 +461,23 @@ public class G1Path extends GElement implements Iterable<GCode> {
         clone.id =  id;
         if ( properties != null) clone.properties = (EngravingProperties) properties.clone();
         lines.forEach((l) -> { clone.add(new GCode(l)); });
+        if ( bounds != null) clone.bounds = (Rectangle2D.Double) bounds.clone();
         return clone;
     }
     
     @Override
-    public GElement flatten() {
-        GElement clone = clone();
+    public G1Path flatten() {
+        G1Path clone = (G1Path)clone();
         clone.newID();
         return clone;
     }
 
        
     
-    public static ArrayList<GCode> cloneArrayOfGLines(ArrayList<GCode> points) {
+    public static G1Path cloneArrayOfGLines(ArrayList<GCode> points) {
         ArrayList<GCode> clone = new ArrayList<>(points.size());
         points.forEach((l) -> { clone.add(new GCode(l)); });
-        return clone;
+        return new G1Path("past"+getUniqID(), clone);
     }
 
     /**
@@ -527,6 +557,10 @@ public class G1Path extends GElement implements Iterable<GCode> {
         Segment2D bestSegment = getClosestSegmentTo(newPoint);
 
         if ( bestSegment != null) {
+            if ( bestSegment.p1.isAtSamePosition(newPoint) ||
+                 bestSegment.p1.isAtSamePosition(newPoint))
+                return null;
+            
             add(lines.indexOf(bestSegment.p1)+1, newPoint);
             informAboutChange();
             return newPoint;
@@ -566,9 +600,83 @@ public class G1Path extends GElement implements Iterable<GCode> {
     
     @Override
     public void paint(PaintContext pc) {
+        if ( renderedShape == null) {
+            // recalculate visualisation shape
+            
+            // TODO verrify wind
+            renderedShape = new GeneralPath.Double(GeneralPath.WIND_EVEN_ODD, lines.size());
+            final Iterable<GCode> pi = getPointsIterator();
+            GCode g0 = null;
+            
+            for( GCode l : lines) {
+                if ( l.isAPoint()) {
+                    if (g0 == null) {
+                        assert l.getG() == 0;
+                        g0 = l;
+                        renderedShape.moveTo(g0.getX(), g0.getY());
+                        continue;
+                    } else {
+                        assert l.getG() == 1;
+                        renderedShape.lineTo(l.getX(), l.getY());
+                    }
+
+                }
+            }
+            bounds = (Rectangle2D.Double)renderedShape.getBounds2D();
+        }      
+        
         final double zoomFactor = pc.zoomFactor;
-        final Graphics g = pc.g; 
+        final Graphics2D g = pc.g; 
+        final Graphics2D g2 = (Graphics2D)pc.g.create();
+
+        // paint path
+        g2.scale(zoomFactor, -zoomFactor);
+        g2.setStroke(new BasicStroke((float)(1f / zoomFactor)));
+        if ( pc.editedElement == this) g2.setColor(PaintContext.EDIT_COLOR);
+        else g2.setColor(pc.color);
+        g2.draw(renderedShape);
+        
+        // paint first point
+        if ( (pc.color != Color.darkGray) && pc.showStartPoints) {
+            GCode p = getFirstPoint();
+            if ( p != null) {
+                g.setColor(Color.red); 
+                g.drawRect((int)(p.getX()*zoomFactor)-3, (int)(p.getY()*-zoomFactor)-3, 6, 6);
+            }
+        }
+                
+        if ( pc.editedElement != this) return;
+        
+        // paint selected moves
         int oldx=Integer.MAX_VALUE, oldy=Integer.MAX_VALUE;
+        for( GCode p : lines) {
+            if ( p.isAPoint()) {
+                int x = (int)(p.getX()*zoomFactor);
+                int y = (int)(p.getY()*-zoomFactor);
+                
+                if ( pc.selectedPoints.contains(p)) {
+                    g.setColor(PaintContext.SEL_COLOR1); 
+                    if (oldx != Integer.MAX_VALUE)
+                        g.drawLine(oldx, oldy, x, y);
+                    
+                    g.fillOval((int)x-3,(int)y-3, 6, 6);                   
+                } else {
+                    g.setColor(PaintContext.EDIT_COLOR);
+                    g.drawOval((int)x-3,(int)y-3, 6, 6);  
+                }  
+                
+                if ( pc.highlitedPoint == p ) { 
+                    g.setColor(Color.white); 
+                    g.fillOval((int)x-3,(int)y-3, 6, 6);
+                }
+                
+                oldx=x;
+                oldy=y;
+                pc.lastPoint = p;
+            }
+        }
+        /*
+        
         for( int n = 0; n < size(); n++) {
             GCode p = lines.get(n);
             if ( p.isAPoint()) {
@@ -602,7 +710,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
                 else g.drawLine(oldx, oldy, oldx=x, oldy=y);
                 pc.lastPoint = p;
             }
-        }
+        } */
         
 /*        if (bounds != null) {
             g.setColor(Color.red);
@@ -614,11 +722,16 @@ public class G1Path extends GElement implements Iterable<GCode> {
     @Override
     public int getNbPoints() {
         int r = 0;
-        // for( GCode l : lines) if ( l.isAPoint()) r++;
-        r = lines.stream().filter((l) -> ( l.isAPoint())).map((_item) -> 1).reduce(r, Integer::sum);
+        for( GCode l : lines) if ( l.isAPoint()) r++;
+        //r = lines.stream().filter((l) -> ( l.isAPoint())).map((_item) -> 1).reduce(r, Integer::sum);
         return r;
     }
     
+    /**
+     * Try to change de starting point of this path if it is closed or changing last point.
+     * @param p
+     * @return false if not sucess (no change made)
+     */
     public boolean changeFirstPoint(GCode p) {
         if ( (getNbPoints() < 3) || ! lines.contains(p)) return false;
         
@@ -728,13 +841,10 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return lines.indexOf(line);
     }
     
-    /** 
-     * Search a GCode without using .equals()
-     * @param point 
-     * @return the number of this point or -1 if point is not a point or does not belong to this shape 
-     */
     @Override
     public int getIndexOfPoint(GCode point) {
+        assert point.isAPoint();
+
         int pos = 0;
         for ( GCode l : lines) {
             if ( l==point) return pos;
@@ -745,8 +855,11 @@ public class G1Path extends GElement implements Iterable<GCode> {
 
     @Override
     public double getLenOfSegmentTo(GCode p) {
+        if ( ! p.isAPoint()) return Double.NaN;
+
         final int i = getIndexOfPoint(p);
         if (i < 1) return Double.NaN;
+        
         return getPoint(i-1).distance(p);
     }
     
@@ -928,6 +1041,26 @@ public class G1Path extends GElement implements Iterable<GCode> {
             }    
             path.next();
         }
+        return res;
+    }
+    
+    public static G1Path makePolygon(Point2D center, int nbEdges, double edgeLen, double radius, boolean clockwise) {
+        G1Path res = new G1Path( "poly"+nbEdges+"-"+getUniqID());
+        final double da = 2* Math.PI/nbEdges;
+        double angle=0;
+        for( int e = 0; e < nbEdges; e++) {
+            double x = Math.cos(angle);
+            if ( Math.abs(x) < 0.000000001) 
+                x = 0;
+            double y = Math.sin(angle);
+            if ( Math.abs(y) < 0.000000001)
+                y = 0;
+
+            res.add(new Point(radius * x, radius * y, 0));
+            angle += (clockwise ? da : -da);
+        }
+        res.add(new Point(radius * Math.cos(0), radius * Math.sin(0),0));
+        if ( center != null) res.translate(center);
         return res;
     }
     
@@ -1283,7 +1416,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
     public Iterable<GCode> getPointsIterator() {
         // TODO not optimized !!
         return () -> new Iterator<GCode>() {
-            int nbp=getNbPoints(), n=0;
+            int nbp=getNbPoints(), n=0; // wron if
             @Override
             public boolean hasNext() {
                 return n < nbp;
@@ -1292,11 +1425,37 @@ public class G1Path extends GElement implements Iterable<GCode> {
             public GCode next() {
                 return getPoint(n++);
             }
+            @Override
+            public void forEachRemaining(Consumer<? super GCode> action) {
+                throw new UnsupportedOperationException("g1path.iterator");
+                //Iterator.super.forEachRemaining(action); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+            }
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("g1path.iterator");
+                //Iterator.super.remove(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+            }
         };
     }
 
     @Override
     public Point2D getCenter() {
+        if ( getNbPoints() == 3 + (isClosed() ? 1 : 0)) {
+            GCode p1 = getFirstPoint();
+            GCode p2 = getPoint(1);
+            GCode p3 = getPoint(2);
+            double yDelta_a = p2.getY() - p1.getY();
+            double xDelta_a = p2.getX() - p1.getX();
+            double yDelta_b = p3.getY() - p2.getY();
+            double xDelta_b = p3.getX() - p2.getX();
+            GCode c = new GCode(0,0);
+            double aSlope = yDelta_a/xDelta_a;
+            double bSlope = yDelta_b/xDelta_b;  
+            double cx = (aSlope*bSlope*(p1.getY() - p3.getY()) + bSlope*(p1.getX() + p2.getX())
+                            - aSlope*(p2.getX()+p3.getX()) )/(2* (bSlope-aSlope) );
+            double cy = -1*(cx - (p1.getX()+p2.getX())/2)/aSlope +  (p1.getY()+p2.getY())/2;
+            return new Point2D.Double(cx, cy);
+        }
         if ( bounds != null) getBounds();
         return new Point2D.Double(bounds.getCenterX(), bounds.getCenterY());
     }
@@ -1354,12 +1513,11 @@ public class G1Path extends GElement implements Iterable<GCode> {
     /** 
      * Add points at each intersection between this path.
      * @param shapes
-     * @return the number of points added
+     * @return the G1 points added
      */
-    public ArrayList<GCode> addIntersectionPointsWith(ArrayList<GElement> shapes) {
+    public ArrayList<GCode> addIntersectionPointsWith(ArrayList<G1Path> shapes) {
         final ArrayList<GCode> res = new ArrayList<>();
         GCode last=null;
-        
            
         // Find points by segments intersections
         for( int lineNumber=0; lineNumber < lines.size();) {
@@ -1367,9 +1525,8 @@ public class G1Path extends GElement implements Iterable<GCode> {
             lineNumber++;
             if ( ! pt.isAPoint()) continue;
             if ( last != null) {
-                for ( GElement shape : shapes)
-                    if (shape != this) {
-                        if ( ! (shape instanceof G1Path)) shape = shape.flatten();     
+                for ( G1Path shape : shapes)
+                    if (shape != this) {    
                         for( Segment2D s : ((G1Path)shape).getSegmentIterator()) {
                             s.sortPointsByY();
                             GCode iP = new Segment2D(last, pt).intersectionPoint(s);
@@ -1390,26 +1547,36 @@ public class G1Path extends GElement implements Iterable<GCode> {
     public String loadFromStream(BufferedReader stream, GCode lastGState) throws IOException {
         String line = super.loadFromStream(stream, null);
         
-        boolean first = true;
         while( line != null) {
-            GCode gcl = new GCode(line, lastGState);         
+            final GCode gcl = new GCode(line, lastGState); 
+            final boolean hasPoint = getFirstPoint() != null;
                 
-            if ( (((gcl.getG()==0) || (gcl.getG() > 1)) && (getNbPoints()>0)) || 
-                 (gcl.isComment() && (GElement.isGElementHeader(line) || (getNbPoints() > 0))))
+            // is it end of this path ?
+            if ( ((gcl.getG()!=0) && ((gcl.getG()!=1) && ! gcl.isComment()) || 
+                 ((gcl.isComment() || (gcl.getG() != 1)) && hasPoint) || 
+                 GElement.isGElementHeader(line)))
                         break;
             
-            if ( first && (gcl.getG()==1)) {
-                // we start with a G1 then add the G0 first
-                add( new GCode( lastGState.getX(), lastGState.getY()));
+            if ( ! hasPoint && ! gcl.isComment() && (gcl.getG()!=0)) {
+                // add the G0 first
+                if ( lastGState == null) lastGState = gcl;
+                lines.add( new GCode(0, lastGState.getX(), lastGState.getY()));
             }
-            add( gcl);
-            lastGState.updateGXYWith(gcl);
+            
+            if ( ! gcl.isComment()) {
+                if ( ! gcl.isAMove() || ! gcl.isAtSamePosition( lastGState)) lines.add( gcl);
+                if ( lastGState == null) lastGState = gcl.clone();
+                else lastGState.updateGXYWith(gcl);
+            } else
+                lines.add( gcl);
+            
             line = stream.readLine();
         }
+        informAboutChange();
         return line;
     }
 
-    private void insertLine(int i, GCode line) {
+    protected void insertLine(int i, GCode line) {
         GCode p;
         // Change first G0 to G1 if exist and needed
         if ( line.isAMove() ) {

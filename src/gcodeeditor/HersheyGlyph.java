@@ -75,7 +75,7 @@ public class HersheyGlyph {
     private static int getInt(String substring) {
         int d = 0;
         while( !Character.isDigit(substring.charAt(d))) d++;
-        return Integer.valueOf(substring.substring(d));
+        return Integer.parseInt(substring.substring(d));
     }
     
     public int getWidth() {

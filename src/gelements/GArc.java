@@ -176,7 +176,8 @@ public class GArc extends GElement {
 
     @Override
     public boolean contains(GCode line) {
-        return (start==line) || (end==line) || (center.distance(line) < 0.00001);
+        if ( flatten != null) return flatten.contains(line);
+        else return (start==line) || (end==line) || (center.distance(line) < 0.00001);
     }
     
     @Override
@@ -269,17 +270,13 @@ public class GArc extends GElement {
 
     @Override
     public boolean movePoint( GCode p, double dx, double dy) {
-        boolean moved = false;
         if ( start == p) {
             start.translate(dx, dy);
-            moved = true;
         }
         else if ( end == p) {
             end.translate(dx, dy);
-            moved = true;
         } else if ( center == p) {
             center.translate(dx, dy);
-            moved = true;
         } else 
             return false;
         
@@ -298,7 +295,7 @@ public class GArc extends GElement {
     public void translate(double dx, double dy) {
         start.translate(dx, dy);
         end.translate(dx, dy);
-        center.setLocation(center.getX()+dx, center.getY()+dy);
+        center.translate(dx, dy); //setLocation(center.getX()+dx, center.getY()+dy);
         informAboutChange();
     }
     
@@ -592,6 +589,10 @@ public class GArc extends GElement {
     public Point2D getCenter() {
         return center;
     }
+    
+    public double getRadius() {
+        return radius;
+    }
 
     @Override
     public void toDXF(OutputStreamWriter out) throws IOException {
@@ -644,6 +645,10 @@ public class GArc extends GElement {
         start.translate(dx, dy);
         informAboutChange();
     }
-    
-    
+
+    @Override
+    public GCode getPoint(int p) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
 }

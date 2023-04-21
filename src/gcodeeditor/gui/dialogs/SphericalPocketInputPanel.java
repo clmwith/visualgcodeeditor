@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor.gui;
+package gcodeeditor.gui.dialogs;
 
 import gelements.GSphericalPocket;
 import java.awt.Frame;
@@ -25,43 +25,40 @@ import javax.swing.JOptionPane;
  *
  * @author Clément Gérardin @ Marseille.fr
  */
-public class SphericalPocketInputPanel extends javax.swing.JPanel {
+public class SphericalPocketInputPanel extends ManagedPanel {
 
     JDialog d;
     Frame parent;
     private GSphericalPocket sp;
+    
     /**
      * Creates new SphericalPocketInputPanel
      */
-    public SphericalPocketInputPanel(Frame owner) {
+    public SphericalPocketInputPanel() {
+        super("Spherical pocket (3D)");
         initComponents();
-        d = new JDialog(parent=owner, "Spherical 3D pocket", true);
-        d.getContentPane().add(this);
-        d.pack();
+    }
+
+    @Override
+    void setParam(Object param) {
+        assert( param instanceof GSphericalPocket);
+        
+        sp = (GSphericalPocket)param;
+        jTextFieldH.setText( Double.toString(sp.getInlayDepth()));
+        jTextFieldR.setText( Double.toString(sp.getSphereRadius()));
     }
     
-    /**
-     * @param sp the new SphericalPocket to set
-     * @return true if button OK has been used and values ak OK (sp can be created).
-     */
-    public boolean edit(GSphericalPocket sp) {
-        this.sp = sp;
-        d.setLocationRelativeTo(parent);
-        d.setVisible(true);
-        if ( sp != null) {
-            try {
-                if ( ! sp.setValues( Double.valueOf(jTextFieldR.getText()), 
-                                Double.valueOf(jTextFieldH.getText()))) {
-                    JOptionPane.showMessageDialog(parent, "Wrong value", "Error", JOptionPane.ERROR_MESSAGE);
-                    sp = null;
-                }
-                
-            } catch ( NumberFormatException e) {
-                JOptionPane.showMessageDialog(parent, e.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                sp=null;
-            }
+    @Override
+    public boolean validateFields() {
+        double radius = containsValidNumber(jTextFieldR, false);
+        double height = containsValidNumber(jTextFieldH, false);
+        if ( isNaN(radius) || isNaN(height)) return false;
+        
+        if ( ! sp.setValues( radius, height)) {
+            JOptionPane.showMessageDialog(parent, "Impossible value detected", "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
         }
-        return sp != null;
+        return true;
     }
 
     /**
@@ -79,12 +76,11 @@ public class SphericalPocketInputPanel extends javax.swing.JPanel {
         jTextFieldR = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         jTextFieldH = new javax.swing.JTextField();
-        jButtonOk = new javax.swing.JButton();
-        jButtonCancel = new javax.swing.JButton();
 
         setLayout(new java.awt.GridBagLayout());
 
         jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/spherical-pocket.png"))); // NOI18N
+        jLabel1.setFocusable(false);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
@@ -100,11 +96,6 @@ public class SphericalPocketInputPanel extends javax.swing.JPanel {
         add(jLabel2, gridBagConstraints);
 
         jTextFieldR.setColumns(8);
-        jTextFieldR.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldRActionPerformed(evt);
-            }
-        });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 1;
@@ -117,71 +108,21 @@ public class SphericalPocketInputPanel extends javax.swing.JPanel {
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 3;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         add(jLabel3, gridBagConstraints);
 
         jTextFieldH.setColumns(8);
-        jTextFieldH.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldHActionPerformed(evt);
-            }
-        });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 4;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 0, 5);
         add(jTextFieldH, gridBagConstraints);
-
-        jButtonOk.setText("OK");
-        jButtonOk.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonOkActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 2;
-        gridBagConstraints.gridy = 6;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.SOUTHEAST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 5);
-        add(jButtonOk, gridBagConstraints);
-
-        jButtonCancel.setText("Cancel");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancelActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 6;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LAST_LINE_END;
-        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 5);
-        add(jButtonCancel, gridBagConstraints);
     }// </editor-fold>//GEN-END:initComponents
-
-    private void jTextFieldRActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldRActionPerformed
-        jTextFieldH.requestFocus();
-    }//GEN-LAST:event_jTextFieldRActionPerformed
-
-    private void jTextFieldHActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldHActionPerformed
-        jTextFieldR.requestFocus();
-        jButtonOkActionPerformed(null);
-    }//GEN-LAST:event_jTextFieldHActionPerformed
-
-    private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed
-         sp = null;
-         d.setVisible(false);
-    }//GEN-LAST:event_jButtonCancelActionPerformed
-
-    private void jButtonOkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOkActionPerformed
-        d.setVisible(false);
-    }//GEN-LAST:event_jButtonOkActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButtonCancel;
-    private javax.swing.JButton jButtonOk;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;

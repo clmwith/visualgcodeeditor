@@ -48,5 +48,13 @@ public class SystemFont extends GFont {
         getTextPaths(text).paint(pc);
     }
     
-    
+    @Override
+    public boolean isBold() {
+        return font.isBold();
+    }
+
+    @Override
+    public boolean isItalic() {
+        return font.isItalic();
+    }
 }

@@ -14,48 +14,35 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor.gui;
-
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
+package gcodeeditor.gui.dialogs;
 
 /**
  *
  * @author Clément Gérardin @ Marseille.fr
  */
-public class JMovePanel extends javax.swing.JPanel {
+public class JDuplicatePanel extends ManagedPanel {
 
     public double deltaX, deltaY;
     public int nbCopies;
-    boolean packed, grouped;
-    
-    private JDialog d;
-    private boolean okPressed;   
-    private JFrame parent;
-    /**
-     * Creates new form JMovePanel
-     */
-    public JMovePanel() {
+    public boolean packed, grouped;
+
+    public JDuplicatePanel() {
+        super("Duplicate path");
         initComponents();
     }
-    
-    public boolean askForParameters(JFrame parent, boolean withCopy) {
-        this.parent = parent;
-        if ( d == null) {
-            d = new JDialog(parent, "Move and copy...", true);
-            d.getContentPane().add( this);
-            d.pack();
-        }
-        d.setLocationRelativeTo(parent);
-        jTextFieldCopies.setEnabled(withCopy);
-        jCheckBoxPacked.setEnabled(withCopy);
-        jCheckBoxGrouped.setEnabled(withCopy);
-        okPressed = false;
-        d.setVisible(true);
-        return okPressed;
-    }
-    
+       
+    @Override
+    public boolean validateFields() {
+            nbCopies = containsValidInteger(jTextFieldCopies, false);            
+            deltaX = containsValidNumber(jTextFieldX, true);
+            deltaY = containsValidNumber(jTextFieldY, true);
+            
+            packed = jCheckBoxPacked.isSelected();
+            grouped = jCheckBoxGrouped.isSelected();
+            
+            return ! ((nbCopies == Integer.MAX_VALUE) || Double.isNaN(deltaX) || Double.isNaN(deltaY) ||
+                      (Double.POSITIVE_INFINITY == deltaX) && (Double.POSITIVE_INFINITY == deltaY));    
+    } 
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -74,13 +61,11 @@ public class JMovePanel extends javax.swing.JPanel {
         jTextFieldY = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         jTextFieldCopies = new javax.swing.JTextField();
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
         jCheckBoxPacked = new javax.swing.JCheckBox();
 
         setLayout(new java.awt.GridBagLayout());
 
-        jLabel1.setText("X delta");
+        jLabel1.setText("delta X");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.insets = new java.awt.Insets(3, 3, 0, 3);
         add(jLabel1, gridBagConstraints);
@@ -93,7 +78,7 @@ public class JMovePanel extends javax.swing.JPanel {
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 0, 3);
         add(jCheckBoxGrouped, gridBagConstraints);
 
-        jLabel2.setText("Y delta");
+        jLabel2.setText("delta Y");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 1;
@@ -137,31 +122,6 @@ public class JMovePanel extends javax.swing.JPanel {
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 1, 3);
         add(jTextFieldCopies, gridBagConstraints);
 
-        jButton1.setText("Move");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 2;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
-        gridBagConstraints.insets = new java.awt.Insets(10, 0, 3, 3);
-        add(jButton1, gridBagConstraints);
-
-        jButton2.setText("Cancel");
-        jButton2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton2ActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.insets = new java.awt.Insets(10, 0, 3, 0);
-        add(jButton2, gridBagConstraints);
-
         jCheckBoxPacked.setText("Packed");
         jCheckBoxPacked.setToolTipText("Make a group of each copies");
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -171,30 +131,8 @@ public class JMovePanel extends javax.swing.JPanel {
         add(jCheckBoxPacked, gridBagConstraints);
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        d.setVisible(false);
-    }//GEN-LAST:event_jButton2ActionPerformed
-
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        try {
-            if ( ! jTextFieldCopies.getText().isEmpty()) nbCopies = Integer.parseInt(jTextFieldCopies.getText());
-            else nbCopies = 0;
-            if ( nbCopies < 0) nbCopies = 0;
-            deltaX = Double.parseDouble(jTextFieldX.getText());
-            deltaY = Double.parseDouble(jTextFieldY.getText());
-            packed = jCheckBoxPacked.isSelected();
-            grouped = jCheckBoxGrouped.isSelected();
-            okPressed = true;
-            d.setVisible(false);
-        } catch( NumberFormatException e) {
-            JOptionPane.showMessageDialog(parent, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_jButton1ActionPerformed
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
     private javax.swing.JCheckBox jCheckBoxGrouped;
     private javax.swing.JCheckBox jCheckBoxPacked;
     private javax.swing.JLabel jLabel1;
@@ -204,4 +142,5 @@ public class JMovePanel extends javax.swing.JPanel {
     private javax.swing.JTextField jTextFieldX;
     private javax.swing.JTextField jTextFieldY;
     // End of variables declaration//GEN-END:variables
+
 }

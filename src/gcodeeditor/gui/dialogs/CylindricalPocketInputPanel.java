@@ -14,8 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor.gui;
+package gcodeeditor.gui.dialogs;
 
+import gcodeeditor.gui.dialogs.ManagedPanel;
 import gelements.GCylindricalPocket;
 import java.awt.Frame;
 import javax.swing.JDialog;
@@ -25,44 +26,36 @@ import javax.swing.JOptionPane;
  *
  * @author Clément
  */
-public class CylindricalPocketInputPanel extends javax.swing.JPanel {
+public class CylindricalPocketInputPanel extends ManagedPanel {
 
     GCylindricalPocket cp;
-    JDialog d;
-    Frame parent;
     
     /**
      * Creates new CylindricalPocketPanel
      */
-    public CylindricalPocketInputPanel(Frame owner) {
+    public CylindricalPocketInputPanel() {
+        super("Cylindrical pocket (3D)");
         initComponents();
-        d = new JDialog(parent=owner, "Cylindrical 3D pocket", true);
-        d.getContentPane().add(this);
-        d.pack();
-    }
-    
-    /**
-     * @param cp
-     * @return true if button OK has been used  (cp can be created)
-     */
-    public boolean edit(GCylindricalPocket cp) {
-        this.cp = cp;
-        d.setLocationRelativeTo(parent);
-        d.setVisible(true);
-        if ( cp != null) {
-            try {
-                cp.setValues( Double.valueOf(jTextFieldRadius.getText()), 
-                                Double.valueOf(jTextFieldLength.getText()),
-                                Double.valueOf(jTextFieldInlay.getText()),
-                                jTextFieldRotation.getText().isEmpty() ? 0 : Double.valueOf(jTextFieldRotation.getText()));
-            } catch ( NumberFormatException e) {
-                JOptionPane.showMessageDialog(parent, e.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                cp=null;
-            }
-        }
-        return cp != null;
     }
 
+    @Override
+    void setParam(Object param) {
+        assert( param instanceof GCylindricalPocket);
+        cp = (GCylindricalPocket)param;
+    }
+    
+    @Override
+    public boolean validateFields() {
+        double radius = containsValidNumber(jTextFieldRadius, false);
+        double len = containsValidNumber(jTextFieldLength, false);
+        double inlayDepth = containsValidNumber(jTextFieldInlay, false);
+        double rotationAngle = containsValidNumber(jTextFieldRotation, false);
+            
+        if ( isNaN(radius) || isNaN(len) || isNaN(inlayDepth) || isNaN(rotationAngle)) return false;
+        cp.setValues(radius, len, inlayDepth, rotationAngle);
+        return true;
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -80,14 +73,13 @@ public class CylindricalPocketInputPanel extends javax.swing.JPanel {
         jTextFieldRadius = new javax.swing.JTextField();
         jTextFieldLength = new javax.swing.JTextField();
         jTextFieldInlay = new javax.swing.JTextField();
-        jButtonCancel = new javax.swing.JButton();
-        jButtonOk = new javax.swing.JButton();
         jLabel5 = new javax.swing.JLabel();
         jTextFieldRotation = new javax.swing.JTextField();
 
         setLayout(new java.awt.GridBagLayout());
 
         jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/icons/cylindricalPocket.png"))); // NOI18N
+        jLabel1.setFocusable(false);
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
@@ -167,36 +159,6 @@ public class CylindricalPocketInputPanel extends javax.swing.JPanel {
         gridBagConstraints.insets = new java.awt.Insets(6, 12, 0, 12);
         add(jTextFieldInlay, gridBagConstraints);
 
-        jButtonCancel.setText("Cancel");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancelActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 16;
-        gridBagConstraints.gridwidth = 3;
-        gridBagConstraints.ipadx = 49;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(6, 24, 12, 0);
-        add(jButtonCancel, gridBagConstraints);
-
-        jButtonOk.setText("OK");
-        jButtonOk.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonOkActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 4;
-        gridBagConstraints.gridy = 16;
-        gridBagConstraints.gridwidth = 8;
-        gridBagConstraints.ipadx = 31;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(6, 6, 12, 12);
-        add(jButtonOk, gridBagConstraints);
-
         jLabel5.setText("Rotation");
         jLabel5.setToolTipText("Rotation of the cylinder on the surface");
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -206,6 +168,7 @@ public class CylindricalPocketInputPanel extends javax.swing.JPanel {
         gridBagConstraints.insets = new java.awt.Insets(6, 12, 0, 0);
         add(jLabel5, gridBagConstraints);
 
+        jTextFieldRotation.setText("0");
         jTextFieldRotation.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jTextFieldRotationActionPerformed(evt);
@@ -222,15 +185,6 @@ public class CylindricalPocketInputPanel extends javax.swing.JPanel {
         add(jTextFieldRotation, gridBagConstraints);
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed
-        cp=null;
-        d.setVisible(false);
-    }//GEN-LAST:event_jButtonCancelActionPerformed
-
-    private void jButtonOkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOkActionPerformed
-        d.setVisible(false);
-    }//GEN-LAST:event_jButtonOkActionPerformed
-
     private void jTextFieldRadiusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldRadiusActionPerformed
         jTextFieldLength.requestFocus();
     }//GEN-LAST:event_jTextFieldRadiusActionPerformed
@@ -245,13 +199,9 @@ public class CylindricalPocketInputPanel extends javax.swing.JPanel {
 
     private void jTextFieldRotationActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldRotationActionPerformed
         jTextFieldRadius.requestFocus();
-        jButtonOkActionPerformed(null);
     }//GEN-LAST:event_jTextFieldRotationActionPerformed
 
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButtonCancel;
-    private javax.swing.JButton jButtonOk;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;

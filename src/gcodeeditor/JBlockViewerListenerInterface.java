@@ -23,7 +23,7 @@ import java.awt.geom.Point2D;
  * @author Clément
  */
 public interface JBlockViewerListenerInterface {
-    public void updateStatus( String msg);
+    public void updateGUIAndStatus( String msg);
     public void updateMouseCoord( int x, int y, double rx, double ry);
 
     public void updatePropertiesPanel();

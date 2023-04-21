@@ -21,7 +21,7 @@ import java.awt.geom.Point2D;
 
 
 /**
- * Translated from bCnC : gear.py file
+ * Translated from bCnC project : gear.py file
  * @author Clément
  */
 public class GearHelper {

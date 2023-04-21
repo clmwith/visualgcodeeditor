@@ -312,7 +312,7 @@ public class GCodeDocumentRender implements Runnable {
                         ep.setZStart(currentZ);
                         ep.setPassCount(1);
                         ep.setAllAtOnce(true);
-                        sendGroup(((GTextOnPath)path).getText(), ep);
+                        sendGroup(((GTextOnPath)path).getGText(), ep);
                     
                     } else if ( path instanceof GPocket3D) {
                         // Special case for the pocket 3D

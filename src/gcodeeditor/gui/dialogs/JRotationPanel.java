@@ -14,30 +14,38 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor.gui;
-
-import java.awt.Window;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
+package gcodeeditor.gui.dialogs;
 
 /**
  *
  * @author Clément
  */
-public class JRotationPanel extends javax.swing.JPanel {
+public class JRotationPanel extends ManagedPanel {
 
-    Window parent;
-    boolean doAction;
-    double angle;
-    int copies;
-    boolean keepOriginal, keepOrientation;
-    boolean fromCenter;
+    public double angle;
+    public int copies;
+    public boolean keepOriginal, keepOrientation;
+    public boolean fromCenter;
+    
     /**
      * Creates new form JRotationPanel
      */
-    public JRotationPanel(Window parent) {
-        this.parent = parent;
+    public JRotationPanel() {
+        super("Rotate selection");
         initComponents();
+        jRadioButtonO2D.setSelected(true);
+    }
+    
+    
+    @Override
+    public boolean validateFields() {
+        angle = containsValidNumber(jTextFieldAngle, false);
+        copies = containsValidInteger(jTextFieldCopies, false);
+        keepOriginal = jCheckBoxOriginal.isSelected();
+        fromCenter = jRadioButtonOCenter.isSelected();
+        keepOrientation = jCheckBoxOrientation.isSelected() && jRadioButtonO2D.isSelected();
+        
+        return ! (isNaN(angle) || isNaN(copies));
     }
 
     /**
@@ -50,6 +58,7 @@ public class JRotationPanel extends javax.swing.JPanel {
     private void initComponents() {
         java.awt.GridBagConstraints gridBagConstraints;
 
+        buttonGroupOrigine = new javax.swing.ButtonGroup();
         jPanel1 = new javax.swing.JPanel();
         jRadioButtonO2D = new javax.swing.JRadioButton();
         jRadioButtonOCenter = new javax.swing.JRadioButton();
@@ -59,36 +68,25 @@ public class JRotationPanel extends javax.swing.JPanel {
         jTextFieldAngle = new javax.swing.JTextField();
         jCheckBoxOriginal = new javax.swing.JCheckBox();
         jCheckBoxOrientation = new javax.swing.JCheckBox();
-        jPanel2 = new javax.swing.JPanel();
-        jButtonCancel = new javax.swing.JButton();
-        jButtonOK = new javax.swing.JButton();
 
         setLayout(new java.awt.GridBagLayout());
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Origin"));
 
+        buttonGroupOrigine.add(jRadioButtonO2D);
         jRadioButtonO2D.setSelected(true);
-        jRadioButtonO2D.setText("2D Cursor");
+        jRadioButtonO2D.setText("2D cursor");
         jRadioButtonO2D.setToolTipText("Turn around 2D Cursor");
         jRadioButtonO2D.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 jRadioButtonO2DStateChanged(evt);
             }
         });
-        jRadioButtonO2D.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButtonO2DActionPerformed(evt);
-            }
-        });
         jPanel1.add(jRadioButtonO2D);
 
+        buttonGroupOrigine.add(jRadioButtonOCenter);
         jRadioButtonOCenter.setText("Center");
         jRadioButtonOCenter.setToolTipText("turn around center of path");
-        jRadioButtonOCenter.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButtonOCenterActionPerformed(evt);
-            }
-        });
         jPanel1.add(jRadioButtonOCenter);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -97,7 +95,7 @@ public class JRotationPanel extends javax.swing.JPanel {
         gridBagConstraints.gridwidth = 2;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
         add(jPanel1, gridBagConstraints);
 
         jLabel2.setText("Count");
@@ -111,11 +109,6 @@ public class JRotationPanel extends javax.swing.JPanel {
 
         jTextFieldCopies.setColumns(6);
         jTextFieldCopies.setText("1");
-        jTextFieldCopies.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldCopiesActionPerformed(evt);
-            }
-        });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 1;
@@ -134,7 +127,7 @@ public class JRotationPanel extends javax.swing.JPanel {
         add(jLabel1, gridBagConstraints);
 
         jTextFieldAngle.setColumns(6);
-        jTextFieldAngle.setToolTipText("Angle in degre");
+        jTextFieldAngle.setToolTipText("Angle in degre (can be negative)");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 3;
@@ -150,7 +143,7 @@ public class JRotationPanel extends javax.swing.JPanel {
         gridBagConstraints.gridy = 5;
         gridBagConstraints.gridwidth = 2;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(6, 5, 0, 0);
+        gridBagConstraints.insets = new java.awt.Insets(11, 5, 0, 0);
         add(jCheckBoxOriginal, gridBagConstraints);
 
         jCheckBoxOrientation.setText("Keep orientation");
@@ -162,93 +155,22 @@ public class JRotationPanel extends javax.swing.JPanel {
         gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
         add(jCheckBoxOrientation, gridBagConstraints);
-
-        jButtonCancel.setText("Close");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancelActionPerformed(evt);
-            }
-        });
-        jPanel2.add(jButtonCancel);
-
-        jButtonOK.setText("Apply");
-        jButtonOK.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonOKActionPerformed(evt);
-            }
-        });
-        jPanel2.add(jButtonOK);
-
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 7;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
-        gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 5);
-        add(jPanel2, gridBagConstraints);
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jTextFieldCopiesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldCopiesActionPerformed
-        try {
-            int n = Integer.valueOf( jTextFieldCopies.getText());
-            if ( n >= 1) {
-                jCheckBoxOriginal.setSelected( n != 1);
-                return;
-            }
-        } catch (Exception e) { }
-        jTextFieldCopies.setText("1");
-    }//GEN-LAST:event_jTextFieldCopiesActionPerformed
-
-    private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed
-        doAction = false;
-        parent.setVisible(false);
-    }//GEN-LAST:event_jButtonCancelActionPerformed
-
-    private void jButtonOKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOKActionPerformed
-        try {
-            angle = Double.parseDouble(jTextFieldAngle.getText());
-            copies = Integer.valueOf(jTextFieldCopies.getText());
-            keepOriginal = jCheckBoxOriginal.isSelected();
-            fromCenter = jRadioButtonOCenter.isSelected();
-            keepOrientation = jCheckBoxOrientation.isEnabled() && jCheckBoxOrientation.isSelected();
-            doAction = true;
-            parent.setVisible(false);
-        } catch ( Exception e) {
-            JOptionPane.showMessageDialog(parent, "Invalid Parameter detected", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_jButtonOKActionPerformed
-
-    private void jRadioButtonO2DActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButtonO2DActionPerformed
-        jRadioButtonOCenter.setSelected(false);
-    }//GEN-LAST:event_jRadioButtonO2DActionPerformed
-
-    private void jRadioButtonOCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButtonOCenterActionPerformed
-        jRadioButtonO2D.setSelected(false);
-    }//GEN-LAST:event_jRadioButtonOCenterActionPerformed
-
     private void jRadioButtonO2DStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonO2DStateChanged
-        jCheckBoxOrientation.setEnabled( jRadioButtonO2D.isSelected());
+        jCheckBoxOrientation.setEnabled(jRadioButtonO2D.isSelected());
     }//GEN-LAST:event_jRadioButtonO2DStateChanged
 
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButtonCancel;
-    private javax.swing.JButton jButtonOK;
+    private javax.swing.ButtonGroup buttonGroupOrigine;
     private javax.swing.JCheckBox jCheckBoxOrientation;
     private javax.swing.JCheckBox jCheckBoxOriginal;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
     private javax.swing.JRadioButton jRadioButtonO2D;
     private javax.swing.JRadioButton jRadioButtonOCenter;
     private javax.swing.JTextField jTextFieldAngle;
     private javax.swing.JTextField jTextFieldCopies;
     // End of variables declaration//GEN-END:variables
-
-    boolean showDialog(JFrame parent) {
-        this.parent.setLocationRelativeTo(parent);
-        this.parent.setVisible(true);
-        return doAction;
-    }
 }

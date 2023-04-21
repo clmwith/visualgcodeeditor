@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
 public class LibreCadFont extends GFont {
     
     public static String LIBRECAD_FONT_DIR = "/usr/share/librecad/fonts";
-    public static final ArrayList<String>LIBRECAD_FONTS = new ArrayList<String>();
+    public static final ArrayList<String>LIBRECAD_FONTS = new ArrayList<>();
     public static boolean fontNameLoaded = false;
     static final HashMap<Integer,LibreCadFont> FONTS = new HashMap<>();
     
@@ -66,6 +66,7 @@ public class LibreCadFont extends GFont {
      * Load a LibreCadFont
      * @param name the name (without .lff extention) of the font in <i>LIBRECAD_FONT_DIR</i>.
      * @return the new font or null if not found
+     * @throws java.io.IOException
      */
     public static LibreCadFont getFont( String name) throws IOException {
         loadAvailableFonts();
@@ -129,8 +130,8 @@ public class LibreCadFont extends GFont {
                     }
                     GCode currpoint, lastpoint = null;
                     final String pts[] = l.split(";");
-                    for( int i = 0; i < pts.length; i++) {
-                        String xy[] = pts[i].split(",");
+                    for (String pt : pts) {
+                        String[] xy = pt.split(",");
                         if ( xy.length < 2) continue;
                         try {
                             int id;
@@ -150,14 +151,14 @@ public class LibreCadFont extends GFont {
                             if ( xy.length==3) { // X,Y<A
                                 if ( p.size() > 0 ) g.add(p); // close current path
                                 else
-                                    System.out.println("prepend !");
+                                    System.out.println("LibreCardFont(): prepend !");
                                 double a = Double.parseDouble(xy[2].substring(1));
                                 g.add( GArc.makeBulge(lastpoint, currpoint , a));
                                 p = new G1Path("" + (char)code + "" + n++);
                             }
                             p.add( lastpoint = currpoint);
                         } catch ( NumberFormatException e) {
-                            System.out.println("Pas bon pour ("+code+")[" + l + "]");
+                            System.out.println("LibreCardFont(): wrong number for ("+code+")[" + l + "]");
                         } 
                     }
                     if ( ! p.isEmpty()) g.add(p);          

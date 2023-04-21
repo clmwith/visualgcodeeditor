@@ -34,11 +34,9 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
-import javax.swing.event.ListDataListener;
 
 /**
  *
@@ -47,41 +45,25 @@ import javax.swing.event.ListDataListener;
 public class JFontChooserPanel extends javax.swing.JPanel {
     
     /** The list of possible font sizes. */
-    private static final Integer[] SIZES =
-            {5, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 26, 28, 32, 36, 40, 48, 56, 64, 72, 90, 102, 120, 140, 160, 180, 200, 220, 250, 300};
+    private static final String[] SIZES =
+            {"5", "8", "9", "10", "11", "12", "13", "14", "16", "18", "20", "24", "26", "28", "32", "36", "40", "48", "56", "64", "72", "90", "102", "120", "140", "160", "180", "200", "220", "250", "300" };  
     
-    private static final ComboBoxModel<String> SIZE_MODEL = new ComboBoxModel<String>() {
-        Object selectedItem;
-        @Override
-        public void setSelectedItem(Object anItem) { 
-            selectedItem = anItem;
-        }
-        @Override
-        public Object getSelectedItem() { 
-            return selectedItem;
-        }
-        @Override
-        public int getSize() { return SIZES.length; }
-        @Override
-        public String getElementAt(int index) { return "" + SIZES[index]; }
-        @Override
-        public void addListDataListener(ListDataListener l) { }
-        @Override
-        public void removeListDataListener(ListDataListener l) { }
-    };
-
     /** The list of possible FONTS. */
     private static final String[] SYSTEM_FONTS = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-    private static final DefaultComboBoxModel<String> SYSTEM_FONT_MODEL = new DefaultComboBoxModel<>(SYSTEM_FONTS);
-    
+ 
+    /** Is True if the Dialog was closed with the buytton OK. */
     private boolean validated;
-    private JDialog dialog;
-    private DefaultComboBoxModel<String> hersheyFontModel, libreCadFontModel;
     
+    /** The Dialog uset to show this panel */
+    private JDialog dialog;
+    
+    /** List of fonts for jComboBoxNames */
+    private static DefaultComboBoxModel<String> hersheyFontModel, libreCadFontModel, systemFontModel, SIZE_MODEL;
 
+    /** Show the preview of current font */
     class FontPreview extends JPanel {
-        public GFont font;
-        public String text;
+        GFont font;
+        String text;
         PaintContext pc = new PaintContext();
         
         public FontPreview( GFont f, String text) {
@@ -116,72 +98,135 @@ public class JFontChooserPanel extends javax.swing.JPanel {
                 }
             }
         }
-        public void setFont( GFont f) {
-            font = f;
-            repaint();
-        }
-        public void setText( String text) {
-            this.text = text;
-            repaint();
-        }
+        private void setFont( GFont f) { font = f; repaint(); }
+        public void setText( String text) { this.text = text; repaint(); }
     }
     private FontPreview preview;
     
         
     /**
-     * Creates new form HersheyFontChooserPanel
+     * Creates new form JFontChooserPanel
      */
     public JFontChooserPanel() {
+        if ( hersheyFontModel == null)
+            hersheyFontModel = new javax.swing.DefaultComboBoxModel<>(HersheyFont.FONTS);
+        
+        if ( libreCadFontModel == null)
+            try {
+                LibreCadFont.getFont( 0);
+                libreCadFontModel = new DefaultComboBoxModel<>(LibreCadFont.LIBRECAD_FONTS.toArray(new String[LibreCadFont.LIBRECAD_FONTS.size()]));        
+            } catch (IOException ex) {
+                libreCadFontModel = new DefaultComboBoxModel<>();
+            }
+        
+        if ( systemFontModel == null)
+            systemFontModel= new DefaultComboBoxModel<>(SYSTEM_FONTS);
+        
+        SIZE_MODEL = new DefaultComboBoxModel<>( SIZES);       
+        
         initComponents();
         preview.setText(jTextFieldText.getText());
-        jComboBoxNames.setSelectedIndex(4);
+        jComboBoxSize.setSelectedItem(12);
+    }
+    
+    /** Change the text to render */
+    void setText(String text) {
+        jTextFieldText.setText(text);
+        preview.setText(text);
+        updateGUI();
+    }
+    
+    public void setFont( GFont f, double fontSize) {
+        String p[] = f.getName().split(";");
+        switch (p[0]) {
+            case "Hershey":
+                jComboBoxType.setSelectedIndex(0);
+                if ( jComboBoxNames.getModel() != hersheyFontModel)
+                        jComboBoxNames.setModel( hersheyFontModel);
+                       
+                for( int i =0 ; i < HersheyFont.FONTS.length; i++) {
+                    if ( HersheyFont.FONTS[i].equals( p[1])) {
+                        jComboBoxNames.setSelectedIndex(i);
+                        break;
+                    }
+                }
+                break;
+                
+            case "LCAD":
+                jComboBoxType.setSelectedIndex(1);
+                if ( jComboBoxNames.getModel() != libreCadFontModel) 
+                        jComboBoxNames.setModel(libreCadFontModel);
+                
+                for( int i =0 ; i < LibreCadFont.LIBRECAD_FONTS.size(); i++) {
+                    if ( LibreCadFont.LIBRECAD_FONTS.get(i).equals( p[1])) {
+                        jComboBoxNames.setSelectedIndex(i);
+                        break;
+                    }
+                }
+                break;
+                
+            case "System": 
+                jComboBoxType.setSelectedIndex(2); 
+                if ( jComboBoxNames.getModel() != systemFontModel)
+                        jComboBoxNames.setModel( systemFontModel);
+                
+                for( int i =0 ; i < SYSTEM_FONTS.length; i++) {
+                    if ( SYSTEM_FONTS[i].equals( p[1])) {
+                        jComboBoxNames.setSelectedIndex(i);
+                        break;
+                    }           
+                }
+                break;
+                
+            default:
+                throw new AssertionError("Unknow font type :" + p[0]);
+        }
+        jComboBoxSize.setSelectedItem( gcodeeditor.GWord.roundForGCODE(fontSize));
+        jCheckBoxBold.setSelected( f.isBold());
+        jCheckBoxItalic.setSelected( f.isItalic());
+        updateFont();
     }
     
     private void updateGUI() {
-        //jComboBoxSize.setEnabled( jComboBoxType.getSelectedIndex() == 2);
         jCheckBoxBold.setEnabled( jComboBoxType.getSelectedIndex() == 2);
-        jCheckBoxItalic.setEnabled( jComboBoxType.getSelectedIndex() == 2);  
+        jCheckBoxItalic.setEnabled( jComboBoxType.getSelectedIndex() == 2); 
+        preview.repaint();
     }
     
-    private void changeFont() {
+    private void updateFont() {
         try {
             switch( jComboBoxType.getSelectedIndex()) {
                 case 0: // Hershey
                     if ( jComboBoxNames.getModel() != hersheyFontModel) {
                         jComboBoxNames.setModel( hersheyFontModel);
-                        jComboBoxNames.setSelectedIndex(0);
-                    }
-                    
+                        //jComboBoxNames.setSelectedIndex(0);
+                    }             
                     preview.setFont( (GFont)HersheyFont.getFont( this.getClass(), jComboBoxNames.getSelectedIndex()));
                     break;
+                    
                 case 1: // LibreCad
                     if ( jComboBoxNames.getModel() != libreCadFontModel) {
-                        LibreCadFont.getFont( 0);
-                        libreCadFontModel = new DefaultComboBoxModel<>(LibreCadFont.LIBRECAD_FONTS.toArray(new String[LibreCadFont.LIBRECAD_FONTS.size()]));
-                        jComboBoxNames.setSelectedIndex(0);
+                        jComboBoxNames.setModel( libreCadFontModel);
                     }
-                    jComboBoxNames.setModel( libreCadFontModel);
                     preview.setFont( (GFont)LibreCadFont.getFont( jComboBoxNames.getSelectedIndex()));
                     break;
+                    
                 case 2: // System
-                    if ( jComboBoxNames.getModel() != SYSTEM_FONT_MODEL) {
-                        jComboBoxNames.setModel( SYSTEM_FONT_MODEL);
-                        jComboBoxNames.setSelectedIndex(0);
-                    }
+                    if ( jComboBoxNames.getModel() != systemFontModel) 
+                        jComboBoxNames.setModel( systemFontModel);
                     
-                    String fontName = (String)jComboBoxNames.getSelectedItem();
-                    
-                    int sizeInt= 12;
+                    int sizeInt = 12;
                     try {
-                        sizeInt = Integer.parseInt((String)jComboBoxSize.getSelectedItem());
+                            sizeInt = Integer.parseInt(jComboBoxSize.getSelectedItem().toString());
                     } catch ( NumberFormatException e) {
-                        jComboBoxSize.setSelectedIndex(0);
+                        jComboBoxSize.getEditor().setItem( 12);
                     }
-                    SystemFont f = new SystemFont(fontName, jCheckBoxItalic.isSelected(), jCheckBoxBold.isSelected(), sizeInt);             
-                    preview.setFont( f);
                     
+                    preview.setFont( new SystemFont((String)jComboBoxNames.getSelectedItem(), 
+                            jCheckBoxBold.isSelected(), jCheckBoxItalic.isSelected(), sizeInt));        
             }
             updateGUI();
+            
         } catch (IOException ex) {
             Logger.getLogger(JFontChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -199,8 +244,8 @@ public class JFontChooserPanel extends javax.swing.JPanel {
 
         jPanel1 = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
+        jButtonOk = new javax.swing.JButton();
+        jButtonCancel = new javax.swing.JButton();
         jPanel4 = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         jComboBoxNames = new javax.swing.JComboBox<>();
@@ -222,21 +267,21 @@ public class JFontChooserPanel extends javax.swing.JPanel {
         } catch ( IOException e) { }
         add(jPanel1, java.awt.BorderLayout.CENTER);
 
-        jButton1.setText("Ok");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        jButtonOk.setText("Ok");
+        jButtonOk.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                jButtonOkActionPerformed(evt);
             }
         });
-        jPanel3.add(jButton1);
+        jPanel3.add(jButtonOk);
 
-        jButton2.setText("Cancel");
-        jButton2.addActionListener(new java.awt.event.ActionListener() {
+        jButtonCancel.setText("Cancel");
+        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton2ActionPerformed(evt);
+                jButtonCancelActionPerformed(evt);
             }
         });
-        jPanel3.add(jButton2);
+        jPanel3.add(jButtonCancel);
 
         add(jPanel3, java.awt.BorderLayout.SOUTH);
 
@@ -257,6 +302,7 @@ public class JFontChooserPanel extends javax.swing.JPanel {
 
         jTextFieldText.setColumns(40);
         jTextFieldText.setText("Type your text here");
+        jTextFieldText.setMinimumSize(new java.awt.Dimension(200, 29));
         jTextFieldText.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jTextFieldTextActionPerformed(evt);
@@ -340,62 +386,35 @@ public class JFontChooserPanel extends javax.swing.JPanel {
         EventQueue.invokeLater(new Runnable() {
             @Override
             public void run() {
-                changeFont();
+                updateFont();
             }
         });
     }//GEN-LAST:event_jComboBoxNamesActionPerformed
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+    private void jButtonOkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOkActionPerformed
         validated = true;
         dialog.setVisible(false);
-    }//GEN-LAST:event_jButton1ActionPerformed
+    }//GEN-LAST:event_jButtonOkActionPerformed
 
-    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+    private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed
         validated = false;
         dialog.setVisible(false);
-    }//GEN-LAST:event_jButton2ActionPerformed
+    }//GEN-LAST:event_jButtonCancelActionPerformed
 
     private void jComboBoxTypeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBoxTypeActionPerformed
-        EventQueue.invokeLater( new Runnable() {
-            @Override
-            public void run() {        
-                switch( jComboBoxType.getSelectedIndex()) {
-                case 0: // Hershey
-                    if ( jComboBoxNames.getModel() != hersheyFontModel) {
-                        jComboBoxNames.setModel( hersheyFontModel);
-                        jComboBoxNames.setSelectedIndex(0);
-                    }
-                    break;
-                case 1: // LibreCad
-                    if ( jComboBoxNames.getModel() != libreCadFontModel) {
-                    try { LibreCadFont.getFont( 0); } catch (IOException ex) { }
-                        libreCadFontModel = new DefaultComboBoxModel<>(LibreCadFont.LIBRECAD_FONTS.toArray(new String[LibreCadFont.LIBRECAD_FONTS.size()]));
-                        jComboBoxNames.setModel( libreCadFontModel);
-                        jComboBoxNames.setSelectedIndex(0);
-                    }
-                    break;
-                case 2: // System
-                    if ( jComboBoxNames.getModel() != SYSTEM_FONT_MODEL) {
-                        jComboBoxNames.setModel( SYSTEM_FONT_MODEL);
-                        jComboBoxNames.setSelectedIndex(0);
-                        if ( jComboBoxSize.getSelectedItem() == null)
-                            jComboBoxSize.setSelectedIndex(5);
-                    }  
-                }
-            }
-        });        
+        EventQueue.invokeLater(() -> { updateFont(); });      
     }//GEN-LAST:event_jComboBoxTypeActionPerformed
 
     private void jComboBoxSizeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBoxSizeActionPerformed
-        EventQueue.invokeLater(() -> { changeFont(); });  
+        EventQueue.invokeLater(() -> { updateFont(); });  
     }//GEN-LAST:event_jComboBoxSizeActionPerformed
 
     private void jCheckBoxBoldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxBoldActionPerformed
-        EventQueue.invokeLater(() -> { changeFont(); });
+        EventQueue.invokeLater(() -> { updateFont(); });
     }//GEN-LAST:event_jCheckBoxBoldActionPerformed
 
     private void jCheckBoxItalicActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxItalicActionPerformed
-        EventQueue.invokeLater(() -> { changeFont(); }); 
+        EventQueue.invokeLater(() -> { updateFont(); }); 
     }//GEN-LAST:event_jCheckBoxItalicActionPerformed
 
     /**
@@ -416,11 +435,11 @@ public class JFontChooserPanel extends javax.swing.JPanel {
     /**
      * @return The size of the font or NaN if not set.
      */
-    public double getChoosedSize() {
+    public float getChoosedSize() {
         try {
-            return Double.parseDouble(jComboBoxSize.getSelectedItem().toString());
+            return Float.parseFloat(jComboBoxSize.getSelectedItem().toString());
         } catch (NullPointerException | NumberFormatException e) {
-            return Double.NaN;
+            return Float.NaN;
         }
     }
     public GFont getChoosedFont() {
@@ -437,8 +456,8 @@ public class JFontChooserPanel extends javax.swing.JPanel {
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButtonCancel;
+    private javax.swing.JButton jButtonOk;
     private javax.swing.JCheckBox jCheckBoxBold;
     private javax.swing.JCheckBox jCheckBoxItalic;
     private javax.swing.JComboBox<String> jComboBoxNames;

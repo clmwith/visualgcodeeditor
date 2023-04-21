@@ -50,12 +50,14 @@ public class GGroup extends GElement implements Iterator<GElement> {
     }
 
     /**
-     * Create a group with all clone of <i>elements</i>
+     * Create a group with all <i>elements</i> or this clones
      * @param elements 
      */
-    public GGroup(ArrayList<GElement> elements) {
+    public GGroup(ArrayList<GElement> elements, boolean useClones) {
         this("group");
-        elements.forEach((e) -> { this.elements.add( e.clone()); });
+        elements.forEach((e) -> { 
+            this.elements.add( useClones ? e.clone() : e); 
+        });
     }
     
     /**
@@ -97,7 +99,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     
     public GElement getBlockFromPoint(GCode pt, double dmin, ArrayList<GElement> intoThis) {
         GElement res = null; 
-        ArrayList<GElement> l = ((intoThis == null) ? elements : intoThis);
+        ArrayList<GElement> l = (((intoThis == null) || intoThis.isEmpty()) ? elements : intoThis);
         for( GElement s : l) {
             double d = s.getDistanceTo(pt);
             if ( dmin > d) {
@@ -453,7 +455,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public static ArrayList<GElement> toList(ArrayList<GElement> list) {
         ArrayList<GElement> res = new ArrayList<>();
         list.forEach((e) -> {
-            if ( e instanceof GGroup) res.addAll( ((GGroup)e).toFlatList());
+            if ( e instanceof GGroup) res.addAll( ((GGroup)e).toArray());
             else res.add(e);
         });
         return res;
@@ -498,13 +500,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
     } 
     
     /**
-     * @return a flat list of ALL elements (recursively) contained in this group
+     * @return a flat list of ALL elements (recursively) contained in this group (not cloned)
      */
-    public ArrayList<GElement> toFlatList() {
+    public ArrayList<GElement> toArray() {
         ArrayList<GElement> res = new ArrayList<>(elements.size());
         elements.forEach((e) -> {
             if ( e instanceof GGroup)
-                res.addAll(((GGroup) e).toFlatList());
+                res.addAll(((GGroup) e).toArray());
             else
                 res.add(e);
         });
@@ -516,15 +518,17 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return elements.isEmpty();
     }
     
+    /**
+     * flat all GElement of this group
+     * @return a new group composed of clones of G1Paths and GGroups
+     */
     @Override
-    public GElement flatten() {
+    public GGroup flatten() {
         GGroup res = new GGroup("flatten-"+name);
-        elements.forEach((e) -> { res.add(e.flatten()); });
-        res.joinElements(DEFAULT_MERGE_DISTANCE);
-        if ( res.elements.size() == 1) {
-            res.elements.get(0).setName(name);
-            return res.elements.get(0);
-        }
+        elements.forEach((e) -> { 
+            if ( e instanceof GGroup) res.add(((GGroup)e).flatten());
+            else res.add(e.flatten());
+        });
         if ( properties != null) res.properties = properties.clone();
         return res;
     }
@@ -791,6 +795,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public boolean movePoints(ArrayList<GCode> selectedPoints, double d, double d0) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
+    
+    @Override
+    public boolean movePoint(GCode point, double dx, double dy) {
+        ArrayList<GCode> l = new ArrayList<>();
+        l.add(point);
+        return movePoints(l, dx, dy);
+    }
 
     @Override
     public void removeAll(ArrayList<GCode> lines) {
@@ -1002,5 +1013,27 @@ public class GGroup extends GElement implements Iterator<GElement> {
             }
         }
     }
+
+    /**
+     * Put all points of all shap in this group into the array <i>points</i>
+     * 
+     * @param points the array to put real points (do not modify it directly !)
+     */
+    public void addAllPointForHull(ArrayList<GCode> points) {
+        for( GElement el : elements) {
+            if ( el instanceof GGroup) {
+                ((GGroup)el).addAllPointForHull(points);
+            } else {
+                GElement el2 = el.flatten();
+                for ( GCode p : el2) {
+                    if ( p.isAPoint() && (p.getG()==1)) {
+                        if ( points.isEmpty() || ! points.get(points.size()-1).isAtSamePosition(p)) 
+                            points.add( p);
+                    }
+                }
+            }
+        }
+    }
+
 
 }
