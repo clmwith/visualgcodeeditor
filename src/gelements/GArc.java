@@ -50,38 +50,39 @@ public class GArc extends GElement {
 
     public static final String HEADER_STRING = "(Arc-name: ";
     
-    boolean clockwise = true;
+    boolean clockwise;
+    private double arcStart,arcLen,radius; 
+    GCode center;    
+    
     GCode start;
     GCode end;
-    GCode center;
+    
     private Arc2D.Double shape;
     G1Path flatten;
-    private GCode gcodeArc23;
-    
-    private Rectangle2D bounds = null;
-    private double arcStart,arcLen,radius;
+    private Rectangle2D bounds;
 
     
     /**
-     * Create a non configured arc.
+     * Create a non configured arc (center == null).
      * @param name0
      */
     public GArc(String name0) {   
         super(name0);
     }
     
-    public GArc(String name0, boolean isG2, Point2D start, Point2D end, Point2D center) {
+    public GArc(String name0, boolean isG2, Point2D startPoint, Point2D endPoint, Point2D centerPoint) {
         super(name0);
         clockwise = isG2;
-        this.start=new GCode(0, start.getX(), start.getY());
-        this.end=new GCode(0, end.getX(), end.getY());
-        this.center=new GCode(center.getX(), center.getY());
-        recalculateG23();
+        center=new GCode(centerPoint.getX(), centerPoint.getY());        
+        start=new GCode(0, startPoint.getX(), startPoint.getY());
+        end=new GCode(0, endPoint.getX(), endPoint.getY());
+        revalidate();
     }
 
     public GArc(String name0, Point2D startPoint, GCode g23code) {
         super(name0);
         start=new GCode(0, startPoint.getX(), startPoint.getY());
+        end = new GCode();
         setLine(1, g23code);
     }
     
@@ -91,16 +92,20 @@ public class GArc extends GElement {
      * @param center
      * @param radius
      * @param startAngle in degre
-     * @param arcLen  in degre
+     * @param arcExtend  in degre ( counter clockwyse )
      */
-    public GArc(String name0, Point2D center, double radius, double startAngle, double arcLen) {
+    public GArc(String name0, Point2D center, double radius, double startAngle, double arcExtent) {
         super(name0);
-        if ( arcLen == 0) arcLen = 360;
-        clockwise = arcLen >= 0;
+        if ( arcExtent == 0) arcExtent = 360;
+        arcStart = (360+startAngle)%360;
+        clockwise = arcExtent >= 0;
+        arcLen = Math.abs(arcExtent);      
+        
         this.center = new GCode(center);
+        
         start = GCode.newAngularPoint( center, radius, startAngle, true);
-        end = GCode.newAngularPoint( center, radius, startAngle + Math.abs(arcLen), true);
-        recalculateG23();
+        end = GCode.newAngularPoint( center, radius, startAngle + Math.abs(clockwise ? arcExtent : -arcExtent), true);
+        revalidate();
     }
 
     @Override
@@ -111,7 +116,7 @@ public class GArc extends GElement {
     @Override
     public GCode getElementAt(int index) {
         if ( index == 0) return start;
-        if ( index == 1) return gcodeArc23;
+        if ( index == 1) return end;
         return null;
     }
 
@@ -122,7 +127,7 @@ public class GArc extends GElement {
 
     @Override
     public GCode getLastPoint() {
-        return gcodeArc23;
+        return end;
     }
     
     @Override
@@ -159,8 +164,7 @@ public class GArc extends GElement {
 
         GCode p;
         if ( res == null) {
-            if (((p=flatten().getCloserPoint(from, dmax, discareIt, false))!=null) && (p.distance(from) < dmax)) {
-                  
+            if (((p=getFlatten().getCloserPoint(from, dmax, discareIt, false))!=null) && (p.distance(from) < dmax)) {             
                 if (! p.isIn(discareIt))
                         return p;   
             }
@@ -176,13 +180,12 @@ public class GArc extends GElement {
 
     @Override
     public boolean contains(GCode line) {
-        if ( flatten != null) return flatten.contains(line);
+        if ( (flatten != null) && flatten.contains(line)) return true;
         else return (start==line) || (end==line) || (center.distance(line) < 0.00001);
     }
     
     @Override
     public Rectangle2D getBounds() {
-        updateShape();
         return (Rectangle2D) bounds.clone();
     }
 
@@ -206,7 +209,7 @@ public class GArc extends GElement {
     public int getIndexOfPoint(GCode p) {
         if ( p == start) return 0;
         if ( p == center) return 1;
-        if ( p == gcodeArc23) return 2;
+        if ( p == end) return 2;
         return -1;
     }
 
@@ -217,18 +220,11 @@ public class GArc extends GElement {
 
     @Override
     public double getDistanceTo(GCode pt) {
-        //double decal = ((arcStart+arcLen) > 360) ? (arcStart+arcLen)-360 : 0;
-        double d, a = Math.toDegrees(G1Path.getAngle(center, pt));
-        a = a < 0 ? -a : 360 - a;
-        if ( a < arcStart) a += 360;
+        double d = Double.POSITIVE_INFINITY;
+        double a = GCode.getAngleInDegre(center, pt);
         
-        boolean into = clockwise ? ((a > arcStart)&&(a<(arcStart+arcLen))) 
-                            : ! ((a > arcStart)&&(a<(arcStart+arcLen))) ;
-        
-        if ( (arcLen>=360) || (clockwise ^ ! into))
-            d = Math.abs(radius-center.distance(pt));
-        else
-            d = Double.POSITIVE_INFINITY;
+        if ( a < arcStart) a += 360;        
+        if ((a >= arcStart)&&(a<= arcStart+arcLen)) d = Math.abs(radius-center.distance(pt));        
         
         return Math.min(d,Math.min(center.distance(pt),Math.min( start.distance(pt), end.distance(pt))));
     }
@@ -243,9 +239,7 @@ public class GArc extends GElement {
 
     @Override
     protected void informAboutChange() {
-        shape = null; flatten = null;
-        updateShape();
-        recalculateG23();   
+        revalidate();   
         super.informAboutChange();
     }
 
@@ -270,15 +264,39 @@ public class GArc extends GElement {
 
     @Override
     public boolean movePoint( GCode p, double dx, double dy) {
-        if ( start == p) {
-            start.translate(dx, dy);
+        if ( start == p) start.translate(dx, dy);
+        else if ( end == p) end.translate(dx, dy);
+        else if ( center == p) center.translate(dx, dy);
+        else if ( (flatten != null) && flatten.contains(p)) {
+            int pn = flatten.indexOf(p);
+            
+            p.translate(dx, dy);
+            // try to calculate new circle from 3 points
+            GCode p1 = start;
+            GCode p2 = end;
+            GCode p3 = p;
+            double yDelta_a = p2.getY() - p1.getY();
+            double xDelta_a = p2.getX() - p1.getX();
+            double yDelta_b = p3.getY() - p2.getY();
+            double xDelta_b = p3.getX() - p2.getX();
+            double aSlope = yDelta_a/xDelta_a;
+            double bSlope = yDelta_b/xDelta_b;  
+            double cx = (aSlope*bSlope*(p1.getY() - p3.getY()) + bSlope*(p1.getX() + p2.getX())
+                            - aSlope*(p2.getX()+p3.getX()) )/(2* (bSlope-aSlope) );
+            double cy = -1*(cx - (p1.getX()+p2.getX())/2)/aSlope +  (p1.getY()+p2.getY())/2;
+            center.set( 0, cx, cy);
+            revalidate();
+
+            // put the selected point from old flat to the new one
+            getFlatten();
+            GCode tmp = flatten.getCloserPoint(p, Math.max(Math.abs(dx),Math.abs(dy))+1, null, true);         
+            int i = flatten.indexOf(tmp);
+            p.set(tmp);
+            flatten.remove(i);
+            flatten.insertLine(i, p);
+            return true;
         }
-        else if ( end == p) {
-            end.translate(dx, dy);
-        } else if ( center == p) {
-            center.translate(dx, dy);
-        } else 
-            return false;
+        else return false;
         
         informAboutChange();
         return true;
@@ -306,7 +324,6 @@ public class GArc extends GElement {
 
     @Override
     public void removeAll(ArrayList<GCode> lines) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -322,6 +339,7 @@ public class GArc extends GElement {
     public void setLine(int row, GCode value) { 
         switch (row) {
             case 0:
+                if ( start.isAtSamePosition(value)) return;
                 start = value;
                 start.setG(0);
                 break;
@@ -334,8 +352,8 @@ public class GArc extends GElement {
                 double cy = l.getValue('J');
                 if ( Double.isNaN(cy)) cy = 0;
                 cy += start.getY();
-                center=new GCode(cx,cy);
-                end = new GCode(0, Double.isNaN(l.getX())?start.getX():l.getX(), Double.isNaN(l.getY())?start.getY():l.getY());
+                center=new GCode(cx,cy);                
+                end.set( new GCode(clockwise?2:3, Double.isNaN(l.getX())?start.getX():l.getX(), Double.isNaN(l.getY())?start.getY():l.getY()));
                 break;
             default:
                 return;
@@ -385,32 +403,12 @@ public class GArc extends GElement {
                     GWord.GCODE_NUMBER_FORMAT.format(arcStart) + " °<br>Arc lenght = " +
                     GWord.GCODE_NUMBER_FORMAT.format(arcLen) + " °</HTML>";
     }
-        
-    private void updateShape() {
-        if ( shape == null) {
-            arcStart = (360 + Math.toDegrees(-G1Path.getAngle(center, clockwise?start:end)))%360;
-            arcLen = (360+Math.toDegrees(-G1Path.getAngle(center, clockwise?end:start)) - arcStart)%360;
-
-            if ( (Math.abs(arcLen) < 0.0001) || (Math.abs(360-arcLen) < 0.0001)) arcLen=360;
-            else if ( arcLen < 0) arcLen = 360+arcLen;
-
-            radius = center.distance(clockwise?start:end);
-            bounds = new Rectangle2D.Double(center.getX()-radius, center.getY()-radius, 2*radius, 2*radius);
-            shape = new Arc2D.Double(bounds, arcStart, arcLen, Arc2D.OPEN);
-            if ( clockwise)
-                end.setLocation(center.getX()+Math.cos(Math.toRadians(arcStart+arcLen))*radius, center.getY()-Math.sin(Math.toRadians(arcStart+arcLen))*radius);
-            else
-                start.setLocation(center.getX()+Math.cos(Math.toRadians(arcStart+arcLen))*radius, center.getY()-Math.sin(Math.toRadians(arcStart+arcLen))*radius);
-            
-            bounds = shape.getBounds2D();
-        }
-    }
     
     @Override
     public void paint(PaintContext pc) {
         final double zoomFactor = pc.zoomFactor;
         final Graphics g = pc.g; 
-        updateShape();
+        
         int sx = (int)(start.getX()*zoomFactor);
         int sy = -(int)(start.getY()*zoomFactor);
         int ex = (int)(end.getX()*zoomFactor);
@@ -421,26 +419,35 @@ public class GArc extends GElement {
         g2.scale(zoomFactor, -zoomFactor);
         g2.setStroke(new BasicStroke((float)(1f / zoomFactor)));
         g2.draw(shape);
-        //drawCoordRect(g, zoomFactor, bounds);
-        //g2.drawRect((int)rect.getX(), (int)rect.getY(), (int)rect.getWidth(), (int)rect.getHeight());
         
         if ( pc.highlitedPoint != null) {
             g.setColor(Color.yellow);
             final int x = (int)(pc.highlitedPoint.getX()*zoomFactor), y = -(int)(pc.highlitedPoint.getY()*zoomFactor);
             g.fillOval(x-3,y-3, 6, 6);   
-        }
+        }              
         
         // draw selectedPoints
         g.setColor(PaintContext.SEL_COLOR1);
         if ( pc.selectedPoints != null) pc.selectedPoints.forEach((p) -> {
                 if ( p == start) g.fillOval(sx-3,sy-3, 6, 6);
-                else if ( p.isAnArc() || (p == end)) g.fillOval(ex-3,ey-3, 6, 6);
+                else if (p == end) g.fillOval(ex-3,ey-3, 6, 6);
             });
         
         if ( pc.editedElement == this) {
             g.setColor(PaintContext.EDIT_COLOR);
             g.drawOval(sx-3,sy-3, 6, 6);  
             g.drawOval(ex-3,ey-3, 6, 6);  
+            
+            // paint center translation repere
+            g.setColor(Color.DARK_GRAY);
+            Segment2D t = new Segment2D(start, end).getTangentSegment();
+            GCode pt = t.getClosestPointFrom( center);
+            JBlocksViewer.drawCross(g, new Point((int)(pt.getX()*zoomFactor),-(int)(pt.getY()*zoomFactor)),5);          
+            int x = (int)(t.p1.getX()*zoomFactor);
+            int y = (int)(t.p1.getY()*-zoomFactor);
+            int x2 = (int)(t.p2.getX()*zoomFactor);
+            int y2 = (int)(t.p2.getY()*-zoomFactor);
+            g.drawLine(x, y, x2, y2);
         }
         
         if ( (pc.color!=Color.darkGray)) {
@@ -450,13 +457,16 @@ public class GArc extends GElement {
             }
             if ( pc.paintReperes ) {
                 if ( ( pc.editedElement == this) || pc.showStartPoints) g.setColor(Color.red);     
-                else g.setColor(Color.darkGray);
-                JBlocksViewer.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),3);
+                else g.setColor(Color.lightGray);
+                JBlocksViewer.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),4);
             }
         }
-        
 
-        pc.lastPoint = end;
+        /*Color oldc = pc.color;
+        pc.color = Color.RED;
+        getFlatten().paint(pc);
+        pc.color = oldc;
+        pc.lastPoint = end;*/
     }
     
     
@@ -520,7 +530,7 @@ public class GArc extends GElement {
     
     @Override
     public Area getOffsetArea(double distance) {
-        return flatten().getOffsetArea(distance);
+        return getFlatten().getOffsetArea(distance);
     }
     
     /**
@@ -559,13 +569,13 @@ public class GArc extends GElement {
         return (start == null) || (end == null) || (center == null);
     }
     
+    
     /**
-     * @return Return a G1Path correponding to this arc
+     * Generate the flat path if needed and return it.
+     * @return the content of 'flatten'
      */
-    @Override
-    public G1Path flatten() { 
+    G1Path getFlatten() { 
         if ( flatten == null) {
-            updateShape();
             flatten = new G1Path("flattenArc-"+name);
             int nbp = (int)(((2 * Math.PI * radius * (arcLen/360))/12)+1)*12;
             double angle = arcStart, a = arcLen / nbp;
@@ -579,10 +589,20 @@ public class GArc extends GElement {
         return res;
     }
     
+    /**
+     * @return Return a G1Path correponding to this arc
+     */
+    @Override
+    public G1Path flatten() { 
+        G1Path res = (G1Path)getFlatten().clone();
+        if ( properties != null) res.properties = properties.clone();
+        return res;
+    }
+    
 
     @Override
     public CharSequence toSVG(Rectangle2D origin) {
-        return this.flatten().toSVG(origin);
+        return this.getFlatten().toSVG(origin);
     }
 
     @Override
@@ -596,7 +616,7 @@ public class GArc extends GElement {
 
     @Override
     public void toDXF(OutputStreamWriter out) throws IOException {
-        flatten().toDXF(out);
+        getFlatten().toDXF(out);
     }
 
     public static GArc makeBulge(GCode startpoint, GCode endpoint, double bulge) {
@@ -604,15 +624,15 @@ public class GArc extends GElement {
         double alpha = Math.atan(bulge)*4.0;
         GCode middle = startpoint.getMiddlePointTo(endpoint);
         double dist = startpoint.distance(endpoint)/2.0;
-        double angle = GElement.getAngle(endpoint, startpoint) + ((bulge>0.0) ? -Math.PI : Math.PI)/2;
+        double angle = GElement.getAngleInRadian(endpoint, startpoint) + ((bulge>0.0) ? -Math.PI : Math.PI)/2;
 	double radius = Math.abs(dist / Math.sin(alpha/2.0)); 
         double h = Math.sqrt(Math.abs(radius*radius - dist*dist));        
         if (Math.abs(alpha)> Math.PI)  h*=-1.0;
         
         GCode center = GElement.getPolarPoint(h, angle);
         center.translate(middle.getX(), middle.getY());
-        double a1 = -Math.toDegrees(GElement.getAngle(center, startpoint));
-        double a2 = Math.toDegrees(GElement.getAngle(center, endpoint));
+        double a1 = -Math.toDegrees(GElement.getAngleInRadian(center, startpoint));
+        double a2 = Math.toDegrees(GElement.getAngleInRadian(center, endpoint));
         a2 = ( a2 > 180) ? -a2 : 360 - a2;
         return new GArc("_arc", center, radius, a1, reversed ? (a2-a1) : (a1-a2));
     }
@@ -625,20 +645,30 @@ public class GArc extends GElement {
         end = new GCode(stream.readLine());
         clockwise = (end.getG() == 2);
         center = end.getArcCenter(start);
-        recalculateG23();
+        revalidate();
         return stream.readLine();
     }
 
-    private void recalculateG23() {
-        if ( gcodeArc23 == null) gcodeArc23 = new GCode();      
-        double i = center.getX() - start.getX();
-        double j = center.getY() - start.getY();
-        GCode l =  new GCode("G" + (clockwise?2:3) + // "G91.1 " +  
-                " X"+ GWord.GCODE_NUMBER_FORMAT.format( end.getX()) + 
-                " Y"+ GWord.GCODE_NUMBER_FORMAT.format(end.getY()) + 
-                (Math.abs(i)<0.00001?"":" I"+GWord.GCODE_NUMBER_FORMAT.format(i)) +
-                (Math.abs(j)<0.00001?"":" J"+GWord.GCODE_NUMBER_FORMAT.format(j)), null);
-        gcodeArc23.set( l);
+    /**
+     * move center according to start & end points and update arcStart, arcLen.
+     */
+    public void revalidate() {
+        flatten = null;   
+        Segment2D t = new Segment2D(start, end).getTangentSegment();
+        
+        center.set( t.getClosestPointFrom( center));
+        end.set('I', center.getX() - start.getX());
+        end.set('J', center.getY() - start.getY());
+        end.setG(clockwise?2:3);
+        
+        radius = center.distance(start);
+        arcStart = GCode.getAngleInDegre(center, start);
+        arcLen = (360+GCode.getAngleInDegre(center, end) - arcStart)%360;
+        if (arcLen < 10e-6) arcLen=360;
+                
+        bounds = new Rectangle2D.Double(center.getX()-radius, center.getY()-radius, 2*radius, 2*radius);
+        shape = new Arc2D.Double(bounds, -arcStart, -arcLen, Arc2D.OPEN);
+        bounds = shape.getBounds2D();  
     }
 
     void translateFirstPoint(double dx, double dy) {

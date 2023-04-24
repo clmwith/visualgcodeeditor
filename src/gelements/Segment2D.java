@@ -128,6 +128,17 @@ public class Segment2D {
         }
     }
     
+    /**
+     * @return The centered perpendicular of this Segment.
+     */
+    public Segment2D getTangentSegment() {        
+        Point2D c = center();      
+        GCode pt1 = p1.clone();        
+        GCode pt2 = p2.clone();
+        pt1.rotate(c, Math.PI/2);
+        pt2.rotate(c, Math.PI/2);
+        return new Segment2D(pt1, pt2);
+    }
     
     private double getCenterOfXIntersectionInterval( Segment2D s) {
         final double p1x = Math.min(p1.getX(), p2.getX());
@@ -143,6 +154,7 @@ public class Segment2D {
      */
     public Point2D center() {
         final double c = (p1.getX() + p2.getX())/2;
+        if ( a == Double.POSITIVE_INFINITY) return new Point2D.Double(p1.getX(), (p1.getY()+ p2.getY())/2);
         return new Point2D.Double( c, getY(c));
     }
 
@@ -170,7 +182,7 @@ public class Segment2D {
      * @return angle in radian
      */
     double getAngle() {
-        return GElement.getAngle(p1, p2);
+        return GElement.getAngleInRadian(p1, p2);
     }
 
     /**
@@ -181,5 +193,22 @@ public class Segment2D {
     Point2D getPointAt(double d) {
         double a = getAngle();
         return new GCode(p1.getX() + Math.cos(a) * d, p1.getY() + Math.sin(a) * d);
+    }
+
+    
+    public GCode getClosestPointFrom(GCode p) {
+        if ( a == Double.POSITIVE_INFINITY) return new GCode( p1.getX(), p.getY());
+      
+        double u = ((p.getX()-p1.getX())*(p2.getX()-p1.getX())+(p.getY()-p1.getY())*(p2.getY()-p1.getY()))/(sqr(p2.getX()-p1.getX())+sqr(p2.getY()-p1.getY()));
+        /*if (u > 1.0)
+            return (GCode)p2.clone();
+        else if (u <= 0.0)
+            return (GCode)p1.clone();
+        else*/
+            return new GCode(p2.getX()*u+p1.getX()*(1.0-u), p2.getY()*u+p1.getY()*(1.0-u));
+    }
+    
+    static double sqr( double v) {
+        return v*v;
     }
 }

@@ -40,6 +40,8 @@ public class Configuration  {
     private static final String SAVE_VALUE = "øvalues";
     public static final String RECENT_FILE_SEPARATOR = "µ";
     
+    public static final int DEFAULT_SHOW_LASER_POWER = 8;
+    
     public String configurationFileName = null;
     public int workspaceWidth, workspaceHeight;
     public int workspaceOrigin;
@@ -57,7 +59,9 @@ public class Configuration  {
     public double backLashX, backLashY, backLashZ;
     public int jogSpeed;
     public double toolDiameter;
-    public String visualSettings;
+    public String editorSettings;
+    public int showLaserPowerValue;
+    public double minG1move;
 
     public Configuration() {  
         getDefault();
@@ -65,6 +69,7 @@ public class Configuration  {
     
     public final void getDefault() {
         Preferences prefs = Preferences.userNodeForPackage(Configuration.class);
+        editorSettings = prefs.get("guiSettings", "");
         workspaceWidth = prefs.getInt("WorkspaceWidth", 0);
         workspaceHeight = prefs.getInt("WorkspaceHeight", 0);
         workspaceOrigin = prefs.getInt("workspaceOrigin", 0);
@@ -87,7 +92,8 @@ public class Configuration  {
         backLashY = prefs.getDouble("backLashY", 0.2);
         backLashZ = prefs.getDouble("backLashZ", 0.2); 
         toolDiameter = prefs.getDouble("toolDiameter", 3);
-        visualSettings = prefs.get("guiSettings", "");
+        showLaserPowerValue = prefs.getInt("showLaserPowerValue", DEFAULT_SHOW_LASER_POWER);             
+        minG1move = prefs.getDouble("minG1move", 1);
     }
     
     public ArrayList<String> getSavedNames() {
@@ -116,28 +122,34 @@ public class Configuration  {
         Preferences prefs = Preferences.userNodeForPackage(Configuration.class);
         String vals = prefs.get(SAVE_HEADER+nodeName+SAVE_VALUE, null);
         if ( vals != null) {
+            GCODEHeader  = prefs.get(SAVE_HEADER+nodeName+"øheader", "");
+            GCODEFooter  = prefs.get(SAVE_HEADER+nodeName+"øfooter", "");      
             String v[] = vals.split(",");
-            workspaceWidth = Integer.valueOf(v[0]);
-            workspaceHeight = Integer.valueOf(v[1]);
-            workspaceOrigin = Integer.valueOf(v[2]);
-            feedRate        = Double.valueOf(v[3]);
-            spindleLaserPower = Integer.valueOf(v[4]);
-            axeAIs          = Integer.valueOf(v[5]);
-            pulseByUnit     = Double.valueOf(v[6]);
-            objectDiameter = Double.valueOf(v[7]);
-            unitForATurn = Double.valueOf(v[8]);
-            objectLength = Double.valueOf(v[9]);
-            engravingHeight = Double.valueOf(v[10]);
-            jogSpeed = Integer.valueOf(v[11]);
-            safeZHeightForMoving = Double.valueOf(v[12]);
+            try  {
+            workspaceWidth = Integer.parseInt(v[0]);
+            workspaceHeight = Integer.parseInt(v[1]);
+            workspaceOrigin = Integer.parseInt(v[2]);
+            feedRate        = Double.parseDouble(v[3]);
+            spindleLaserPower = Integer.parseInt(v[4]);
+            axeAIs          = Integer.parseInt(v[5]);
+            pulseByUnit     = Double.parseDouble(v[6]);
+            objectDiameter = Double.parseDouble(v[7]);
+            unitForATurn = Double.parseDouble(v[8]);
+            objectLength = Double.parseDouble(v[9]);
+            engravingHeight = Double.parseDouble(v[10]);
+            jogSpeed = Integer.parseInt(v[11]);
+            safeZHeightForMoving = Double.parseDouble(v[12]);
             adaptativePower = v[13].equals("true");
             useBackLash = v[14].equals("true");
-            backLashX = Double.valueOf(v[15]);
-            backLashY = Double.valueOf(v[16]);
-            backLashZ = Double.valueOf(v[17]);
-            if ( v.length > 18) toolDiameter = Double.valueOf(v[18]);
-            GCODEHeader  = prefs.get(SAVE_HEADER+nodeName+"øheader", "");
-            GCODEFooter  = prefs.get(SAVE_HEADER+nodeName+"øfooter", "");            
+            backLashX = Double.parseDouble(v[15]);
+            backLashY = Double.parseDouble(v[16]);
+            backLashZ = Double.parseDouble(v[17]);
+            toolDiameter = Double.parseDouble(v[18]);                  
+            showLaserPowerValue = Integer.parseInt(v[19]);
+            minG1move = Double.parseDouble(v[20]);
+            } catch ( IndexOutOfBoundsException e) {
+                
+            }
         }
         return vals != null;
     }
@@ -165,7 +177,9 @@ public class Configuration  {
             backLashX+ "," +
             backLashY + "," +
             backLashZ + "," +
-            toolDiameter);
+            toolDiameter+ "," +
+            showLaserPowerValue+ "," +
+            minG1move);
             prefs.put(SAVE_HEADER+nodeName+"øheader", GCODEHeader);
             prefs.put(SAVE_HEADER+nodeName+"øfooter", GCODEFooter);
             prefs.sync();
@@ -178,7 +192,7 @@ public class Configuration  {
     void saveVisualSettings() {
         try {
             Preferences prefs = Preferences.userNodeForPackage(Configuration.class);
-            prefs.put("guiSettings", visualSettings);
+            prefs.put("guiSettings", editorSettings);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
@@ -189,6 +203,8 @@ public class Configuration  {
     public void saveDefault() {
         try {
             Preferences prefs = Preferences.userNodeForPackage(Configuration.class);
+            prefs.put("GCODEHeader", GCODEHeader);
+            prefs.put("GCODEFooter", GCODEFooter);            
             prefs.putInt("WorkspaceWidth", workspaceWidth);
             prefs.putInt("WorkspaceHeight", workspaceHeight);
             prefs.putInt("workspaceOrigin", workspaceOrigin);
@@ -207,11 +223,11 @@ public class Configuration  {
             prefs.putDouble("backLashX", backLashX);
             prefs.putDouble("backLashY", backLashY);
             prefs.putDouble("backLashZ", backLashZ);
-            prefs.put("GCODEHeader", GCODEHeader);
-            prefs.put("GCODEFooter", GCODEFooter);
             prefs.put("recentFiles", recentFiles);
-            prefs.put("guiSettings", visualSettings);
+            prefs.put("guiSettings", editorSettings);
             prefs.putDouble("toolDiameter", toolDiameter);
+            prefs.putInt( "showLaserPowerValue", showLaserPowerValue);
+            prefs.putDouble("minG1move", minG1move);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
@@ -273,6 +289,10 @@ public class Configuration  {
         writer.append(Double.toString(backLashZ) + "\n");
         writer.append("# Tool diameter (float)\n");
         writer.append(Double.toString(toolDiameter) + "\n");
+        writer.append("# ShowLaser power value (int)\n");
+        writer.append(Double.toString(showLaserPowerValue) + "\n");
+        writer.append("# Minimal G1 move (int)\n");
+        writer.append(Double.toString(minG1move) + "\n");
         writer.append("#GCODE Header\n");
         writer.append(GCODEHeader);
         writer.append("\n> (don't touch this line)\n#GCODE Footer\n");
@@ -296,7 +316,7 @@ public class Configuration  {
                         break;
                     case 1: workspaceHeight = Integer.parseInt(l);                               
                         break;
-                    case 2: feedRate = Double.valueOf(l);                              
+                    case 2: feedRate = Double.parseDouble(l);                              
                         break;
                     case 3: spindleLaserPower = Integer.parseInt(l);
                         break;
@@ -318,16 +338,21 @@ public class Configuration  {
                         break;
                     case 12: adaptativePower = (Integer.parseInt(l) == 1);
                         break;
-                    case 13: jogSpeed = Integer.valueOf(l);
+                    case 13: jogSpeed = Integer.parseInt(l);
                         break;
-                    case 14: backLashX = Double.valueOf(l);
+                    case 14: backLashX = Double.parseDouble(l);
                         break;
-                    case 15: backLashY = Double.valueOf(l);
+                    case 15: backLashY = Double.parseDouble(l);
                         break;
-                    case 16: backLashZ = Double.valueOf(l);
+                    case 16: backLashZ = Double.parseDouble(l);
                         break;
-                    case 17: toolDiameter = Double.valueOf(l);
-                   default: // load GCODE                              
+                    case 17: toolDiameter = Double.parseDouble(l);
+                        break;
+                    case 18: showLaserPowerValue = Integer.parseInt(l);
+                        break;
+                    case 19: minG1move = Double.parseDouble(l);
+                        break;
+                    default: // load GCODE                              
                        if ( l.startsWith(">")) { 
                            GCODEHeader=buf;
                            readFooter=true;  
@@ -357,7 +382,7 @@ public class Configuration  {
             
             if ( newRecent == null) newRecent = "";
             prefs.put("recentFiles", recentFiles = newRecent);
-            prefs.put("guiSettings", visualSettings);
+            prefs.put("guiSettings", editorSettings);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {

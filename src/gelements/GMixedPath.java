@@ -33,25 +33,26 @@ import java.util.Iterator;
 
 /**
  * A path composed of G1, G2-3(arc) and G5(spline) paths (no comment allowed)
- * @author Clément Gérardin @ Marseille.fr
+ * @author Clément
  */
-public class GMixedPathPath extends GElement {
+public class GMixedPath extends GElement {
     
     public static final String HEADER_STRING = "(ComposedPath-name: ";
 
-   /** Contains GCode or GArc or GSpline. Allways start with a GCode or is empty */
-    ArrayList<Object> gString; 
+   /** Contains GCode or GArc or GSpline. Always start with a GCode or is empty */
+    ArrayList<Object> gContent; 
+    
     private Rectangle2D bounds;
     private int nbPoints = -1;
 
-    public GMixedPathPath(String name0) {
+    public GMixedPath(String name0) {
         super(name0);
-        gString = new ArrayList<>();
+        gContent = new ArrayList<>();
     }
     
     @Override
     public boolean add(GCode gCode) {
-        add( gString.size(), gCode);
+        add(gContent.size(), gCode);
         return true;
     }
 
@@ -63,15 +64,15 @@ public class GMixedPathPath extends GElement {
         if (gCode.isASpline()) 
              e = new GSpline(null, getLastPoint(), gCode);
         if ( gCode.getG()==0) 
-            gCode.setG(gString.isEmpty()?0:1);
+            gCode.setG(gContent.isEmpty()?0:1);
             
         if ( (pos == 0) && (e!=null)) {
             GCode p = getFirstPoint();
-            gString.add(0, (p==null)?new GCode(0,0):new GCode(p.getX(),p.getY()));
-            gString.add( 1, e);
+            gContent.add(0, (p==null)?new GCode(0,0):new GCode(p.getX(),p.getY()));
+            gContent.add( 1, e);
         } else {
-            if ( e != null) gString.add( pos, e);
-            else gString.add(pos, gCode);
+            if ( e != null) gContent.add( pos, e);
+            else gContent.add(pos, gCode);
         }      
         informAboutChange();
     }
@@ -91,44 +92,48 @@ public class GMixedPathPath extends GElement {
      */
     @Override
     public GElement clone() {
-        GMixedPathPath clone = new GMixedPathPath(name);
+        GMixedPath clone = new GMixedPath(name);
         clone.properties = properties.clone();
-        gString.forEach((e) -> { 
+        gContent.forEach((e) -> { 
             Object c;
             if ( e instanceof GArc) c = ((GArc)e).clone();
             else if ( e instanceof GSpline) c = ((GSpline)e).clone();
             else c = ((GCode)e).clone();
-            clone.gString.add( c);
+            clone.gContent.add( c);
         });
         return clone;
     }
     
     @Override
     public boolean concat(GElement gElement, double dmax) {
-        if (gElement instanceof GArc) return false;
-        if (( gElement instanceof GSpline)) {
-            final GCode p = gElement.getFirstPoint();
-            if ( gString.isEmpty() || (getLastPoint()==null) || (getLastPoint().distance(p) > dmax)) {
-                gString.add(new GCode(p));
+        final GCode p = gElement.getFirstPoint();
+        if (p == null) return false;
+        
+        GCode lp = getLastPoint();
+        if (lp == null) gContent.add( lp = new GCode(p.getX(), p.getY()));
+        else if ( lp.distance( p) > dmax) return false;
+        
+        if (gElement instanceof GArc) {
+            gContent.add( gElement);
+            
+        } else if (( gElement instanceof GSpline)) {
+            if ( gContent.isEmpty() || (getLastPoint()==null) || (getLastPoint().distance(p) > dmax)) {
+                gContent.add(new GCode(p));
             }
-            gString.add( gElement);
+            gContent.add( gElement);
 
-        } else if ( gElement instanceof GMixedPathPath) {
-            for( Object o : ((GMixedPathPath)gElement).gString)
-                gString.add(o);
-            return true;
+        } else if ( gElement instanceof GMixedPath && (gElement.getFirstPoint().distance(getLastPoint()) < dmax)) {
+            for( Object o : ((GMixedPath)gElement).gContent)
+                gContent.add(o);
             
         } else if ( gElement instanceof G1Path) {
-                    boolean first = true;
-                    for( GCode l : (G1Path)gElement) {
-                        if ( first) {
-                            if ( gString.isEmpty() || (getLastPoint()==null) || (getLastPoint().distance(l) > dmax)) add(l);
-                            first = false;
-                        } else gString.add(l); 
-                    }
-                }
-                else 
-                    return false;
+            boolean first = true;
+            for( GCode l : (G1Path)gElement) {
+                if ( first) first = false;
+                else gContent.add(l); 
+            }
+        } else 
+            return false;
         
         informAboutChange();
         return true;
@@ -136,7 +141,7 @@ public class GMixedPathPath extends GElement {
     
     @Override
     public boolean contains(GCode point) {
-        for (Object o : gString) {
+        for (Object o : gContent) {
             if (o instanceof GCode) {
                 if (((GCode)o).isAtSamePosition(point)) return true;
             } else 
@@ -149,7 +154,7 @@ public class GMixedPathPath extends GElement {
     public G1Path flatten() {
         
         G1Path f = new G1Path("flatten-"+name);
-        gString.forEach((o) -> {
+        gContent.forEach((o) -> {
             if (o instanceof GCode) f.add((GCode)o);
             else f.concat(((GElement)o).flatten(), 0.0002);
         });      
@@ -160,7 +165,7 @@ public class GMixedPathPath extends GElement {
     public Rectangle2D getBounds() {    
         if ( bounds == null) {
             if ( getNbPoints() == 0) return null;
-            gString.forEach((o) -> {
+            gContent.forEach((o) -> {
                 if ( (o instanceof GCode) && ((GCode)o).isAPoint()) {
                     if ( bounds == null) 
                         bounds = new Rectangle2D.Double(((GCode)o).getX(), ((GCode)o).getY(), 0.00001, 0.00001);
@@ -186,7 +191,7 @@ public class GMixedPathPath extends GElement {
     public GCode getCloserPoint(Point2D from, double dmax, ArrayList<GCode> discareIt, boolean excludeFirst) {
         GCode res = null;
         double d;
-        for ( Object o : gString) {
+        for ( Object o : gContent) {
             if ( o instanceof GCode) {
                 if (((GCode)o).isAPoint()) {
                     if ( ! excludeFirst && ! ((discareIt!=null) && discareIt.contains((GCode)o)) && (d=((GCode)o).distance(from)) < dmax) {
@@ -216,7 +221,7 @@ public class GMixedPathPath extends GElement {
         double d, dmin = Double.MAX_VALUE;
         Segment2D s;
         Object res = null;
-        for ( Object o : gString) {
+        for ( Object o : gContent) {
             if ( (o instanceof GCode) && ((GCode)o).isAPoint()) { 
                 if (( lastPoint != null) && (d=(s=new Segment2D(lastPoint, (GCode)o)).distanceTo(point)) < dmin ) {
                     dmin = d;
@@ -241,7 +246,7 @@ public class GMixedPathPath extends GElement {
 
         Segment2D s;
         GCode lastPoint = null;
-        for( Object o : gString) {
+        for( Object o : gContent) {
             if (o instanceof GCode) {
                 if (((GCode)o).isAPoint()) {
                     if ( lastPoint != null) {
@@ -263,21 +268,21 @@ public class GMixedPathPath extends GElement {
 
 
     @Override
-    public GCode getElementAt(int index) {
-        if ( index < gString.size()) {         
-            Object o = gString.get(index);
-            if ( o instanceof GCode) return (GCode)o;
-            else return (GCode)((GElement)o).getElementAt(1);
-        } else 
-            return new GCode();
+    public GCode getElementAt(int line) {
+        if ( line < gContent.size()) {        
+        Object o = gContent.get(line);
+        if ( o instanceof GCode) return (GCode)o;
+        else return (GCode)((GElement)o).getElementAt(1);        
+        }
+        return new GCode(); // for the last line of the editor
     }
 
     @Override
     public GCode getFirstPoint() {
-        for( Object o : gString) {
-            if ( (o instanceof GCode)  && ((GCode)o).isAPoint()) 
-                return (GCode)o;
-            else {
+        for( Object o : gContent) {
+            if (o instanceof GCode) {
+                if (((GCode)o).isAPoint()) return (GCode)o;
+            } else {
                 GCode p = ((GElement)o).getFirstPoint();
                 if ( p != null) 
                     return p;
@@ -287,8 +292,8 @@ public class GMixedPathPath extends GElement {
     }
     
     private Point2D getFirstPointFor(Object o) {
-        for(int i = gString.indexOf(o)-1 ; i > 0; i -- ) {
-            o = gString.get(i);
+        for(int i = gContent.indexOf(o)-1 ; i > 0; i -- ) {
+            o = gContent.get(i);
             if ((o instanceof GCode)) {
                 if (((GCode)o).isAPoint()) return (GCode)o;
             } else return ((GElement)o).getLastPoint();
@@ -316,8 +321,8 @@ public class GMixedPathPath extends GElement {
     @Override
     public GCode getLastPoint() {
         GCode l;
-        for(int i = gString.size(); i > 0; ) {
-            final Object o = gString.get(--i);
+        for(int i = gContent.size(); i > 0; ) {
+            final Object o = gContent.get(--i);
             if (o instanceof GCode) {
                 if (((GCode)o).isAPoint()) return (GCode)o;
             } else
@@ -330,7 +335,7 @@ public class GMixedPathPath extends GElement {
     double getLength() {
         double res = 0;
         GCode lastPoint = null;
-        for(Object o : gString) {
+        for(Object o : gContent) {
             if ( o instanceof GCode) {
                 if (((GCode) o).isAPoint()) {
                     if ( lastPoint != null) res += lastPoint.distance((GCode)o);
@@ -351,7 +356,7 @@ public class GMixedPathPath extends GElement {
     public double getLenOfSegmentTo(GCode point) {
         GCode p2;
         GCode lastPoint = null;
-        for ( Object o : gString) {
+        for ( Object o : gContent) {
             if ( (o instanceof GCode)) {
                     if (o == point) {
                         if ( lastPoint == null) return 0;
@@ -380,7 +385,7 @@ public class GMixedPathPath extends GElement {
         int lastIndice = -1;
         for ( int i : indices) {
             Object o;
-            if ( (o=gString.get(i)) instanceof GCode) {
+            if ( (o=gContent.get(i)) instanceof GCode) {
                 res.add((GCode)o);
                 lastIndice = i;
             }
@@ -420,7 +425,7 @@ public class GMixedPathPath extends GElement {
         GCode lastPoint = null;
         boolean lastIsAPoint = false;
 
-        for ( Object o : gString)
+        for ( Object o : gContent)
             if ( o instanceof GCode) {
                 if ( lastPoint != null) {
                     a.add( new Area(new Ellipse2D.Double(lastPoint.getX()-distance, lastPoint.getY()-distance, 2*distance, 2*distance)));
@@ -447,31 +452,12 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public Iterable<GCode> getPointsIterator() {
-        return () -> new Iterator<GCode>() {
-            int nbl=gString.size(), n=0;
-            private Iterator<GCode> i;
-            
-            @Override
-            public boolean hasNext() {
-                return (n < nbl) || ((i != null) && i.hasNext());
-            }
-            @Override
-            public GCode next() {
-                if ( (i != null) && (i.hasNext())) return i.next();
-                i=null;
-                GCode p = null;
-                while( n < nbl ) {
-                    Object o = gString.get(n++);
-                    if ( o instanceof GCode) {
-                        if( ((GCode)o).isAPoint()) return (GCode)o;
-                    } else {
-                        i = ((GElement)o).getPointsIterator().iterator();
-                        return i.next();
-                    }
-                }
-                return null;
-            }
-        };
+        return new Iterable<GCode>() {
+                        GMixedPath me;
+                        public Iterable<GCode> setMe( GMixedPath m) { return me = m; }            
+                        @Override
+                        public Iterator<GCode> iterator() { return me.iterator(); }            
+                    }.setMe(this);
     }
     
     @Override
@@ -496,23 +482,23 @@ public class GMixedPathPath extends GElement {
     protected void informAboutChange() {
         nbPoints=-1;
         bounds = null;
-        validatePath();
+        revalidate();
         super.informAboutChange();
     }  
     
     /** Verify the coherance of the path. */
-    protected void validatePath() {
+    public void revalidate() {
         GCode lastPoint, firstPoint;
         boolean verified;
         do {
             verified = true;
             lastPoint = null;
             firstPoint = null;
-            for ( Object o : gString) {
+            for ( Object o : gContent) {
                 if ( o instanceof GCode) {
                     if (((GCode)o).isAPoint()) {
                         if ((lastPoint!=null) && ((GCode)o).isAtSamePosition(lastPoint)) {
-                            gString.remove(o);
+                            gContent.remove(o);
                             verified=false;
                             break;
                         }
@@ -521,30 +507,16 @@ public class GMixedPathPath extends GElement {
                         else if ( firstPoint != o) ((GCode)o).setG(1);
                         lastPoint = (GCode)o;
                     }                   
-                } else {
-                    if ( (o instanceof GSpline) && ((GSpline)o).isALine()) {
-                        // transform G5 into G1
-                        gString.set( gString.indexOf(o), new GCode(((GSpline)o).getLastPoint()));
-                        verified=false;
-                        break;
-                    } else if ( (lastPoint == null) || 
-                            ! ((GElement)o).getFirstPoint().isAtSamePosition(lastPoint)) {
-                        if (lastPoint == null)  // insert a G0 line at start of the path
-                            gString.add(0, ((GElement)o).getFirstPoint().clone());
-                        else {
-                            if (((GElement)o).getFirstPoint().distance(lastPoint) < 0.2)
-                                ((GElement)o).getFirstPoint().set(lastPoint);
-                            else {
-                                // add a G1 path to go to the start of 'o'
-                                final GCode pt = ((GElement)o).getFirstPoint();
-                                gString.add(gString.indexOf(o), new GCode(1, pt.getX(), pt.getY()));
-                            }
-                            
-                        }
-                        
+                } else { 
+                    final GCode fp = ((GElement)o).getFirstPoint();
+                    if (lastPoint == null)  // insert a G0 line at start of the path
+                            gContent.add(0, lastPoint = fp.clone());
+                    
+                    if ( ! lastPoint.isAtSamePosition(fp)) {
+                        gContent.add(gContent.indexOf(o), new GCode(1, fp.getX(), fp.getY()));
                         verified = false;
                         break;
-                    } 
+                    }
                     lastPoint = ((GElement)o).getLastPoint();
                 }         
             }
@@ -560,7 +532,7 @@ public class GMixedPathPath extends GElement {
             if (bestSegment instanceof Segment2D) {
                 int i = getIndexOfPoint(((Segment2D)bestSegment).p2);
                 final GSpline newC = new GSpline("", ((Segment2D)bestSegment).p1.clone(), point, ((Segment2D)bestSegment).p2.clone());
-                gString.set( i, newC);
+                gContent.set( i, newC);
                 informAboutChange();
                 return point;
             } else 
@@ -570,8 +542,8 @@ public class GMixedPathPath extends GElement {
                     // Split SPLine
                     final GSpline sp = ((GSpline)bestSegment);
                     final GSpline newC = new GSpline("", new GCode(sp.getFirstPoint()), new GCode(sp.cp1), new GCode(point));
-                    int i = gString.indexOf(bestSegment);
-                    gString.add( i, newC);
+                    int i = gContent.indexOf(bestSegment);
+                    gContent.add( i, newC);
                     if ( sp.cp2 != null) {
                         sp.cp1 = sp.cp2;
                         sp.cp2 = null;
@@ -591,17 +563,17 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public boolean isEmpty() {
-        return gString.isEmpty();
+        return gContent.isEmpty();
     }
 
     @Override
     public Iterator<GCode> iterator() {
         Iterator<GCode> it = new Iterator<GCode>() {
-            private GMixedPathPath path;
+            private GMixedPath path;
             private int currentIndex = 0;
             @Override
             public boolean hasNext() {
-                return currentIndex < gString.size();
+                return currentIndex < gContent.size();
             }
             @Override
             public GCode next() {
@@ -611,7 +583,7 @@ public class GMixedPathPath extends GElement {
             public void remove() {
                 path.remove(currentIndex);
             }
-            public Iterator<GCode> setPath( GMixedPathPath p) {
+            public Iterator<GCode> setPath( GMixedPath p) {
                 path=p;
                 return this;
             }
@@ -628,7 +600,7 @@ public class GMixedPathPath extends GElement {
             GCode gcl = new GCode( line);
             switch ( gcl.getG()) {
                 case 0:
-                    if ( ! gString.isEmpty()) return line;
+                    if ( ! gContent.isEmpty()) return line;
                 case 1: 
                     if ( gcl.isAPoint()) lastPoint = gcl;
                     add( gcl);
@@ -656,9 +628,9 @@ public class GMixedPathPath extends GElement {
      * @param s1
      * @return 
      */
-    public static GMixedPathPath makeFromGElement(GElement s1) {
-        if ( s1 instanceof GMixedPathPath) return (GMixedPathPath)s1.clone();
-        GMixedPathPath res = new GMixedPathPath((s1.getName()));
+    public static GMixedPath makeFromGElement(GElement s1) {
+        if ( s1 instanceof GMixedPath) return (GMixedPath)s1.clone();
+        GMixedPath res = new GMixedPath((s1.getName()));
         res.properties = s1.properties.clone();
         if ( s1 instanceof GSpline) {
             res.add( ((GCode)s1.getElementAt(0)).clone());
@@ -684,38 +656,85 @@ public class GMixedPathPath extends GElement {
     @Override
     public boolean movePoints(ArrayList<GCode> points, double dx, double dy) {
         boolean moved = false;
+        
+        // if not null, contains the element where getLastPoint == lastPoint, else lastPoint is a G1 code
+        GElement last = null; 
+        
         for ( GCode p : points) {
-            boolean moveNext = false; // move start of next object
-            for( Object o : gString) {
+            boolean moveNext = false; // used to move start of next object
+            GCode lastPoint = null; 
+            GCode lastRealPoint = null;
+            
+            for( Object o : gContent) {
                 if (o instanceof GCode) {
                     
+                    if ( moveNext) break; // point already moved and no linked point, goto next
+                        
                     if ( o == p) {
+                        GCode old = p.clone();
                         p.translate(dx, dy);
-                        moveNext = true;
                         moved = true;
+                        
+                        // move linked point ?
+                        if ( (lastPoint != null) && lastPoint.isAtSamePosition(p)) {
+                            if ( last != null) last.movePoint(lastPoint, dx, dy);
+                            else lastPoint.translate(dx, dy);
+                            break;
+                        }      
+                        moveNext = true;
+                        lastPoint = old;
                     } else 
-                        if ( ((GCode) o).isAPoint()) 
+                        if ( ((GCode) o).isAPoint())  {
                             moveNext = false;
+                            last = null;
+                            lastPoint = (GCode)o;
+                        }
                 } else {
                     if ( ! moveNext ) {
                         if (((GElement)o).contains(p)) {
+                            GCode old = ((GElement)o).getLastPoint().clone();
+                            
                             if (((GElement)o).movePoint(p, dx, dy)) {
-                            moved = true;    
-                            if ( ((GElement)o).getLastPoint() == p) 
-                                moveNext=true; // if next is not a point
+                                moved = true; 
+                                
+                                if ( ((GElement)o).getFirstPoint() == p) {                             
+                                    // try to move linked point
+                                    if ( (lastPoint != null) && lastPoint.isAtSamePosition(old)) {
+                                        if ( last == null) lastPoint.translate(dx, dy);
+                                        else last.movePoint( lastPoint, dx, dy);
+                                    }
+                                    break;
+                                    
+                                } else if ( (o instanceof GArc) || ( ((GElement)o).getLastPoint() == p)) {
+                                    moveNext=true; // move linked point
+                                    lastPoint = old;
+                                    if ( o instanceof GArc) lastRealPoint = ((GElement)o).getLastPoint();
+                                    else lastRealPoint = null;
+                                    
+                                }
+                                
+                            } else {
+                                // not the end point of this element, moving next time
+                                old = ((GElement)o).getLastPoint();
+                                if ( old.isAtSamePosition( p)) {
+                                    last = (GElement)o;
+                                    lastPoint = old;
+                                    moveNext = false;
+                                }
                             }
                         }
                     } else {
-                        if ( points.contains(((GElement)o).getFirstPoint())) {
-                            break;
-                        }
+                        // move the point linked to the current already moved point
+                        if ( !((GElement)o).getFirstPoint().isAtSamePosition(lastPoint)) break;
+                        
+                        double tdx = (lastRealPoint==null) ? dx : lastRealPoint.getX() - lastPoint.getX();
+                        double tdy = (lastRealPoint==null) ? dy : lastRealPoint.getY() - lastPoint.getY();
                         if ( o instanceof GSpline) {
-                            ((GSpline)o).translateFirstPoint(dx, dy);
-                           
+                            ((GSpline)o).translateFirstPoint(tdx, tdy);                        
                         } else if ( o instanceof GArc) {
-                            ((GArc)o).translateFirstPoint(dx, dy);
-                        }
-                        moved = true;
+                            ((GArc)o).translateFirstPoint(tdx, tdy);
+                        } else
+                            throw new UnsupportedOperationException("GMixed: can't move first point of class" + o.getClass());
                         break;
                     }
                 }
@@ -751,7 +770,7 @@ public class GMixedPathPath extends GElement {
         }
         
         for( int n = 0; n < size(); n++) {
-            Object o = gString.get(n);
+            Object o = gContent.get(n);
             if (o instanceof GCode) {
                 if ( ((GCode)o).isAPoint()) {
            
@@ -774,6 +793,9 @@ public class GMixedPathPath extends GElement {
                         if ( pc.selectedPoints.contains((GCode)o)) g.setColor(Color.WHITE);
                         else g.setColor(pc.color);
                         g.drawLine(oldx, oldy, oldx=x, oldy=y);
+                        
+                        if ( pc.editedElement == this)
+                            g.drawOval((int)x-3,(int)y-3, 6, 6);  
                     }
                     pc.lastPoint = (GCode)o;
                 }
@@ -793,28 +815,69 @@ public class GMixedPathPath extends GElement {
     @Override
     public Object remove(int i) {
         if ( i == -1) return null;
-        
-        Object res = gString.remove(i);
-        informAboutChange();
-        return res;
+        return remove( null, i);        
     }
 
-    @Override
-    public void removeAll(ArrayList<GCode> lines) {
-        for ( GCode l : lines) {
-            for( int i = 0; i < gString.size(); i++) {
-                Object o;
-                if ( (o=gString.get(i)) == l) {
-                    gString.remove(i);
-                    break;
-                }
-                else if ( ! (o instanceof GCode))
-                    if ( ((GElement)o).getLastPoint() == l) {
-                        gString.remove(i);
-                        break;
+    
+    GCode remove( GCode thisLine, int orThisPosition) {
+        GCode res = null;
+        GCode lastPoint = null;
+        boolean moveNext = false;
+        
+        for( int pos = 0; pos < gContent.size(); pos++) {
+            Object o = gContent.get(pos);
+            if ( moveNext) {
+                if ( lastPoint == null) {
+                    // set new G0
+                    if ( o instanceof GCode) ((GCode)o).setG(0);
+                    else {
+                        // remplace GArc/GSpline by his destination
+                        GCode tmp = ((GElement)o).getLastPoint();
+                        gContent.set(0, new GCode(0, tmp.getX(), tmp.getY()));
+                    }                    
+                } else {
+                    // move start of the move after deleted one
+                    if ( ! (o instanceof GCode)) {
+                        final GCode p = ((GElement)o).getFirstPoint();                    
+                        double dx = lastPoint.getX()- p.getX() ;                    
+                        double dy = lastPoint.getY() - p.getY();               
+                        ((GElement)o).movePoint(p, dx, dy);
                     }
+                }  
+                break;
+            }
+            
+            if (o instanceof GCode) {
+                if ((o == thisLine) || (pos == orThisPosition)) {
+                    if ( gContent.remove(o)) {                        
+                        res = (GCode)o;
+                        moveNext = true;
+                        pos--;
+                        continue;
+                    } 
+                }
+                lastPoint = (GCode)o;
+                
+            } else {
+                if ((pos == orThisPosition) || (((GElement)o).getLastPoint() == thisLine)) {
+                    gContent.remove(pos);
+                    moveNext = true;
+                    pos--;
+                    continue;
+                }
+                lastPoint = ((GElement)o).getLastPoint();
             }
         }
+            
+        if ( res != null) informAboutChange();
+        return res;
+    }
+    
+    
+    @Override
+    public void removeAll(ArrayList<GCode> lines) {
+        for ( GCode l : lines) remove(l, -1);
+        
         informAboutChange();
     }
 
@@ -825,17 +888,17 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public void reverse() {
-        ArrayList<Object> inv = new ArrayList<>(gString.size());
+        ArrayList<Object> inv = new ArrayList<>(gContent.size());
         for( int i = size(); i > 0; ) {
-            inv.add( gString.get(--i));
+            inv.add(gContent.get(--i));
         }
-        gString = inv;
+        gContent = inv;
         informAboutChange();
     }
 
     @Override
     public void rotate(Point2D origin, double angle) {
-        gString.forEach((o) -> {
+        gContent.forEach((o) -> {
             if ( o instanceof GCode) ((GCode)o).rotate(origin, angle);
             else ((GElement)o).rotate(origin, angle);
         });
@@ -852,7 +915,7 @@ public class GMixedPathPath extends GElement {
     public GCode saveToStream(FileWriter fw, GCode lastPoint) throws IOException {
         fw.append(HEADER_STRING + name + ")\n");
         fw.append(properties.toString()+"\n");
-        for ( Object o : gString)  {
+        for ( Object o : gContent)  {
             if ( o instanceof GCode) {
                 fw.append(o.toString()+"\n");
                 if ( ((GCode)o).isAPoint()) lastPoint = (GCode)o;
@@ -868,12 +931,12 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public void scale(Point2D origin, double sx, double sy) {
-        gString.forEach((o) -> {           
+        gContent.forEach((o) -> {           
             if ( o instanceof GCode) {
                 final GCode p = (GCode)o;
                 if ( p.isAPoint()) {
                     double d = origin.distance(p);
-                    double a = getAngle(origin, p);
+                    double a = getAngleInRadian(origin, p);
                     p.setLocation( origin.getX() + Math.cos(a)*d*sx,
                                     origin.getY() + Math.sin(a)*d*sy);
                 }
@@ -887,7 +950,7 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public void setLine(int row, GCode value) {
-        Object o = gString.get(row);
+        Object o = gContent.get(row);
         
         if ((o instanceof GCode) && ! (value.isASpline() | value.isAnArc()) ) {
             if ( value.isAPoint()) value.setG(1);
@@ -896,17 +959,17 @@ public class GMixedPathPath extends GElement {
         else {
             final Point2D p = getFirstPointFor(o);
             if ( o == null) // no first point => convert to a simple final point
-                gString.set( row, new GCode(1, p.getX(), p.getX()));
+                gContent.set( row, new GCode(1, p.getX(), p.getX()));
             else 
             if ( value.isASpline()) {
                 if (o instanceof GSpline) ((GElement)o).setLine(1, value);
                 else {
-                    gString.set(row, new GSpline("", p, value));
+                    gContent.set(row, new GSpline("", p, value));
                 }
             } else if ( value.isAnArc()) {
                 if (o instanceof GArc) ((GElement)o).setLine(1, value);
                 else {                   
-                    gString.set(row, new GArc("", p, value));
+                    gContent.set(row, new GArc("", p, value));
                 }
             }
         }
@@ -915,13 +978,13 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public int size() {
-        return gString.size();
+        return gContent.size();
     }
 
     @Override
     public void toDXF(OutputStreamWriter out) throws IOException {
         GCode lastPoint = null;
-        for( Object o : gString ) {
+        for( Object o : gContent ) {
             if ( o instanceof GCode) {
                 if ( ((GCode)o).isAPoint()) {
                     final GCode p = (GCode)o;
@@ -944,13 +1007,13 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public String toString() {
-        return getName() + "(Mixed)";
+        return getName() + " (mix "+gContent.size()+")";
     }
 
         
     @Override
     public void translate(double dx, double dy) {
-        gString.forEach((o) -> {
+        gContent.forEach((o) -> {
             if ( o instanceof GCode) ((GCode)o).translate(dx, dy);
             else ((GElement)o).translate(dx, dy);
         });
@@ -963,7 +1026,7 @@ public class GMixedPathPath extends GElement {
 
     @Override
     public void transform(AffineTransform t) {
-        gString.forEach((o) -> {
+        gContent.forEach((o) -> {
             if ( o instanceof GCode) ((GCode)o).transform( t);
             else if ( o instanceof GElement) ((GElement)o).transform( t);
             else
@@ -976,4 +1039,37 @@ public class GMixedPathPath extends GElement {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
+    /**
+     * Insert G1 point at center of each selected G1 moves of this path
+     * @param selectedPoints
+     * @return the new point inserted
+     */
+    public ArrayList<GCode> addAtCenter(ArrayList<GCode> selectedPoints) {      
+        ArrayList<GCode> res = new ArrayList<>(selectedPoints.size());
+        GCode lastPoint = null;
+        
+        if ( ! selectedPoints.isEmpty() )
+            for( int i = 0 ; i <  gContent.size(); i++) {
+                Object o = gContent.get(i);
+
+                if ( o instanceof GCode) {
+                    final GCode p = (GCode) o;
+
+                    if ( p.isAPoint()) {
+                        if ((lastPoint != null) && (p.getG() == 1)) {
+                            final Segment2D s = new Segment2D(lastPoint, p);
+                            lastPoint = (GCode)s.getPointAt(s.getLength()/2);
+                            add(i, lastPoint);
+                            res.add(lastPoint);
+                            i++;
+                        }
+                        lastPoint = (GCode)o;
+                    }
+                }                        
+            } 
+        
+        return res;
+    }
+
+    
 }

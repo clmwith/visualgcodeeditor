@@ -178,7 +178,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
      * @param p2
      * @return angle in degree
      */
-    public double getAngle(Point2D center, Point2D p1, Point2D p2) {
+    public double getAngleInDegre(Point2D center, Point2D p1, Point2D p2) {
         double a1, b1, a2, b2, a, b, t, cosinus;
         a1 = p1.getX() - center.getX();
         a2 = p1.getY() - center.getY();
@@ -205,7 +205,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
      * @param origin
      * @return angle in radian
      */
-    public static double getAngle(Point2D origin, Point2D target) {
+    public static double getAngleInRadian(Point2D origin, Point2D target) {
         double angle = Math.atan2(target.getY() - origin.getY(), target.getX() - origin.getX());
         return angle;
     }
@@ -523,8 +523,8 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
         if (line.startsWith(G1Path.HEADER_STRING)) {
             return G1Path.class;
         }
-        if (line.startsWith(GMixedPathPath.HEADER_STRING)) {
-            return GMixedPathPath.class;
+        if (line.startsWith(GMixedPath.HEADER_STRING)) {
+            return GMixedPath.class;
         }
         if (line.startsWith(GArc.HEADER_STRING)) {
             return GArc.class;

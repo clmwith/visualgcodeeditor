@@ -16,12 +16,13 @@
  */
 package gcodeeditor;
 
+import static gcodeeditor.GCode.getAngle;
 import gelements.UndoManager;
 import gcodeeditor.gui.JFilterFrame;
 import gelements.EngravingProperties;
 import gelements.GArc;
 import gelements.G1Path;
-import gelements.GMixedPathPath;
+import gelements.GMixedPath;
 import gelements.GDrillPoint;
 import gelements.GElement;
 import gelements.GGroup;
@@ -29,6 +30,7 @@ import gelements.GPocket3D;
 import gelements.GSpline;
 import gelements.GTextOnPath;
 import gelements.PaintContext;
+import gelements.Segment2D;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -102,8 +104,6 @@ import org.kabeja.parser.ParserBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Text;
 import org.w3c.dom.traversal.DocumentTraversal;
 import org.w3c.dom.traversal.NodeFilter;
 import org.w3c.dom.traversal.TreeWalker;
@@ -179,6 +179,8 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     public static final int MOUSE_MODE_FOCUS = 18;
     public static final int MOUSE_MODE_ADD_CURVE = 19;
     public static final int MOUSE_MODE_NONE_AT_RELEASE = 20;
+    public static final int MOUSE_MODE_ADD_CIRCLE = 21;
+    public static final int MOUSE_MODE_ADD_G23_ARC = 23;
     
     private int mouseMode = MOUSE_MODE_NONE;
     private int modeBeforDragViewMode = MOUSE_MODE_NONE;
@@ -232,6 +234,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     private final ListDataListener editedElementListener;
 
     private void focusToRect(Rectangle2D r) {
+        r.setRect( r.getX()-10, r.getY()-10, r.getWidth()+10, r.getHeight()+10);
         double zx = ((double)(getWidth()-MARGING*4))/r.getWidth();
         double zy = ((double)(getHeight()-MARGING*4))/r.getHeight();
         zoomFactor = Math.min(zx, zy);
@@ -314,7 +317,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         addMouseMotionListener(this);
         addMouseWheelListener(this);
         addKeyListener(this);
-        String vs[] = conf.visualSettings.split(",");
+        String vs[] = conf.editorSettings.split(",");
         if ( vs.length == 8) {
             snapToGrid = vs[0].equals("true");
             snapToPoints = vs[1].equals("true");
@@ -706,6 +709,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     }
                 }
                 break;
+            case MOUSE_MODE_ADD_G23_ARC:
             case MOUSE_MODE_ADD_LINES:
                 if ( editedElement!=null) {
                     // paint new segment in MOUSE_MODE_ADD_POINT
@@ -745,9 +749,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 if ( transformationOrigin != null) {
                     java.awt.Point screenTransformationOrigin = coordToScreenPoint(transformationOrigin);
                     g.setColor(Color.red);
-                    g.drawLine((int)screenTransformationOrigin.getX()-10, (int)screenTransformationOrigin.getY(), (int)screenTransformationOrigin.getX()+10, (int)screenTransformationOrigin.getY());
-                    g.drawLine((int)screenTransformationOrigin.getX(), (int)screenTransformationOrigin.getY()-10, (int)screenTransformationOrigin.getX(), (int)screenTransformationOrigin.getY()+10);    
-
+                    drawCross(g, screenTransformationOrigin, 10);
                     g.setColor(Color.yellow);
                     if( ! Double.isNaN(finalRotationAngle) && shiftDown) {
                         double l = screenTransformationOrigin.distance(screenMousePosition);
@@ -761,6 +763,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             case MOUSE_MODE_SCALE:
                 if ( transformationOrigin != null) {
                     java.awt.Point screenTransformationOrigin = coordToScreenPoint(transformationOrigin);
+                    g.setColor(Color.red);
+                    drawCross(g, screenTransformationOrigin, 10);
+                    g.setColor(Color.yellow);              
                     if (scaleNormaleX != Double.MAX_VALUE )  {
                         g.setColor(Color.red);
                         int radiusX = (int)Math.abs(scaleNormaleX*zoomFactor);
@@ -769,7 +774,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                             if ( radiusY > radiusX) radiusX = radiusY;
                             else radiusY = radiusX;
                         }
-
                         g.drawOval((int)(screenTransformationOrigin.getX()-radiusX), 
                                     (int)(screenTransformationOrigin.getY()-radiusY), 
                                     (int)(radiusX*2), (int)(radiusY*2));
@@ -1256,7 +1260,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
 
     public GGroup readSVGPath( String name, String pathString) {
         GGroup res = new GGroup(name);
-        GMixedPathPath path = new GMixedPathPath( name);
+        GMixedPath path = new GMixedPath( name);
         
         currentPosition = new GCode(0,0,0);
         
@@ -1305,7 +1309,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     case 'M':   
                         if ( firstPoint != null) {
                             res.add( path);
-                            path = new GMixedPathPath( name + "." + idSubPath++);
+                            path = new GMixedPath( name + "." + idSubPath++);
                         }                      
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         path.add( firstPoint = currentPosition.clone()); 
@@ -1542,7 +1546,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             return;
         }
         
-        if ( (e.getButton() == 1) && (mouseMode!=MOUSE_MODE_SET_2D_CURSOR)) {
+        if ( e.getButton() == 1) {
+            if (mouseMode==MOUSE_MODE_SET_2D_CURSOR) {
+            }
             if ( (e.getClickCount() == 1) ) { // point/block selection
                 
                 if (editedElement != null) { // point selection
@@ -1607,6 +1613,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     case MOUSE_MODE_ADD_CIRCLES:
                     case MOUSE_MODE_ADD_CURVE:
                     case MOUSE_MODE_ADD_LINES:
+                    case MOUSE_MODE_ADD_G23_ARC:    
                     case MOUSE_MODE_QUICK_MOVE:
                         clearMouseMode();
                         break;
@@ -1656,17 +1663,14 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         screenMousePressPosition = e.getPoint();
                         break;
                         
+                    case MOUSE_MODE_ADD_G23_ARC:
                     case MOUSE_MODE_ADD_LINES:  
                         snapWithoutSelection=false;
-                        if ( editedElement == null) { // Create a new G1Path with lines
-                            GCode pt = getCoordSnapPointFor(e.getX(), e.getY());                 
-                            coordMouseOrigin = pt;
-                            G1Path path = new G1Path("lines"+GElement.getUniqID());
-                            path.add(new GCode(pt.getX(), pt.getY()));
-                            add(path);
-                            setEditedElement(path);
-                            mouseMode = MOUSE_MODE_ADD_LINES;
-                        }
+                        if ( coordMouseOrigin == null)
+                            coordMouseOrigin = getCoordSnapPointFor(e.getX(), e.getY()); 
+                        
+                        if ( editedElement.getFirstPoint() == null)
+                            editedElement.add( (GCode)coordMouseOrigin.clone());
                         break;
                         
                     case MOUSE_MODE_ADD_CURVE:
@@ -1688,7 +1692,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     case MOUSE_MODE_SHOW_ANGLE:
                         snapWithoutSelection=false;
                         screenMousePressPosition = coordToScreenPoint(coordMouseOrigin = getCoordSnapPointFor(e.getX(), e.getY()));
-                        lastRotationAngle = (360 + Math.toDegrees(-G1Path.getAngle(coord2DCursor, coordMouseOrigin)))%360;
+                        lastRotationAngle = (360 + Math.toDegrees(-G1Path.getAngleInRadian(coord2DCursor, coordMouseOrigin)))%360;
                         invalidateWithoutUpdateListViewer();
                         inform("move mouse to show angle");
                         break;
@@ -1723,16 +1727,8 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         inform("");
                         break;
                         
-                    case MOUSE_MODE_SET_2D_CURSOR:
-                        snapWithoutSelection=false;
-                        coord2DCursor = getCoordSnapPointFor(e.getX(), e.getY());
-                        invalidateWithoutUpdateListViewer();
-                        inform(String.format("Cursor at %.5f x %.5f",coord2DCursor.getX(),coord2DCursor.getY()));
-                        clearMouseMode();
-                        break;
-                        
                     case MOUSE_MODE_ROTATION:
-                        lastRotationAngle = G1Path.getAngle(transformationOrigin, getCoordSnapPointFor(e.getX(), e.getY()));
+                        lastRotationAngle = G1Path.getAngleInRadian(transformationOrigin, getCoordSnapPointFor(e.getX(), e.getY()));
                         if ( shiftDown)
                             lastRotationAngle = Math.toRadians(((int)(Math.toDegrees(lastRotationAngle)/10))*10);
                         finalRotationAngle=0;
@@ -1744,11 +1740,12 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         scaleNormaleY = transformationOrigin.getY()-mp.getY();
                         if ( scaleNormaleX == 0) scaleNormaleX = scaleNormaleY;
                         if ( scaleNormaleY == 0) scaleNormaleY = scaleNormaleX;
-                        inform("drag mouse to resize the shape(s)");
+                        inform("drag mouse to resize the selection");
                         lastScaleRatioX = lastScaleRatioY = 1;
                         break;
                         
                     case MOUSE_MODE_MOVE_GANTRY:
+                    case MOUSE_MODE_SET_2D_CURSOR:
                         break;
                         
                     default:
@@ -1835,6 +1832,16 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         if ( e.getClickCount() > 1) return;
        
         switch (mouseMode) {
+            
+            case MOUSE_MODE_SET_2D_CURSOR:
+                snapWithoutSelection=false;
+                coord2DCursor = getCoordSnapPointFor(e.getX(), e.getY());
+                invalidateWithoutUpdateListViewer();
+                inform(String.format("Cursor at %.5f x %.5f",coord2DCursor.getX(),coord2DCursor.getY()));
+                mouseMode = MOUSE_MODE_NONE;
+                ignoreClick=true;
+                break;
+                        
             case MOUSE_MODE_ADD_OVAL:
                 GCode dest = getCoordSnapPointFor(e.getX(), e.getY());
                 double rx, ry;
@@ -1893,8 +1900,8 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 if( dest.isAtSamePosition(coordMouseOrigin)) break;
                 
                 curve = new GSpline("curve", new GCode(coordMouseOrigin), null, dest);
-                if ( editedElement instanceof GMixedPathPath) {
-                    ((GMixedPathPath)editedElement).add(curve);
+                if ( editedElement instanceof GMixedPath) {
+                    ((GMixedPath)editedElement).add(curve);
                     coordMouseOrigin = dest;
                     saveState(true);
                 } else {
@@ -1936,20 +1943,38 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 invalidateWithoutUpdateListViewer();
                 break;           
                 
+            case MOUSE_MODE_ADD_G23_ARC:
+                if ( e.getButton() == 1) {    
+                    GCode pt = getCoordSnapPointFor(e.getX(), e.getY());   
+                    assert( editedElement instanceof GMixedPath);
+                    
+                    GCode lp = editedElement.getLastPoint();
+                    if ( ! lp.isAtSamePosition(pt)) {                                            
+                        double radius = pt.distance(coordMouseOrigin) / 2;
+                        GCode center = GCode.getMiddlePoint(coordMouseOrigin, pt);
+                        GArc arc = new GArc("", center, radius, 
+                                    GCode.getAngleInDegre(center, coordMouseOrigin), 180);
+//                        GCode p1 = arc.getFirstPoint();
+//                        double dx1 = center.getX() - p1.getX();
+//                        double dy1 = center.getY() - p1.getY();
+//                        arc.translate(coordMouseOrigin.getX()+ dx1, coordMouseOrigin.getY()+dy1);
+                        if (((GMixedPath)editedElement).add(arc)) {
+                            saveState(false);
+                            coordMouseOrigin = pt;
+                        }
+                    }                  
+                }
+                break;
+                
             case MOUSE_MODE_ADD_LINES:
                 if ( e.getButton() == 1) {                   
                     GCode pt = getCoordSnapPointFor(e.getX(), e.getY());                
-                    if ( editedElement == null) {
-                        mouseMode = MOUSE_MODE_NONE; 
-                        throw new UnsupportedOperationException("mouseMode is MOUSE_MODE_ADD_LINES but no editedElement");
-                    } else {
-                        // add new point if in new position
-                        GCode lp = editedElement.getLastPoint();
-                        if ( ! lp.isAtSamePosition(pt)) {
-                            editedElement.add(new GCode(pt.getX(), pt.getY()));
-                            saveState(false);
-                        }
-                    }
+                    // add new point if in new position
+                    GCode lp = editedElement.getLastPoint();
+                    if ( ! lp.isAtSamePosition(pt)) {
+                        editedElement.add(new GCode(pt.getX(), pt.getY()));
+                        saveState(false);
+                    }  
                 }
                 break;  
                 
@@ -1970,7 +1995,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 else return;
                 break;   
                 
-            case MOUSE_MODE_SET_2D_CURSOR:
             case MOUSE_MODE_DRAG_VIEW:
                 //clearMouseMode();
                 mouseMode = modeBeforDragViewMode;
@@ -2005,8 +2029,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 break;
                 
             default:
-                if ( mouseRectangleP2 != null) // modify selected blocks by rectangle
+                if ( mouseRectangleP2 != null) 
                 {
+                    // end of rectangular selection
                     if ( (e.getModifiersEx()&(MouseEvent.CTRL_DOWN_MASK|MouseEvent.SHIFT_DOWN_MASK))==0)
                         selectedElements.clear();
 
@@ -2134,17 +2159,32 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 invalidateWithoutUpdateListViewer();  
                 break;
             case MOUSE_MODE_ROTATION:
-                double a = G1Path.getAngle(transformationOrigin, coordSnapPosition);
+                double a = G1Path.getAngleInRadian(transformationOrigin, coordSnapPosition);
                 if ( ( (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) != 0) )
                     a = Math.toRadians((Math.round(Math.toDegrees(a))));
-                for ( GElement s : selectedElements) {
-                    s.rotate(transformationOrigin, a - lastRotationAngle);
-                }   
-                finalRotationAngle += a- lastRotationAngle;
+                
+                if ( editedElement == null) {
+                    for ( GElement s : selectedElements) {
+                        s.rotate(transformationOrigin, a - lastRotationAngle);
+                    } 
+                
+                } else {                   
+                    for ( GCode p : selectedPoints) {
+                        final double d = GCode.distance(p.getX(), p.getY(), transformationOrigin.getX(), transformationOrigin.getY());
+                        final double an = GCode.getAngle(transformationOrigin, p)- lastRotationAngle;
+                        final double x = Math.cos(a+an)*d+transformationOrigin.getX()-p.getX();
+                        final double y = Math.sin(a+an)*d+transformationOrigin.getY()-p.getY();
+                        if ( (x != 0) && (y != 0))
+                            editedElement.movePoint(p, x, y);
+                    }
+                }
+                
+                finalRotationAngle += a - lastRotationAngle;
                 lastRotationAngle = a;
                 invalidate();
                 inform("Angle = "+ Math.rint(Math.toDegrees(finalRotationAngle)*100)/100.);
                 break;
+                
             case MOUSE_MODE_SCALE:
                 double rx = transformationOrigin.getX() - coordSnapPosition.getX();
                 double ry = transformationOrigin.getY() - coordSnapPosition.getY();
@@ -2153,15 +2193,29 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 if ( selectionContainsArc || ((e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) != 0) || (ratioX<0.0001) || (ratioY<0.0001)) {
                     if ( ratioX > ratioY) ratioY = ratioX;
                     else ratioX = ratioY;
-                }   if ( Math.abs(ratioX) < 0.0001) ratioX = 0.0001;
+                }   
+                if ( Math.abs(ratioX) < 0.0001) ratioX = 0.0001;
                 if ( Math.abs(ratioY) < 0.0001) ratioY = 0.0001;
                 if ((ratioX==lastScaleRatioX) && (ratioY==lastScaleRatioY)) return;
-                for ( GElement s : selectedElements) {
-                    s.scale(transformationOrigin, ratioX/lastScaleRatioX, ratioY/lastScaleRatioY);
-                }   lastScaleRatioX = ratioX;
+                
+                if ( editedElement == null) {                  
+                    for ( GElement s : selectedElements) {
+                        s.scale(transformationOrigin, ratioX/lastScaleRatioX, ratioY/lastScaleRatioY);
+                    }                        
+                } else {
+                    // scale points
+                    for ( GCode p : selectedPoints) {
+                        double d = transformationOrigin.distance(p);
+                        double an = GElement.getAngleInRadian(transformationOrigin, p);
+                        editedElement.movePoint(p, 
+                                transformationOrigin.getX() + Math.cos(an)*d*ratioX/lastScaleRatioX - p.getX(),
+                                transformationOrigin.getY() + Math.sin(an)*d*ratioY/lastScaleRatioY - p.getY());
+                    }
+                }                
+                lastScaleRatioX = ratioX;
                 lastScaleRatioY = ratioY;        
                 invalidateWithoutUpdateListViewer();
-                inform("ratio ( "+ratioX+" , "+ratioY+" )");
+                inform("ratio ( "+String.format("%.5f",ratioX)+" , "+String.format("%.5f",ratioY)+" )");
                 break;
             case MOUSE_MODE_QUICK_MOVE:
                 if ( selectedPoints.isEmpty())
@@ -2170,12 +2224,10 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     inform("Point n° "+ editedElement.getIndexOfPoint(highlitedPoint) + 
                             (Double.isNaN(len)?"":" len="+String.format("%.5f",len)));
             case MOUSE_MODE_MOVE_SEL:
-                if ( coordSnapPosition.distance(coordMouseOrigin) > 1e-10) {
+                if ( coordSnapPosition.distance(coordMouseOrigin) > 10e-8) {
                     moveCopySelection(coordSnapPosition.getX() - coordMouseOrigin.getX(),
                             coordSnapPosition.getY() - coordMouseOrigin.getY(), 0, false, false, false);
-                    
-                    //if ( selectedPoints.size()==1) coordMouseOrigin = selectedPoints.get(0);
-                    //else 
+                                                           
                     coordMouseOrigin = coordSnapPosition;
                 }
                 break;
@@ -2209,7 +2261,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 break;
             case MOUSE_MODE_ROTATION:
                 if ( transformationOrigin != null) {
-                    lastRotationAngle = G1Path.getAngle(transformationOrigin, coordSnapPosition);
+                    lastRotationAngle = G1Path.getAngleInRadian(transformationOrigin, coordSnapPosition);
                     if ( shiftDown)
                         lastRotationAngle = Math.toRadians((Math.round(Math.toDegrees(lastRotationAngle)/5))*5);
                     inform("Angle = " + Math.rint(Math.toDegrees(lastRotationAngle)*100)/100);
@@ -2451,9 +2503,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     public static final int ACTION_JOIN         = 5;
     public static final int ACTION_SIMPLIFY     = 6;
     public static final int ACTION_SCALE        = 7;
-    public static final int ACTION_SCALE_POINT  = 700;
     public static final int ACTION_ROTATE       = 8;
-    public static final int ACTION_ROTATE_POINT = 9;
     public static final int ACTION_MOVE         = 10;
     public static final int ACTION_FLIP_H       = 11;
     public static final int ACTION_FLIP_V       = 12;
@@ -2475,7 +2525,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     public static final int ACTION_SHOW_WORKSPACE        = 28;
     public static final int ACTION_CURSOR_AT_CENTER   = 29;
     public static final int ACTION_MOVE_GRBL_HEAD   = 32;
-    public static final int ACTION_ADD_POINT_FROM_HEAD_POSITION = 33;
     public static final int ACTION_CURSOR_AT_HEAD = 34;
     public static final int ACTION_SORT_STARTS = 36;
     public static final int ACTION_REVERSE_SELECTION = 37;
@@ -2501,8 +2550,11 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     public static final int ACTION_MAP_TEXT_TO_PATH = 57;
     public static final int ACTION_ADD_CURVE = 58;
     public static final int ACTION_ADD_MIXED_PATH = 59; 
-    public static final int ACTION_MOVE_CENTER = 60;
     public static final int ACTION_INVERT_SELECTION = 61;
+    public static final int ACTION_ADD_POINTS_AT_CENTER = 62;
+    public static final int ACTION_ADD_G2G3_CIRCLE = 63;
+    public static final int ACTION_CONVERT_TO_MIXEDPATH = 64;
+    
     
     public static final int ACTION_TEST = 154;
     
@@ -2539,24 +2591,23 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             case ACTION_ADD_MIXED_PATH:
                 clearMouseMode();
                 GElement elem;
-                add(elem = new GMixedPathPath("mix"));
-                setEditedElement(elem);
-                
+                add(elem = new GMixedPath("mix"));
+                setEditedElement(elem);               
             case ACTION_ADD_CURVE:
                 if ((editedElement != null) && 
-                    (editedElement instanceof GMixedPathPath) && 
+                    (editedElement instanceof GMixedPath) && 
                     (editedElement.getLastPoint() != null)) {
                         screenMousePressPosition = coordToScreenPoint(coordMouseOrigin=editedElement.getLastPoint());
                         inform("click at next point");
                 } else {
                     screenMousePressPosition=null;
                     selectedElements.clear();
-                    inform("Press on first point");
+                    inform("Press on start point");
                 }
                 mouseMode=MOUSE_MODE_ADD_CURVE; 
-                setCursor(crossCursor);
+                setCursor(crossCursor); 
+                break;           
                 
-                break;    
             case ACTION_ADD_HULL:
                 if ( selectedElements.size() < 2) {
                     inform("Select at least 2 paths");
@@ -2619,8 +2670,29 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 } else
                     return false;
                 
+            case ACTION_ADD_G2G3_CIRCLE:
+                if ( (editedElement == null) || ! (editedElement instanceof GMixedPath)) {
+                    editedGroup.add( elem = new GMixedPath("mix"+GElement.getUniqID()));
+                    setEditedElement(elem);
+                }     
+                if (editedElement.getLastPoint() != null) {
+                    screenMousePressPosition = coordToScreenPoint(coordMouseOrigin=editedElement.getLastPoint());
+                    inform("click at end point");
+                } else {
+                    screenMousePressPosition=null;
+                    selectedElements.clear();
+                    inform("Press on first point");
+                }
+                mouseMode=MOUSE_MODE_ADD_G23_ARC; 
+                setCursor(crossCursor); 
+                break;    
+                
             case ACTION_ADD_LINES:
-                inform("Click at each point");
+                if ( (editedElement==null) || !((editedElement instanceof G1Path) || (editedElement instanceof GMixedPath))) {                 
+                    editedGroup.add( elem = new G1Path("lines"+GElement.getUniqID()));
+                    setEditedElement(elem);
+                }
+                inform("Click on start point");
                 setCursor(crossCursor);
                 mouseMode=MOUSE_MODE_ADD_LINES;
                 break;
@@ -2636,22 +2708,25 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 setCursor(crossCursor);
                 screenMousePressPosition=null;
                 break;
-                
-            case ACTION_ADD_POINT_FROM_HEAD_POSITION:
-                    pt = (Point3D)object;
-                    if ( editedElement != null) {
-                        editedElement.add(new GCode(pt.getX(), pt.getY()));                       
-                        saveState(true);
-                        clearSelectedPoints();
+                    
+            case ACTION_ADD_POINTS_AT_CENTER:
+                if ( ! selectedPoints.isEmpty() && (editedElement != null)) {
+                    if ( editedElement instanceof G1Path) {
+                       selectedPoints = ((G1Path)editedElement).addAtCenter( selectedPoints);
+                       if ( ! selectedPoints.isEmpty()) saveState(true);
                     }
-                    break;        
+                    else if ( editedElement instanceof GMixedPath) 
+                        ((GMixedPath)editedElement).addAtCenter( selectedPoints);
+                }
+                break;
+                
             case ACTION_ADD_RECTANGLES:
-                    setEditedElement(null);
-                    inform("Press on first point");
-                    mouseMode=MOUSE_MODE_ADD_RECTANGLES;
-                    setCursor(crossCursor);
-                    repaint();
-                    break;
+                setEditedElement(null);
+                inform("Press on first point");
+                mouseMode=MOUSE_MODE_ADD_RECTANGLES;
+                setCursor(crossCursor);
+                repaint();
+                break;
                     
             case ACTION_ALIGN:
                 Rectangle2D r = null;
@@ -2667,26 +2742,26 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     for ( GCode p : selectedPoints) {
                         switch ( (int)param) {
                         case ALIGN_LEFT: 
-                            p.setX(r.getMinX());
+                            editedElement.movePoint(p, r.getMinX() - p.getX(), 0);
                             break;
-                        case ALIGN_RIGHT: 
-                            p.setX(r.getMaxX());
+                        case ALIGN_RIGHT:
+                            editedElement.movePoint(p, r.getMaxX() - p.getX(), 0);
                             break;
-                        case ALIGN_TOP: 
-                            p.setY(r.getMinY());
+                        case ALIGN_TOP:
+                            editedElement.movePoint(p, 0, r.getMinY() - p.getY());
                             break;
                         case ALIGN_BOTTOM: 
-                            p.setY(r.getMaxY());
+                            editedElement.movePoint(p, 0, r.getMaxY() - p.getY());
                             break;
                         case ALIGN_HORIZONTALY:   
-                            p.setY(r.getCenterY());
+                            editedElement.movePoint(p, 0, r.getCenterY()- p.getY());
                             break;
                         case ALIGN_VERTICALY:
-                            p.setX(r.getCenterX());
+                            editedElement.movePoint(p, r.getCenterX()- p.getX(), 0);
                             break;
-                        }  
-                        
+                        }                        
                     }
+                    
                     saveState(false);
                     break;
                 }
@@ -2813,8 +2888,8 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         } else
                             stateHasChanged = true;
                     }
-                    else if (editedElement instanceof GMixedPathPath) {
-                        if ( ! ((GMixedPathPath)editedElement).changeFirstPoint(p) ) {
+                    else if (editedElement instanceof GMixedPath) {
+                        if ( ! ((GMixedPath)editedElement).changeFirstPoint(p) ) {
                             inform("Path not closed and not the end point");
                         } else
                             stateHasChanged = true;
@@ -2828,7 +2903,23 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 } else
                     inform("Select one point first");
                 
-                break;                                
+                break;   
+                
+                
+            case ACTION_CONVERT_TO_MIXEDPATH:
+                if ( selectedElements.isEmpty()) break;
+                
+                GElement e = selectedElements.get(0);
+                if ( e instanceof G1Path) {
+                    if ( param == 0) removeElement(e);
+                    GMixedPath m = new GMixedPath( ((param == 0) ? "" : "conv-" ) + e.getName());
+                    for( GCode l : (G1Path)e) {
+                        m.add((param == 0) ? l : l.clone());
+                    }
+                    add( m );
+                } else inform("not a flat(G1) path");     
+                break;
+                
             case ACTION_COPY:
                 if ( editedElement != null) {
                     clipBoard = G1Path.cloneArrayOfGLines( editedElement.getLines(editListViewer.getSelectedIndices()));
@@ -2839,6 +2930,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 }
                 else inform("Nothing to copy");
                 break;
+                
             case ACTION_CUT:
                 clipBoard = extractSelection(true);
                 
@@ -2866,19 +2958,21 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 break;
                 
             case ACTION_DELETE:
-             if ( editedElement != null) {
+                if ( editedElement != null) {
                     ArrayList<GCode> lines = new ArrayList<>();
                     for ( int i : editListViewer.getSelectedIndices())
                         if ( i < editedElement.size())
                             lines.add(editedElement.getLine(i));
 
-                    // TODO: remove selected points from GSPLine in MixedPath
-                    editedElement.removeAll(lines);                    
+                    editedElement.removeAll(lines);
+                    if ( editedElement.isEmpty()) editParentOrClearSelection();                   
+                    
                     clearSelectedPoints(); 
-                } else
+                } else {
                     removeAllElements(selectedElements);
-
-                saveState(true);
+                    if ( editedGroup.isEmpty()) editParentOrClearSelection();                         
+                }
+                saveState(true);                
                 break;  
                 
                 
@@ -2901,9 +2995,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     selectedElements.forEach((s) -> { 
                         Point2D c = s.getCenter();
                         if ( c != null) {
-                            GElement e = ((GElement) object).clone();
-                            e.translate(c);
-                            add(e);
+                            GElement el = ((GElement) object).clone();
+                            el.translate(c);
+                            add(el);
                         }
                     });
                     saveState(true);
@@ -2958,7 +3052,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             case ACTION_GROUP_UNGROUP:
                 GGroup g = null;
                 if ( param == 0)
-                    selectedElements.forEach((e) -> { editedGroup.ungroup(e); });
+                    selectedElements.forEach((el) -> { editedGroup.ungroup(el); });
                 else {
                     g = editedGroup.group((String)object, selectedElements);
                     inform(selectedElements.size()+" grouped");
@@ -2986,7 +3080,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 if ( (editedElement != null)) {
                     int sel = getSelectedLine();
                     clearSelectedPoints();
-                    if ( (editedElement instanceof G1Path) || (editedElement instanceof GMixedPathPath)) {
+                    if ( (editedElement instanceof G1Path) || (editedElement instanceof GMixedPath)) {
                         editedElement.add(sel, new GCode("", null));
                         saveState(true);
                     }
@@ -3021,11 +3115,11 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                     break;
                                 }
                             }
-                            if ( ! ((s1 instanceof G1Path)||(s1 instanceof GSpline)||(s1 instanceof GMixedPathPath)) || (s1 instanceof GPocket3D)) continue;
+                            if ( ! ((s1 instanceof G1Path)||(s1 instanceof GSpline)||(s1 instanceof GMixedPath)) || (s1 instanceof GPocket3D)) continue;
                             if (s1.getFirstPoint() == null) continue;
                             
                             for( GElement s2 : selectedElements) {
-                                if ( ! ((s2 instanceof G1Path)||(s1 instanceof GSpline)||(s1 instanceof GMixedPathPath)) || (s1 instanceof GPocket3D)) continue;
+                                if ( ! ((s2 instanceof G1Path)||(s1 instanceof GSpline)||(s1 instanceof GMixedPath)) || (s1 instanceof GPocket3D)) continue;
                                 if (s2.getFirstPoint() == null) continue;
                                 
                                 if ( s1 != s2) {
@@ -3033,9 +3127,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                          (s1.getLastPoint().distance(s2.getLastPoint()) < param)) {       
                                         
                                         if (  (s1 instanceof GSpline) ||
-                                             ((s2 instanceof GSpline) && ! (s2 instanceof GMixedPathPath)) || 
+                                             ((s2 instanceof GSpline) && ! (s2 instanceof GMixedPath)) || 
                                              ((s1 instanceof G1Path)  && ! (s2 instanceof G1Path))) {
-                                            GMixedPathPath mp = GMixedPathPath.makeFromGElement(s1);                                          
+                                            GMixedPath mp = GMixedPath.makeFromGElement(s1);                                          
                                             GGroup p = document.getParent(s1);
                                             int i = p.indexOf(s1);
                                             p.remove(s1);                                            
@@ -3071,7 +3165,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 final ArrayList<GElement> selection = (ArrayList<GElement>) selectedElements.clone();
                 selectedElements.clear();
                 
-                selection.forEach((e) -> { addWithoutSaveState(e.flatten()); });
+                selection.forEach((el) -> { addWithoutSaveState(el.flatten()); });
                 saveState(true);
                 inform(selectedElements.size() + " path(s) created");
                 break;
@@ -3126,7 +3220,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 
             case ACTION_MAP_TEXT_TO_PATH:
                 if ( selectedElements.isEmpty()) return false;
-                GElement e = selectedElements.remove(0);
+                e = selectedElements.remove(0);
                 
                 if ( e instanceof GGroup ) {
                     inform("select a path first");
@@ -3149,13 +3243,6 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 setCursor(crossCursor);
                 break;
                 
-            case ACTION_MOVE_CENTER:
-                if ( selectedElements.isEmpty()) return false;
-                Point2D c = getCenterOfSelection();
-                moveCopySelection(coord2DCursor.getX()-c.getX(),
-                                  coord2DCursor.getY()-c.getY(),
-                                  0, false, false, true);
-                break;
             case ACTION_MOVE_UP:
                 if ( editListViewer.getSelectedIndex() <= 0) break;
                 if ( ! selectedPoints.isEmpty()) {
@@ -3209,12 +3296,12 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                                 
                             if ((editedElement != null) && 
                                     ((editedElement instanceof G1Path) ||
-                                    ( editedElement instanceof GMixedPathPath))) {
+                                    ( editedElement instanceof GMixedPath))) {
                                 if (editedElement instanceof G1Path)
                                     ((G1Path)editedElement).addAll(copy);
                                 else
-                                    if ( editedElement instanceof GMixedPathPath)
-                                        ((GMixedPathPath)editedElement).addAll(copy);
+                                    if ( editedElement instanceof GMixedPath)
+                                        ((GMixedPath)editedElement).addAll(copy);
                                     
                                 clearMouseMode();
                                 selectedPoints.clear();
@@ -3253,49 +3340,37 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 
                 break;
                 
-            case ACTION_ROTATE_POINT: // rotate around 2DCursor
-                if ( selectedElements.isEmpty()) break;
+            case ACTION_ROTATE:
+                if ( selectedElements.isEmpty() && selectedPoints.isEmpty()) break;
+                setCursor(crossCursor);
                 inform("Choose angle origin");
                 mouseMode=MOUSE_MODE_ROTATION;
-                transformationOrigin=coord2DCursor;
-                //mouseInputPoint=true;
-                repaint();
-                break;
-                
-            case ACTION_ROTATE:
-                if ( selectedElements.isEmpty()) break;
-                if ( param != 0) { // rotate angle=param, arount cursor2D 
-                    for ( GElement bl : selectedElements) bl.rotate( coord2DCursor, param);
-                    
-                } else { // rotate from center of shapes
-                    setCursor(crossCursor);
-                    inform("Choose angle origin");
-                    mouseMode=MOUSE_MODE_ROTATION;
-                    transformationOrigin=getCenterOfSelection(); 
-                    //mouseInputPoint=true;
-                }
+                transformationOrigin= (param==0)?getCenterOfSelection():coord2DCursor; 
+                           
                 repaint();
                 break;
                 
             case ACTION_SCALE:
-            case ACTION_SCALE_POINT:
-                if ( selectedElements.isEmpty()) break;
+                if ( selectedElements.isEmpty() && selectedPoints.isEmpty()) break;
                 selectionContainsArc = selectedElements.stream().anyMatch((e3)-> (e3.isoScaling()));
                 inform("Choose scale length references.");
-                mouseMode=MOUSE_MODE_SCALE;
-                //mouseInputPoint=true;
                 setCursor( crossCursor);
                 scaleNormaleX = Double.MAX_VALUE;
-                transformationOrigin= (action==ACTION_SCALE) ? getCenterOfSelection() : coord2DCursor;
-                //lastScaleRatioX=1; lastScaleRatioY=1;
+                transformationOrigin= (param==0) ? getCenterOfSelection() : coord2DCursor;
+                mouseMode=MOUSE_MODE_SCALE;
                 repaint();
                 break;
                 
             case ACTION_SELECT_ALL:
                 if (editedElement != null) {
-                    clearSelectedPoints();
+                    clearSelectedPoints();                    
                     if ( editedElement instanceof G1Path)
                         selectedPoints.addAll(((G1Path)editedElement).getAll());
+                    else
+                        for (GCode c : editedElement) {
+                            selectedPoints.add(c);
+                    }
+                    
                 } else {
                     selectedElements.clear();
                     selectedElements.addAll(editedGroup.getAll());
@@ -3513,7 +3588,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         Rectangle2D r = null;
         if ( ! selectedPoints.isEmpty())
             for (GCode p : selectedPoints) {
-                if ( r == null) r = new Rectangle2D.Double(p.getX(), p.getY(), 1, 1);
+                if ( r == null) r = new Rectangle2D.Double(p.getX(), p.getY(), 10e-9, 10e-9);
                 else r.add(p);
         }
         else
@@ -3540,9 +3615,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         String newConf =  "" + snapToGrid + "," + snapToPoints + "," + showGrid + "," +
                     showMoves + "," + showHead + "," + showObjectSurface + "," +
                     showStartPoints + "," + showWorkspace;
-        if ( ! newConf.equals(conf.visualSettings))
+        if ( ! newConf.equals(conf.editorSettings))
         {
-            conf.visualSettings = newConf;
+            conf.editorSettings = newConf;
             conf.saveVisualSettings();
         }
 
@@ -3709,7 +3784,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     public static final int STATE_POINTS_SELECTED_FLAG = 4;
     public static final int STATE_SHAPE_SELECTED_FLAG = 8;
     public static final int STATE_SHAPES_SELECTED_FLAG = 16;
-    /** set if a path is currently edited. */
+    /** set if a path is currently edited (the points). */
     public static final int STATE_EDIT_MODE_FLAG = 32;
     public static final int STATE_CAN_UNDO_FLAG = 64;
     public static final int STATE_SNAP_TO_GRID_FLAG = 128;
@@ -3788,11 +3863,13 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         GCode p = screenToCoordPoint(x,y);
         GCode pGrid = null, p3, pPath;
 
+        if ( coord2DCursor.distance(p.getX(), p.getY()) < 10 / zoomFactor) 
+            return new GCode(coord2DCursor.getX(), coord2DCursor.getY());
+                
+        if ( (grblMPos != null) && grblMPos.distance(p.getX(), p.getY(), grblMPos.getZ()) < 10 / zoomFactor)
+            return new GCode(grblMPos.getX(), grblMPos.getY());
+                
         if ( snapToGrid | snapToPoints) {  
-            if ( snapToGrid) {
-                p3 = screenToCoordPoint(x,y);
-                pGrid = new GCode((Math.round(p3.getX()/gridStep))*gridStep,  (Math.round(p3.getY()/gridStep))*gridStep );
-            }
             if ( snapToPoints) {             
                     pPath = document.getCloserPoint(p, 10 / zoomFactor,  
                                         snapWithoutSelection ? selectedElements : null,
@@ -3801,13 +3878,12 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                             ((pGrid==null) || (pGrid.distance(p) >= pPath.distance(p))))
                         return (GCode)pPath.clone();
             }
+            if ( snapToGrid) {
+                p3 = screenToCoordPoint(x,y);
+                pGrid = new GCode((Math.round(p3.getX()/gridStep))*gridStep,  (Math.round(p3.getY()/gridStep))*gridStep );
+            }            
         }
-        if ( (grblMPos != null) && grblMPos.distance(p.getX(), p.getY(), grblMPos.getZ()) < 10 / zoomFactor)
-            return new GCode(grblMPos.getX(), grblMPos.getY());
         
-        if ( coord2DCursor.distance(p.getX(), p.getY()) < 10 / zoomFactor) 
-            return new GCode(coord2DCursor.getX(), coord2DCursor.getY());
-              
         return (pGrid!=null)?pGrid:p;
     }
     
@@ -4000,12 +4076,12 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             stateHasChanged=true;
             return new G1Path("sub-"+editedElement.getName(), cutPoints);
 
-        } else if (editedElement instanceof GMixedPathPath) {
+        } else if (editedElement instanceof GMixedPath) {
             if ( selectedPoints.isEmpty()) return null;
-            ArrayList<GCode> lines = ((GMixedPathPath)editedElement).getLines(selectedPoints);
+            ArrayList<GCode> lines = ((GMixedPath)editedElement).getLines(selectedPoints);
             if ( ! lines.isEmpty()) {
                 editedElement.removeAll(lines);
-                final GMixedPathPath p = new GMixedPathPath("sub-"+editedElement.getName());
+                final GMixedPath p = new GMixedPath("sub-"+editedElement.getName());
                 for( GCode gcode : lines) p.add(gcode);
                 editedGroup.add( p);
                 clearSelectedPoints();
@@ -4507,21 +4583,21 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         if ( selectedPoints.isEmpty() && selectedElements.isEmpty()) { 
             if (editedElement != null) {
                 final GElement e = editedElement;
-                if (editedElement.isEmpty()) { // remove empty path
-                    document.getParent(e).remove(e);
-                    setEditedElement(document.getParent(e));
+                if (editedElement.isEmpty()) {                    
+                    // remove empty element
+                    GGroup tmp;
+                    (tmp = document.getParent(e)).remove(e);
+                    setEditedElement(tmp);
                 } else {
                     
                     setEditedElement(null);
                     selectedElements.add(e);
                 }
-            } else if ( editedGroup != document) {
+            } else if ( editedGroup != document) {              
                 if ( editedGroup.isEmpty()) {
-                    if ( editedElement == null) {
-                        document.remove(editedGroup) ;
-                        editedGroup = document;
-                    }
-                    else document.getParent(editedElement).remove(editedGroup);
+                    GGroup tmp = document.getParent(editedGroup);
+                    document.remove(editedGroup) ;
+                    setEditedElement(tmp);                    
                 } else {
                     GGroup p;
                     setEditedElement(document.getParent(p=editedGroup));
@@ -4538,7 +4614,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     }
     
     private double computeAngle() {
-        double arcLen = (360+Math.toDegrees(-G1Path.getAngle(coord2DCursor, coordSnapPosition)) - lastRotationAngle)%360;
+        double arcLen = (360+Math.toDegrees(-G1Path.getAngleInRadian(coord2DCursor, coordSnapPosition)) - lastRotationAngle)%360;
         if ( (Math.abs(arcLen) < 0.0001) || (Math.abs(360-arcLen) < 0.0001)) arcLen=360;
         else if ( arcLen < 0) arcLen = 360+arcLen;   
         if ( arcLen > 180) arcLen = 360 - arcLen;

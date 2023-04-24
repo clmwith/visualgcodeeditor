@@ -15,7 +15,7 @@ With some interesting things :
 - export to OpenScad (by clipboard) 
 - Realtime execution with GRBL
 
-It use some external library :
+It use some external library (all included in jar releases) :
 - RXTXcomm.jar
 - kabeja-0.4.jar
 - exp4j-0.4.8.jar

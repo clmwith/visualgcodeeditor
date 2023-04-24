@@ -331,20 +331,19 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
      * Return a G0 <i>Xnn Ynn</i> around center, calculated by angle.
      * @param center
      * @param radius
-     * @param angle  in degre
+     * @param degre  in degre ( -360 to 360 )
      * @param rounded round coordinate <i>lower than at 10e-9</i>
      * @return 
      */
-    public static GCode newAngularPoint(Point2D center, double radius, double angle, boolean rounded) {
-        angle = angle % 360;
-        angle = ( angle > 180) ? -angle : 360 - angle;
+    public static GCode newAngularPoint(Point2D center, double radius, double degre, boolean rounded) {
+        double rad = Math.toRadians(degre % 360);
         double dx, dy;
         if( rounded) {                                                      
-            dx = ((double)Math.round(Math.cos(Math.toRadians(angle)) * radius * 1000000000))/1000000000;
-            dy = ((double)Math.round(Math.sin(Math.toRadians(angle)) * radius * 1000000000))/1000000000;
+            dx = ((double)Math.round(Math.cos(rad) * radius * 10e9))/10e9;
+            dy = ((double)Math.round(Math.sin(rad) * radius * 10e9))/10e9;
         } else {
-            dx = Math.cos(Math.toRadians(angle)) * radius;
-            dy = Math.sin(Math.toRadians(angle)) * radius;
+            dx = Math.cos(rad) * radius;
+            dy = Math.sin(rad) * radius;
         }
         return new GCode( 0, center.getX() + dx, center.getY() + dy);
     }
@@ -390,6 +389,13 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
                     words.add(word);
             }
         }
+    }
+    
+    
+    public void set(char c, double value) {
+        GWord w = get(c);
+        if ( w == null) words.add( new GWord(c, value));
+        else w.value = value;
     }
     
     /**
@@ -484,9 +490,11 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
         y.value += dy;
     }
     
-    /** Rotate this point around center
+    /** 
+     * Rotate this point around origin
      * @param origin
-     * @param angle */
+     * @param angle (in radian)
+     */
     public void rotate(java.awt.geom.Point2D origin, double angle) {
         final double d = distance(origin);
         final double a = getAngle(origin, this);
@@ -504,11 +512,21 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
         return angle;
     }
     
+    /**
+     * @param target
+     * @param origin
+     * @return angle in degre into [0:360]°
+     */
+    public static double getAngleInDegre(Point2D origin, Point2D target) {
+        double angle = Math.atan2(target.getY() - origin.getY(), target.getX() - origin.getX());
+        return (360+(360*angle)/(2*Math.PI))%360;
+    }
+    
     /** scale the distance between this point and origin
      * @param origin
      * @param ratioX
      * @param ratioY */
-    public void scale(java.awt.geom.Point2D origin, double ratioX, double ratioY) {
+    public void scale(Point2D origin, double ratioX, double ratioY) {
         final double d = distance(origin);
         final double a = getAngle(origin, this);
         x.value = (origin.getX() + Math.cos(a)*d*ratioX);
@@ -523,6 +541,9 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
         return (size()>0) && (size() == nbCoord);
     }
 
+    /**
+     * Return (I,J) of throw an Error !!
+     */
     public GCode getArcCenter(GCode startPoint) {
         if ( ! isAnArc()) throw new Error("GCLine.getArcCenter() : is not an arc");
         
@@ -564,7 +585,7 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     }
 
     /**
-     * Change or add G,X and Y words
+     * Change or add G, X, and Y words
      * @param g
      * @param x
      * @param y 

@@ -116,7 +116,7 @@ public class GSphericalPocket extends GPocket3D {
         }
 
         if ( Math.abs(radius - center.distance(from)) < dmax) {
-            final double a = GElement.getAngle(center, from);
+            final double a = GElement.getAngleInRadian(center, from);
             return new GCode( center.getX() + (radius * Math.cos(a)), center.getY() + (radius * Math.sin(a)));
         }
         return res;
@@ -200,7 +200,7 @@ public class GSphericalPocket extends GPocket3D {
         final G1Path flatten = G1Path.makeCircle((Point2D)center, (int)(2* Math.PI * radius), radius, clockwise, true);
         flatten.add(0, new GCode(";InlayDepth="+inlayDepth));
         if ( properties != null) flatten.properties = properties.clone();
-        flatten.rotate(center, GElement.getAngle(center, startPoint));
+        flatten.rotate(center, GElement.getAngleInRadian(center, startPoint));
         return flatten;
     }
     

@@ -44,6 +44,8 @@ import gnu.io.UnsupportedCommOperationException;
 import gcodeeditor.GRBLControler;
 import gcodeeditor.gui.dialogs.DialogManager;
 import gcodeeditor.gui.dialogs.JMovePanel;
+import gcodeeditor.gui.dialogs.ManagedPanel;
+import gelements.GMixedPath;
 import gelements.GTextOnPath;
 import java.awt.Color;
 import java.awt.Component;
@@ -139,7 +141,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         confFrame = new JConfigurationFrame(blocksviewer.getConfiguration(), this);
 
         initComponents();
-        if ( blocksviewer.getConfiguration().visualSettings.equals("")) {
+        if ( blocksviewer.getConfiguration().editorSettings.equals("")) {
             blocksviewer.setSnapToGrid( jCheckBoxMenuItemSnapGrid.isSelected());
             blocksviewer.setSnapToPoints(jCheckBoxMenuItemSnapPoints.isSelected());
             blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_GRID, jCheckBoxMenuItemShowGrid.isSelected()?1:0, null);
@@ -565,44 +567,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jCheckBoxMenuItemShowWorkspace = new javax.swing.JCheckBoxMenuItem();
         jSeparator28 = new javax.swing.JPopupMenu.Separator();
         jMenuItemFocus = new javax.swing.JMenuItem();
-        jMenuBlocks = new javax.swing.JMenu();
-        jMenuAdds = new javax.swing.JMenu();
-        jMenuItemAddMixedPath = new javax.swing.JMenuItem();
-        jMenuItemAddcurve = new javax.swing.JMenuItem();
-        jMenuItemAddCustom = new javax.swing.JMenuItem();
-        jSeparator33 = new javax.swing.JPopupMenu.Separator();
         jMenu1 = new javax.swing.JMenu();
-        jMenuItemAddArc = new javax.swing.JMenuItem();
-        jMenuItemAddCircle = new javax.swing.JMenuItem();
-        jMenuItemAddCurvesCircle = new javax.swing.JMenuItem();
-        jMenuItemAddOval = new javax.swing.JMenuItem();
-        jMenuItemAddDrill = new javax.swing.JMenuItem();
-        jMenu2 = new javax.swing.JMenu();
-        jMenuItemAddCross = new javax.swing.JMenuItem();
-        jMenuItemAddGear = new javax.swing.JMenuItem();
-        jMenuItemAddRipple = new javax.swing.JMenuItem();
-        jMenuItemAddRoubndRect = new javax.swing.JMenuItem();
-        jMenuItemAddSpiral = new javax.swing.JMenuItem();
-        jMenuItemAddStar = new javax.swing.JMenuItem();
-        jMenuItemAddRectangle = new javax.swing.JMenuItem();
-        jMenuItemAddPolygon = new javax.swing.JMenuItem();
-        jMenuItemAddText = new javax.swing.JMenuItem();
-        jMenuItemAddTextOnPath = new javax.swing.JMenuItem();
-        jSeparator8 = new javax.swing.JPopupMenu.Separator();
-        jMenuItemAddBounds = new javax.swing.JMenuItem();
-        jMenuMakeCutPath = new javax.swing.JMenu();
-        jMenuItemMakeCutPathI = new javax.swing.JMenuItem();
-        jMenuItemMakeCutPathO = new javax.swing.JMenuItem();
-        jMenuItemMakeFlatten = new javax.swing.JMenuItem();
-        jMenuItemAddHull = new javax.swing.JMenuItem();
-        jMenuItemAddLinkedPath = new javax.swing.JMenuItem();
-        jMenu5 = new javax.swing.JMenu();
-        jMenuItemAddPocket = new javax.swing.JMenuItem();
-        jSeparator29 = new javax.swing.JPopupMenu.Separator();
-        jMenuItemAddCylindricalPocket = new javax.swing.JMenuItem();
-        jMenuItemAddSphericalPocket = new javax.swing.JMenuItem();
-        jMenuItemImport = new javax.swing.JMenuItem();
-        jSeparator32 = new javax.swing.JPopupMenu.Separator();
         jMenuAlign = new javax.swing.JMenu();
         jMenuItem1 = new javax.swing.JMenuItem();
         jMenuItemAlignHorizontaly = new javax.swing.JMenuItem();
@@ -612,25 +577,60 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemAlignLeft = new javax.swing.JMenuItem();
         jMenuItemAlignRight = new javax.swing.JMenuItem();
         jMenuItemAlignTop = new javax.swing.JMenuItem();
+        jMenuItemJoin = new javax.swing.JMenuItem();
+        jMenuItemMoveWithMouse = new javax.swing.JMenuItem();
+        jMenuItemRotateCenter = new javax.swing.JMenuItem();
+        jMenuItemRotate2D = new javax.swing.JMenuItem();
+        jMenuItemScaleCenter = new javax.swing.JMenuItem();
+        jMenuItemScale2DC = new javax.swing.JMenuItem();
+        jMenuBlocks = new javax.swing.JMenu();
+        jMenuAdds = new javax.swing.JMenu();
+        jMenuItemAddMixedPath = new javax.swing.JMenuItem();
+        jMenuItemAddCustom = new javax.swing.JMenuItem();
+        jSeparator33 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemAddG23Circle = new javax.swing.JMenuItem();
+        jMenuItemAddCircle = new javax.swing.JMenuItem();
+        jMenuItemAddOval = new javax.swing.JMenuItem();
+        jMenuItemAddDrill = new javax.swing.JMenuItem();
+        jMenu2 = new javax.swing.JMenu();
+        jMenuItemAddCurvesCircle = new javax.swing.JMenuItem();
+        jMenuItemAddCross = new javax.swing.JMenuItem();
+        jMenuItemAddGear = new javax.swing.JMenuItem();
+        jMenuItemAddRipple = new javax.swing.JMenuItem();
+        jMenuItemAddRoubndRect = new javax.swing.JMenuItem();
+        jMenuItemAddSpiral = new javax.swing.JMenuItem();
+        jMenuItemAddStar = new javax.swing.JMenuItem();
+        jMenuItemAddPolygon = new javax.swing.JMenuItem();
+        jMenuItemAddRectangle = new javax.swing.JMenuItem();
+        jMenuItemAddText = new javax.swing.JMenuItem();
+        jMenuItemAddTextOnPath = new javax.swing.JMenuItem();
+        jSeparator8 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemAddBounds = new javax.swing.JMenuItem();
+        jMenuItemMakeFlatten = new javax.swing.JMenuItem();
+        jMenuItemAddHull = new javax.swing.JMenuItem();
+        jMenuMakeCutPath = new javax.swing.JMenu();
+        jMenuItemMakeCutPathI = new javax.swing.JMenuItem();
+        jMenuItemMakeCutPathO = new javax.swing.JMenuItem();
+        jMenuItemAddLinkedPath = new javax.swing.JMenuItem();
+        jMenu5 = new javax.swing.JMenu();
+        jMenuItemAddPocket = new javax.swing.JMenuItem();
+        jSeparator29 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemAddCylindricalPocket = new javax.swing.JMenuItem();
+        jMenuItemAddSphericalPocket = new javax.swing.JMenuItem();
+        jMenuItemImport = new javax.swing.JMenuItem();
+        jSeparator32 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemRename = new javax.swing.JMenuItem();
+        jMenuItemConvertToMixedPath = new javax.swing.JMenuItem();
         jMenuItemDuplicate = new javax.swing.JMenuItem();
         jMenu4 = new javax.swing.JMenu();
         jMenuItemFlipH = new javax.swing.JMenuItem();
         jMenuItemFlipV = new javax.swing.JMenuItem();
         jMenuItemReverse = new javax.swing.JMenuItem();
-        jMenuItemJoin = new javax.swing.JMenuItem();
-        jMenuItemMoveWithMouse = new javax.swing.JMenuItem();
-        jMenuItemMove = new javax.swing.JMenuItem();
-        jMenuItemMoveCenter = new javax.swing.JMenuItem();
-        jMenuItemRename = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JPopupMenu.Separator();
-        jMenuItemRotate = new javax.swing.JMenuItem();
-        jMenuItemRotateCenter = new javax.swing.JMenuItem();
-        jMenuItemRotateP = new javax.swing.JMenuItem();
-        jSeparator10 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemMove = new javax.swing.JMenuItem();
         jMenuItemScale = new javax.swing.JMenuItem();
-        jMenuItemScaleCenter = new javax.swing.JMenuItem();
-        jMenuItemScaleP = new javax.swing.JMenuItem();
-        jSeparator24 = new javax.swing.JPopupMenu.Separator();
+        jMenuItemRotate = new javax.swing.JMenuItem();
+        jSeparator10 = new javax.swing.JPopupMenu.Separator();
         jMenuGCODE = new javax.swing.JMenu();
         jMenuItemAddHeaderFooter = new javax.swing.JMenuItem();
         jMenuItemSort = new javax.swing.JMenuItem();
@@ -643,8 +643,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemCopyOpenScadPolygon = new javax.swing.JMenuItem();
         jMenuPoints = new javax.swing.JMenu();
         jMenuItemAddPoints = new javax.swing.JMenuItem();
-        jMenuItemAddFromHeadPos = new javax.swing.JMenuItem();
+        jMenuItemAddArc = new javax.swing.JMenuItem();
+        jMenuItemAddcurve = new javax.swing.JMenuItem();
         jMenuItemAddIntersectionPoints = new javax.swing.JMenuItem();
+        jMenuItemAddAtCenter = new javax.swing.JMenuItem();
         jSeparator13 = new javax.swing.JPopupMenu.Separator();
         jMenuItemChStartPos = new javax.swing.JMenuItem();
         jSeparator20 = new javax.swing.JPopupMenu.Separator();
@@ -1521,277 +1523,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
         jMenuBar.add(jMenuView);
 
-        jMenuBlocks.setText("Element");
-
-        jMenuAdds.setText("Add");
-
-        jMenuItemAddMixedPath.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, 0));
-        jMenuItemAddMixedPath.setText("Artistic path");
-        jMenuItemAddMixedPath.setToolTipText("<html>Create a path composed of curves (G5) and lines (G1)<br>\nUse right mouse button to insert points.</html>");
-        jMenuItemAddMixedPath.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddMixedPathActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddMixedPath);
-
-        jMenuItemAddcurve.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, 0));
-        jMenuItemAddcurve.setText("Besier curve");
-        jMenuItemAddcurve.setToolTipText("Create a besier curve (G5)");
-        jMenuItemAddcurve.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddcurveActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddcurve);
-
-        jMenuItemAddCustom.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
-        jMenuItemAddCustom.setText("Lines");
-        jMenuItemAddCustom.setToolTipText("<html>Create a custom G1 path<br>Use right mouse button to insert points.</html>");
-        jMenuItemAddCustom.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddCustomActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddCustom);
-        jMenuAdds.add(jSeparator33);
-
-        jMenu1.setText("Circle");
-
-        jMenuItemAddArc.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
-        jMenuItemAddArc.setText("G2|3 Arc");
-        jMenuItemAddArc.setToolTipText("");
-        jMenuItemAddArc.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddArcActionPerformed(evt);
-            }
-        });
-        jMenu1.add(jMenuItemAddArc);
-
-        jMenuItemAddCircle.setText("Circle ...");
-        jMenuItemAddCircle.setToolTipText("Add a circle composed by G1 segments");
-        jMenuItemAddCircle.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddCircleActionPerformed(evt);
-            }
-        });
-        jMenu1.add(jMenuItemAddCircle);
-
-        jMenuItemAddCurvesCircle.setText("Curves circle");
-        jMenuItemAddCurvesCircle.setToolTipText("A circle composed by four curves");
-        jMenuItemAddCurvesCircle.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddCurvesCircleActionPerformed(evt);
-            }
-        });
-        jMenu1.add(jMenuItemAddCurvesCircle);
-
-        jMenuItemAddOval.setText("With mouse 2");
-        jMenuItemAddOval.setToolTipText("<html>Create a G1 circle with mouse and <i>Alt</i>, <i>Ctrl</i> and <i>Shift</i> combinaisons keys.</html>");
-        jMenuItemAddOval.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddOvalActionPerformed(evt);
-            }
-        });
-        jMenu1.add(jMenuItemAddOval);
-
-        jMenuAdds.add(jMenu1);
-
-        jMenuItemAddDrill.setText("Drill point");
-        jMenuItemAddDrill.setToolTipText("Want to drill somewhere ?");
-        jMenuItemAddDrill.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddDrillActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddDrill);
-
-        jMenu2.setText("Misc");
-
-        jMenuItemAddCross.setText("Cross");
-        jMenuItemAddCross.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddCrossActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddCross);
-
-        jMenuItemAddGear.setText("Gear");
-        jMenuItemAddGear.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddGearActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddGear);
-
-        jMenuItemAddRipple.setText("Ripple");
-        jMenuItemAddRipple.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddRippleActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddRipple);
-
-        jMenuItemAddRoubndRect.setText("Rounded rectangle");
-        jMenuItemAddRoubndRect.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddRoubndRectActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddRoubndRect);
-
-        jMenuItemAddSpiral.setText("Spiral");
-        jMenuItemAddSpiral.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddSpiralActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddSpiral);
-
-        jMenuItemAddStar.setText("Star");
-        jMenuItemAddStar.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddStarActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddStar);
-
-        jMenuAdds.add(jMenu2);
-
-        jMenuItemAddRectangle.setText("Rectangle");
-        jMenuItemAddRectangle.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddRectangleActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddRectangle);
-
-        jMenuItemAddPolygon.setText("Polygon");
-        jMenuItemAddPolygon.setToolTipText("Add a polygon centered around 2DCursor");
-        jMenuItemAddPolygon.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddPolygonActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddPolygon);
-
-        jMenuItemAddText.setText("Text");
-        jMenuItemAddText.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddTextActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddText);
-
-        jMenuItemAddTextOnPath.setText("Text on path");
-        jMenuItemAddTextOnPath.setToolTipText("Map a text on the first selected path");
-        jMenuItemAddTextOnPath.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddTextOnPathActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddTextOnPath);
-        jMenuAdds.add(jSeparator8);
-
-        jMenuItemAddBounds.setText("Bounds");
-        jMenuItemAddBounds.setToolTipText("Add the bounding box of the selection");
-        jMenuItemAddBounds.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddBoundsActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddBounds);
-
-        jMenuMakeCutPath.setText("Offset Cut path");
-        jMenuMakeCutPath.setToolTipText("To cut around selection");
-
-        jMenuItemMakeCutPathI.setText("Inner");
-        jMenuItemMakeCutPathI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemMakeCutPathIActionPerformed(evt);
-            }
-        });
-        jMenuMakeCutPath.add(jMenuItemMakeCutPathI);
-
-        jMenuItemMakeCutPathO.setText("Outer");
-        jMenuItemMakeCutPathO.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemMakeCutPathOActionPerformed(evt);
-            }
-        });
-        jMenuMakeCutPath.add(jMenuItemMakeCutPathO);
-
-        jMenuAdds.add(jMenuMakeCutPath);
-
-        jMenuItemMakeFlatten.setText("Flatten path");
-        jMenuItemMakeFlatten.setToolTipText("<html>Create a flat copy of selection<br>(Composed only of G0/G1 moves).</html>");
-        jMenuItemMakeFlatten.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemMakeFlattenActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemMakeFlatten);
-
-        jMenuItemAddHull.setText("Hull path");
-        jMenuItemAddHull.setToolTipText("Add hull path around selection");
-        jMenuItemAddHull.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddHullActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddHull);
-
-        jMenuItemAddLinkedPath.setText("Linked paths");
-        jMenuItemAddLinkedPath.setToolTipText("Create a unique new path corresponding to selection.");
-        jMenuItemAddLinkedPath.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddLinkedPathActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddLinkedPath);
-
-        jMenu5.setText("Pocket");
-
-        jMenuItemAddPocket.setText("Pocket path");
-        jMenuItemAddPocket.setToolTipText("Make pocket paths into the first selected path");
-        jMenuItemAddPocket.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddPocketActionPerformed(evt);
-            }
-        });
-        jMenu5.add(jMenuItemAddPocket);
-        jMenu5.add(jSeparator29);
-
-        jMenuItemAddCylindricalPocket.setText("Cylindrical pocket");
-        jMenuItemAddCylindricalPocket.setToolTipText("Create a cylinder-shaped pocket");
-        jMenuItemAddCylindricalPocket.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddCylindricalPocketActionPerformed(evt);
-            }
-        });
-        jMenu5.add(jMenuItemAddCylindricalPocket);
-
-        jMenuItemAddSphericalPocket.setText("Spherical pocket");
-        jMenuItemAddSphericalPocket.setToolTipText("Create a sphere-shaped pocket");
-        jMenuItemAddSphericalPocket.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddSphericalPocketActionPerformed(evt);
-            }
-        });
-        jMenu5.add(jMenuItemAddSphericalPocket);
-
-        jMenuAdds.add(jMenu5);
-
-        jMenuBlocks.add(jMenuAdds);
-
-        jMenuItemImport.setText("Import...");
-        jMenuItemImport.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemImportActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemImport);
-        jMenuBlocks.add(jSeparator32);
+        jMenu1.setText("Selection");
 
         jMenuAlign.setText("Align");
 
@@ -1862,7 +1594,337 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuAlign.add(jMenuItemAlignTop);
 
-        jMenuBlocks.add(jMenuAlign);
+        jMenu1.add(jMenuAlign);
+
+        jMenuItemJoin.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_J, 0));
+        jMenuItemJoin.setText("Join");
+        jMenuItemJoin.setToolTipText("Try to join paths");
+        jMenuItemJoin.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemJoinActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemJoin);
+
+        jMenuItemMoveWithMouse.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        jMenuItemMoveWithMouse.setText("Move");
+        jMenuItemMoveWithMouse.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemMoveWithMouseActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemMoveWithMouse);
+
+        jMenuItemRotateCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, 0));
+        jMenuItemRotateCenter.setText("Rotate around center");
+        jMenuItemRotateCenter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemRotateCenterActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemRotateCenter);
+
+        jMenuItemRotate2D.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        jMenuItemRotate2D.setText("Rotate around 2D cursor");
+        jMenuItemRotate2D.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemRotate2DActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemRotate2D);
+
+        jMenuItemScaleCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
+        jMenuItemScaleCenter.setText("Scale from center");
+        jMenuItemScaleCenter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemScaleCenterActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemScaleCenter);
+
+        jMenuItemScale2DC.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        jMenuItemScale2DC.setText("Scale from 2D cursor");
+        jMenuItemScale2DC.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemScale2DCActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemScale2DC);
+
+        jMenuBar.add(jMenu1);
+
+        jMenuBlocks.setText("Element");
+
+        jMenuAdds.setText("Add");
+
+        jMenuItemAddMixedPath.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, 0));
+        jMenuItemAddMixedPath.setText("Artistic path");
+        jMenuItemAddMixedPath.setToolTipText("<html>Create a path composed of curves (G5) and lines (G1)<br>\nUse right mouse button to insert points.</html>");
+        jMenuItemAddMixedPath.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddMixedPathActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddMixedPath);
+
+        jMenuItemAddCustom.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
+        jMenuItemAddCustom.setText("Lines path");
+        jMenuItemAddCustom.setToolTipText("<html>Create a custom G1 path<br>Use right mouse button to insert points.</html>");
+        jMenuItemAddCustom.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCustomActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddCustom);
+        jMenuAdds.add(jSeparator33);
+
+        jMenuItemAddG23Circle.setText("G 2/3 Circle ...");
+        jMenuItemAddG23Circle.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddG23CircleActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddG23Circle);
+
+        jMenuItemAddCircle.setText("Circle ...");
+        jMenuItemAddCircle.setToolTipText("Add a circle composed by G1 segments");
+        jMenuItemAddCircle.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCircleActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddCircle);
+
+        jMenuItemAddOval.setText("Circle (mode 2)");
+        jMenuItemAddOval.setToolTipText("<html>Create a G1 circle with mouse and <i>Alt</i>, <i>Ctrl</i> and <i>Shift</i> combinaisons keys.</html>");
+        jMenuItemAddOval.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddOvalActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddOval);
+
+        jMenuItemAddDrill.setText("Drill point");
+        jMenuItemAddDrill.setToolTipText("Want to drill somewhere ?");
+        jMenuItemAddDrill.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddDrillActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddDrill);
+
+        jMenu2.setText("Misc");
+
+        jMenuItemAddCurvesCircle.setText("Circle (4 Curves) ");
+        jMenuItemAddCurvesCircle.setToolTipText("A circle composed by four curves");
+        jMenuItemAddCurvesCircle.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCurvesCircleActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddCurvesCircle);
+
+        jMenuItemAddCross.setText("Cross");
+        jMenuItemAddCross.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCrossActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddCross);
+
+        jMenuItemAddGear.setText("Gear");
+        jMenuItemAddGear.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddGearActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddGear);
+
+        jMenuItemAddRipple.setText("Ripple");
+        jMenuItemAddRipple.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddRippleActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddRipple);
+
+        jMenuItemAddRoubndRect.setText("Rounded rectangle");
+        jMenuItemAddRoubndRect.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddRoubndRectActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddRoubndRect);
+
+        jMenuItemAddSpiral.setText("Spiral");
+        jMenuItemAddSpiral.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddSpiralActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddSpiral);
+
+        jMenuItemAddStar.setText("Star");
+        jMenuItemAddStar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddStarActionPerformed(evt);
+            }
+        });
+        jMenu2.add(jMenuItemAddStar);
+
+        jMenuAdds.add(jMenu2);
+
+        jMenuItemAddPolygon.setText("Polygon");
+        jMenuItemAddPolygon.setToolTipText("Add a polygon centered around 2DCursor");
+        jMenuItemAddPolygon.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddPolygonActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddPolygon);
+
+        jMenuItemAddRectangle.setText("Rectangle");
+        jMenuItemAddRectangle.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddRectangleActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddRectangle);
+
+        jMenuItemAddText.setText("Text");
+        jMenuItemAddText.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddTextActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddText);
+
+        jMenuItemAddTextOnPath.setText("Text on path");
+        jMenuItemAddTextOnPath.setToolTipText("Map a text on the first selected path");
+        jMenuItemAddTextOnPath.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddTextOnPathActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddTextOnPath);
+        jMenuAdds.add(jSeparator8);
+
+        jMenuItemAddBounds.setText("Bounds");
+        jMenuItemAddBounds.setToolTipText("Add the bounding box of the selection");
+        jMenuItemAddBounds.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddBoundsActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddBounds);
+
+        jMenuItemMakeFlatten.setText("Flatten path");
+        jMenuItemMakeFlatten.setToolTipText("<html>Create a flat copy of selection<br>(Composed only of G1 moves).</html>");
+        jMenuItemMakeFlatten.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemMakeFlattenActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemMakeFlatten);
+
+        jMenuItemAddHull.setText("Hull path");
+        jMenuItemAddHull.setToolTipText("Add hull path around selection");
+        jMenuItemAddHull.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddHullActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddHull);
+
+        jMenuMakeCutPath.setText("Offset Cut path");
+        jMenuMakeCutPath.setToolTipText("To cut around selection");
+
+        jMenuItemMakeCutPathI.setText("Inner");
+        jMenuItemMakeCutPathI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemMakeCutPathIActionPerformed(evt);
+            }
+        });
+        jMenuMakeCutPath.add(jMenuItemMakeCutPathI);
+
+        jMenuItemMakeCutPathO.setText("Outer");
+        jMenuItemMakeCutPathO.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemMakeCutPathOActionPerformed(evt);
+            }
+        });
+        jMenuMakeCutPath.add(jMenuItemMakeCutPathO);
+
+        jMenuAdds.add(jMenuMakeCutPath);
+
+        jMenuItemAddLinkedPath.setText("Linked paths");
+        jMenuItemAddLinkedPath.setToolTipText("Create a unique new path corresponding to selection.");
+        jMenuItemAddLinkedPath.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddLinkedPathActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddLinkedPath);
+
+        jMenu5.setText("Pocket");
+
+        jMenuItemAddPocket.setText("Pocket path");
+        jMenuItemAddPocket.setToolTipText("Make pocket paths into the first selected path");
+        jMenuItemAddPocket.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddPocketActionPerformed(evt);
+            }
+        });
+        jMenu5.add(jMenuItemAddPocket);
+        jMenu5.add(jSeparator29);
+
+        jMenuItemAddCylindricalPocket.setText("Cylindrical pocket");
+        jMenuItemAddCylindricalPocket.setToolTipText("Create a cylinder-shaped pocket");
+        jMenuItemAddCylindricalPocket.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCylindricalPocketActionPerformed(evt);
+            }
+        });
+        jMenu5.add(jMenuItemAddCylindricalPocket);
+
+        jMenuItemAddSphericalPocket.setText("Spherical pocket");
+        jMenuItemAddSphericalPocket.setToolTipText("Create a sphere-shaped pocket");
+        jMenuItemAddSphericalPocket.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddSphericalPocketActionPerformed(evt);
+            }
+        });
+        jMenu5.add(jMenuItemAddSphericalPocket);
+
+        jMenuAdds.add(jMenu5);
+
+        jMenuBlocks.add(jMenuAdds);
+
+        jMenuItemImport.setText("Import...");
+        jMenuItemImport.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemImportActionPerformed(evt);
+            }
+        });
+        jMenuBlocks.add(jMenuItemImport);
+        jMenuBlocks.add(jSeparator32);
+
+        jMenuItemRename.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0));
+        jMenuItemRename.setText("Rename");
+        jMenuItemRename.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemRenameActionPerformed(evt);
+            }
+        });
+        jMenuBlocks.add(jMenuItemRename);
+
+        jMenuItemConvertToMixedPath.setText("Convert to Artistic path");
+        jMenuItemConvertToMixedPath.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemConvertToMixedPathActionPerformed(evt);
+            }
+        });
+        jMenuBlocks.add(jMenuItemConvertToMixedPath);
 
         jMenuItemDuplicate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_D, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemDuplicate.setText("Duplicate ...");
@@ -1900,25 +1962,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         });
         jMenuBlocks.add(jMenuItemReverse);
-
-        jMenuItemJoin.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_J, 0));
-        jMenuItemJoin.setText("Join");
-        jMenuItemJoin.setToolTipText("Try to join paths");
-        jMenuItemJoin.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemJoinActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemJoin);
-
-        jMenuItemMoveWithMouse.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
-        jMenuItemMoveWithMouse.setText("Move");
-        jMenuItemMoveWithMouse.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemMoveWithMouseActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemMoveWithMouse);
+        jMenuBlocks.add(jSeparator2);
 
         jMenuItemMove.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemMove.setText("Move ...");
@@ -1929,53 +1973,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuBlocks.add(jMenuItemMove);
 
-        jMenuItemMoveCenter.setText("Move to 2D Cursor");
-        jMenuItemMoveCenter.setToolTipText("Move the center of the selection on 2D cursor.");
-        jMenuItemMoveCenter.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemMoveCenterActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemMoveCenter);
-
-        jMenuItemRename.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0));
-        jMenuItemRename.setText("Rename");
-        jMenuItemRename.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemRenameActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemRename);
-        jMenuBlocks.add(jSeparator2);
-
-        jMenuItemRotate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        jMenuItemRotate.setText("Rotate ...");
-        jMenuItemRotate.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemRotateActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemRotate);
-
-        jMenuItemRotateCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, 0));
-        jMenuItemRotateCenter.setText("Rotate around center");
-        jMenuItemRotateCenter.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemRotateCenterActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemRotateCenter);
-
-        jMenuItemRotateP.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        jMenuItemRotateP.setText("Rotate around 2D cursor");
-        jMenuItemRotateP.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemRotatePActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemRotateP);
-        jMenuBlocks.add(jSeparator10);
-
         jMenuItemScale.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemScale.setText("Scale ...");
         jMenuItemScale.addActionListener(new java.awt.event.ActionListener() {
@@ -1985,24 +1982,15 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuBlocks.add(jMenuItemScale);
 
-        jMenuItemScaleCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
-        jMenuItemScaleCenter.setText("Scale from center");
-        jMenuItemScaleCenter.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemRotate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jMenuItemRotate.setText("Rotate ...");
+        jMenuItemRotate.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemScaleCenterActionPerformed(evt);
+                jMenuItemRotateActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemScaleCenter);
-
-        jMenuItemScaleP.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        jMenuItemScaleP.setText("Scale from 2D cursor");
-        jMenuItemScaleP.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemScalePActionPerformed(evt);
-            }
-        });
-        jMenuBlocks.add(jMenuItemScaleP);
-        jMenuBlocks.add(jSeparator24);
+        jMenuBlocks.add(jMenuItemRotate);
+        jMenuBlocks.add(jSeparator10);
 
         jMenuGCODE.setText("GCODE");
 
@@ -2069,7 +2057,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuPoints.setText("Point");
 
         jMenuItemAddPoints.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, 0));
-        jMenuItemAddPoints.setText("Add with mouse");
+        jMenuItemAddPoints.setText("Add G1 Lines");
         jMenuItemAddPoints.setToolTipText("Append new points with mouse");
         jMenuItemAddPoints.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2078,15 +2066,25 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuPoints.add(jMenuItemAddPoints);
 
-        jMenuItemAddFromHeadPos.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        jMenuItemAddFromHeadPos.setText("Add from current head position");
-        jMenuItemAddFromHeadPos.setToolTipText("");
-        jMenuItemAddFromHeadPos.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemAddArc.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
+        jMenuItemAddArc.setText("Add G2|3 Arc");
+        jMenuItemAddArc.setToolTipText("");
+        jMenuItemAddArc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddFromHeadPosActionPerformed(evt);
+                jMenuItemAddArcActionPerformed(evt);
             }
         });
-        jMenuPoints.add(jMenuItemAddFromHeadPos);
+        jMenuPoints.add(jMenuItemAddArc);
+
+        jMenuItemAddcurve.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, 0));
+        jMenuItemAddcurve.setText("Add G5 Besier curve");
+        jMenuItemAddcurve.setToolTipText("Create a besier curve (G5)");
+        jMenuItemAddcurve.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddcurveActionPerformed(evt);
+            }
+        });
+        jMenuPoints.add(jMenuItemAddcurve);
 
         jMenuItemAddIntersectionPoints.setText("Add from intersection");
         jMenuItemAddIntersectionPoints.setToolTipText("<html>Insert <b>in the first selected path</b> all the intersection points with all others paths.<br> The first path selected must be a flat path.(G1)");
@@ -2096,6 +2094,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         });
         jMenuPoints.add(jMenuItemAddIntersectionPoints);
+
+        jMenuItemAddAtCenter.setText("Add at center");
+        jMenuItemAddAtCenter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddAtCenterActionPerformed(evt);
+            }
+        });
+        jMenuPoints.add(jMenuItemAddAtCenter);
         jMenuPoints.add(jSeparator13);
 
         jMenuItemChStartPos.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, 0));
@@ -2359,12 +2365,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemJoinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemJoinActionPerformed
         try {
-            double tolerance = 0;
-            if (! blocksviewer.isInEditMode()) // Not in Edit mode
-                tolerance = Double.valueOf( JOptionPane.showInputDialog(this, "Maximal distance", "0.0002"));
-            blocksviewer.doAction(JBlocksViewer.ACTION_JOIN, tolerance, null);
+            if (! blocksviewer.isInEditMode()) {
+                // Not in Edit mode
+                double tolerance = Double.valueOf( JOptionPane.showInputDialog(this, "Maximal distance tolerance", "0.01"));
+                blocksviewer.doAction(JBlocksViewer.ACTION_JOIN, tolerance, null);
+            }
         } catch (NumberFormatException e) { 
-            updateGUIAndStatus("wrong distance");
+            updateGUIAndStatus("wrong number");
         }
     }//GEN-LAST:event_jMenuItemJoinActionPerformed
 
@@ -2394,9 +2401,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         
     }//GEN-LAST:event_jMenuItemSimplifyPActionPerformed
 
-    private void jMenuItemRotatePActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotatePActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ROTATE_POINT, 0, null);
-    }//GEN-LAST:event_jMenuItemRotatePActionPerformed
+    private void jMenuItemRotate2DActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotate2DActionPerformed
+        blocksviewer.doAction(JBlocksViewer.ACTION_ROTATE, 1, null);
+    }//GEN-LAST:event_jMenuItemRotate2DActionPerformed
 
     private void jMenuItemRotateCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotateCenterActionPerformed
         blocksviewer.doAction(JBlocksViewer.ACTION_ROTATE, 0, null);
@@ -2656,9 +2663,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         }
     }//GEN-LAST:event_jMenuItemAddStarActionPerformed
 
-    private void jMenuItemScalePActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScalePActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SCALE_POINT, 1, null);
-    }//GEN-LAST:event_jMenuItemScalePActionPerformed
+    private void jMenuItemScale2DCActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScale2DCActionPerformed
+        blocksviewer.doAction(JBlocksViewer.ACTION_SCALE, 1, null);
+    }//GEN-LAST:event_jMenuItemScale2DCActionPerformed
 
     private void jMenuItemScaleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScaleActionPerformed
         JScalePanel scalePanel = (JScalePanel)dialogManager.showDialogFor(
@@ -2715,8 +2722,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         if ( rotatePanel != null) {
             blocksviewer.rotateSelection( Math.toRadians(rotatePanel.angle), 
                     rotatePanel.copies, rotatePanel.fromCenter, rotatePanel.keepOriginal, rotatePanel.keepOrientation);
-        }
-        
+        }       
     }//GEN-LAST:event_jMenuItemRotateActionPerformed
 
     private void jMenuItemSelectAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSelectAllActionPerformed
@@ -3023,10 +3029,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private void jTextFieldEditedBlockFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTextFieldEditedBlockFocusGained
         blocksviewer.setKeyFocus(false);
     }//GEN-LAST:event_jTextFieldEditedBlockFocusGained
-
-    private void jMenuItemAddFromHeadPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddFromHeadPosActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_POINT_FROM_HEAD_POSITION, 0, grbl.getWPos());
-    }//GEN-LAST:event_jMenuItemAddFromHeadPosActionPerformed
 
     private void jMenuItemGRBLWPosAsMPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLWPosAsMPosActionPerformed
         grbl.pushCmd("G10L20P1X0Y0Z0");
@@ -3473,14 +3475,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemAddRoubndRectActionPerformed
 
     private void jMenuItemAddArcActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddArcActionPerformed
-        try {
-            double diameter = Double.valueOf(JOptionPane.showInputDialog(this, "Diameter ?", ""));
-            double startAngle = Double.valueOf(JOptionPane.showInputDialog(this, "Start angle (clockwise start at right) ?", "0"));
-            double arcLen = Double.valueOf(JOptionPane.showInputDialog(this, "Angular arc length (negative for G3) ?", "360"));
-            if ( arcLen == 0) return;
-            while ( Math.abs(arcLen) > 360) arcLen = (arcLen < 0) ? 360+arcLen : arcLen-360;
-            addGElement( new GArc("arc", blocksviewer.get2DCursor(), diameter/2, startAngle, arcLen));
-        } catch ( Exception e) { }
+        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_G2G3_CIRCLE, 0, null);
     }//GEN-LAST:event_jMenuItemAddArcActionPerformed
 
     private void jMenuItemMakeFlattenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMakeFlattenActionPerformed
@@ -3858,10 +3853,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         blocksviewer.doAction(JBlocksViewer.ACTION_ADD_MIXED_PATH, 0, null);               
     }//GEN-LAST:event_jMenuItemAddMixedPathActionPerformed
 
-    private void jMenuItemMoveCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveCenterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_CENTER, 0, null);
-    }//GEN-LAST:event_jMenuItemMoveCenterActionPerformed
-
     private void jMenuItemInvertSelectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemInvertSelectionActionPerformed
         blocksviewer.doAction(JBlocksViewer.ACTION_INVERT_SELECTION, 0, null);   
     }//GEN-LAST:event_jMenuItemInvertSelectionActionPerformed
@@ -3874,6 +3865,32 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                                            0, false, false, false);
         }
     }//GEN-LAST:event_jMenuItemMoveActionPerformed
+
+    private void jMenuItemAddAtCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddAtCenterActionPerformed
+        blocksviewer.doAction( JBlocksViewer.ACTION_ADD_POINTS_AT_CENTER, 0, null);
+    }//GEN-LAST:event_jMenuItemAddAtCenterActionPerformed
+
+    private void jMenuItemConvertToMixedPathActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemConvertToMixedPathActionPerformed
+        int keepOriginal = 0;
+        switch ( JOptionPane.showConfirmDialog(this, "Keep original ?", 
+                "Transform selection", JOptionPane.YES_NO_CANCEL_OPTION)) {
+            case JOptionPane.CANCEL_OPTION: return;
+            case JOptionPane.YES_OPTION: keepOriginal=1;
+        }
+        blocksviewer.doAction( JBlocksViewer.ACTION_CONVERT_TO_MIXEDPATH, keepOriginal, null);
+    }//GEN-LAST:event_jMenuItemConvertToMixedPathActionPerformed
+
+    private void jMenuItemAddG23CircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddG23CircleActionPerformed
+        try {
+                double radius = ManagedPanel.isValidExpression(JOptionPane.showInputDialog(this, "Radius ?", "100"));
+                double startAngle = ManagedPanel.isValidExpression(JOptionPane.showInputDialog(this, "Start angle (clockwise start at right) ?", "0"));
+                double arcLen = ManagedPanel.isValidExpression(JOptionPane.showInputDialog(this, "Angular arc length (negative for G3) ?", "360"));
+                if ( Double.isNaN(arcLen) || Double.isNaN(startAngle) || Double.isNaN(radius)) return;              
+                if ( (arcLen % 360) == 0) arcLen = 360;
+                else arcLen %= 360;
+                addGElement( new GArc("arc", blocksviewer.get2DCursor(), radius, startAngle, arcLen));
+        } catch ( Exception e) { }
+    }//GEN-LAST:event_jMenuItemAddG23CircleActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -4059,7 +4076,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemUngroup.setEnabled((block|blocks) && noEdition);
         jMenuItemGRBLShowLogWindow.setEnabled( noEdition);
         jMenuItemGRBLShowBoundaries.setEnabled( grbl_ok & grbl_idle & (block|blocks) & noEdition);
-        jMenuItemAddFromHeadPos.setEnabled( grbl_ok & edit & noEdition);
+        jMenuItemAddAtCenter.setEnabled(edit & noEdition);
         jMenuItemAddPoints.setEnabled(noEdition);
         jMenuItemAddBounds.setEnabled((block|blocks)&& noEdition);
         jMenuItemAddIntersectionPoints.setEnabled(blocks & noEdition);
@@ -4089,6 +4106,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemRename.setEnabled((block|blocks)&& noEdition);
         jMenuItemChStartPos.setEnabled( point && noEdition);
         jMenuItemExtract.setEnabled((point|points) && noEdition);
+        jMenuItemConvertToMixedPath.setEnabled(block && noEdition);
         jMenuItemCopy.setEnabled((lines|point|points|block|blocks)&& noEdition);
         jMenuItemPaste.setEnabled(! CBempyt && noEdition);
         jMenuItemCut.setEnabled((lines|point|points|block|blocks)&& noEdition);
@@ -4097,16 +4115,15 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemSort.setEnabled((block|blocks)&& noEdition);
         jMenuItemReverse.setEnabled((block|blocks|edit)&& noEdition);
         jMenuItemDuplicate.setEnabled((point|points|block|blocks)&& noEdition);
-        jMenuItemMoveCenter.setEnabled((block|blocks)&& noEdition);
-        jMenuItemMove.setEnabled((block|blocks)&& noEdition);
+        jMenuItemMove.setEnabled((point|points|block|blocks) && noEdition);
         jMenuItemMoveWithMouse.setEnabled((point|points|block|blocks)&& noEdition);
         jMenuItemJoin.setEnabled((points|blocks|block)&& noEdition);
-        jMenuItemRotateCenter.setEnabled((block|blocks)&& noEdition);
-        jMenuItemRotateP.setEnabled((block|blocks)&& noEdition);
-        jMenuItemRotate.setEnabled((block|blocks)&& noEdition);
-        jMenuItemScaleCenter.setEnabled((block|blocks)&& noEdition);
+        jMenuItemRotateCenter.setEnabled((point|points|block|blocks)&& noEdition);
+        jMenuItemRotate2D.setEnabled((point|points|block|blocks) && noEdition);
+        jMenuItemRotate.setEnabled((block|blocks) && noEdition);
         jMenuItemScale.setEnabled((block|blocks)&& noEdition);
-        jMenuItemScaleP.setEnabled((block|blocks)&& noEdition);
+        jMenuItemScaleCenter.setEnabled((point|points|block|blocks)&& noEdition); 
+        jMenuItemScale2DC.setEnabled((point|points|block|blocks)&& noEdition);
         jMenuItemSimplifyP.setEnabled(points&& noEdition);
         jMenuItemSimplifyByDistance.setEnabled((points|block|blocks) && noEdition);
         jMenuItemUndo.setEnabled(canUndo&& noEdition);
@@ -4268,9 +4285,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
      * Reactivate Laser (send M3S1G1F100) if GRBL is IDLE.
      */
     private void updateLaserPosition() {
+        // to not touch to CNC while running !!!
+        if ((printDialog!=null) && printDialog.isVisible()) 
+            return;
+        
         if (grbl.getState() != GRBLControler.GRBL_STATE_IDLE) return;
-        if ( showLaserPosition)
-            grbl.pushCmd("M3S8G1F100");
+        if (showLaserPosition)
+            grbl.pushCmd("M3S"+confFrame.conf.showLaserPowerValue+"G1F100");
         else
             grbl.pushCmd("G0");
     }
@@ -4394,6 +4415,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItem2;
     private javax.swing.JMenuItem jMenuItemAbout;
     private javax.swing.JMenuItem jMenuItemAddArc;
+    private javax.swing.JMenuItem jMenuItemAddAtCenter;
     private javax.swing.JMenuItem jMenuItemAddBounds;
     private javax.swing.JMenuItem jMenuItemAddCircle;
     private javax.swing.JMenuItem jMenuItemAddCross;
@@ -4401,7 +4423,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemAddCustom;
     private javax.swing.JMenuItem jMenuItemAddCylindricalPocket;
     private javax.swing.JMenuItem jMenuItemAddDrill;
-    private javax.swing.JMenuItem jMenuItemAddFromHeadPos;
+    private javax.swing.JMenuItem jMenuItemAddG23Circle;
     private javax.swing.JMenuItem jMenuItemAddGear;
     private javax.swing.JMenuItem jMenuItemAddHeaderFooter;
     private javax.swing.JMenuItem jMenuItemAddHull;
@@ -4429,6 +4451,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemAlignVertical;
     private javax.swing.JMenuItem jMenuItemChStartPos;
     private javax.swing.JMenuItem jMenuItemConf;
+    private javax.swing.JMenuItem jMenuItemConvertToMixedPath;
     private javax.swing.JMenuItem jMenuItemCopy;
     private javax.swing.JMenuItem jMenuItemCopyOpenScadPolygon;
     private javax.swing.JMenuItem jMenuItemCursorAtCenter;
@@ -4466,7 +4489,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemMakeCutPathO;
     private javax.swing.JMenuItem jMenuItemMakeFlatten;
     private javax.swing.JMenuItem jMenuItemMove;
-    private javax.swing.JMenuItem jMenuItemMoveCenter;
     private javax.swing.JMenuItem jMenuItemMoveDown;
     private javax.swing.JMenuItem jMenuItemMoveUp;
     private javax.swing.JMenuItem jMenuItemMoveWithMouse;
@@ -4479,13 +4501,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemRename;
     private javax.swing.JMenuItem jMenuItemReverse;
     private javax.swing.JMenuItem jMenuItemRotate;
+    private javax.swing.JMenuItem jMenuItemRotate2D;
     private javax.swing.JMenuItem jMenuItemRotateCenter;
-    private javax.swing.JMenuItem jMenuItemRotateP;
     private javax.swing.JMenuItem jMenuItemSaveAs;
     private javax.swing.JMenuItem jMenuItemSaveGCode;
     private javax.swing.JMenuItem jMenuItemScale;
+    private javax.swing.JMenuItem jMenuItemScale2DC;
     private javax.swing.JMenuItem jMenuItemScaleCenter;
-    private javax.swing.JMenuItem jMenuItemScaleP;
     private javax.swing.JMenuItem jMenuItemSelectAll;
     private javax.swing.JMenuItem jMenuItemSetAsFooter;
     private javax.swing.JMenuItem jMenuItemSetAsHeader;
@@ -4524,7 +4546,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JToolBar.Separator jSeparator21;
     private javax.swing.JToolBar.Separator jSeparator22;
     private javax.swing.JToolBar.Separator jSeparator23;
-    private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JPopupMenu.Separator jSeparator26;
     private javax.swing.JPopupMenu.Separator jSeparator27;

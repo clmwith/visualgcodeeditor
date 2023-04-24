@@ -41,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.function.Consumer;
-import javax.swing.event.ListDataEvent;
 import org.kabeja.dxf.helpers.Point;
 
 /**
@@ -394,6 +393,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
     public boolean movePoint(GCode p, double dx, double dy) {
         if (lines.contains(p)) {     
             p.setLocation( p.getX() + dx, p.getY() + dy);
+            informAboutChange();
             return true;
         }
         return false;
@@ -517,7 +517,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
         GCode lastPoint = null;
         GCode center = null;
         for( GCode p : getPointsIterator()) {
-            if ((lastPoint!=null) && (center!=null) && (getAngle(center, lastPoint, p) > angleMin))
+            if ((lastPoint!=null) && (center!=null) && (getAngleInDegre(center, lastPoint, p) > angleMin))
                 res.add(center);
             lastPoint=center;
             center=p;
@@ -577,7 +577,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
     public void rotate(Point2D center, double angle) {
         lines.stream().filter((p) -> ( p .isAPoint())).forEach((p) -> {
             double d = center.distance(p);
-            double a = getAngle(center, p);
+            double a = getAngleInRadian(center, p);
             p.setLocation( center.getX() + Math.cos(a+angle)*d,
                     center.getY() + Math.sin(a+angle)*d);
         });
@@ -588,7 +588,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
     public void scale(Point2D center, double ratioX, double ratioY) {
         lines.stream().filter((p) -> ( p .isAPoint())).forEach((p) -> {      
             double d = center.distance(p);
-            double a = getAngle(center, p);
+            double a = getAngleInRadian(center, p);
             p.setLocation( center.getX() + Math.cos(a)*d*ratioX,
                     center.getY() + Math.sin(a)*d*ratioY);
         });
@@ -1591,6 +1591,31 @@ public class G1Path extends GElement implements Iterable<GCode> {
         }
         lines.add(i, line); 
         informAboutChange();
+    }
+
+    /**
+     * Add point at canter of each G1 move of selectedPoints
+     * @param selectedPoints
+     * @return the new points insered
+     */
+    public ArrayList<GCode> addAtCenter(ArrayList<GCode> selectedPoints) {
+        ArrayList<GCode> res = new ArrayList<>(selectedPoints.size());
+        
+        GCode lastPoint = null;
+        for ( int i = 0; i < lines.size(); i++) { 
+            GCode p = lines.get(i);
+            if ( selectedPoints.contains(p) && p.isAPoint() && (lastPoint != null)) {
+
+                final Segment2D s = new Segment2D(lastPoint, p);
+                lastPoint = (GCode)s.getPointAt(s.getLength()/2);
+                add(i, lastPoint);
+                res.add(lastPoint);
+                i++;
+            }
+            lastPoint = p;
+        }
+ 
+        return res;
     }
    
 }

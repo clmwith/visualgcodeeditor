@@ -43,15 +43,12 @@ import java.util.Iterator;
  */
 public class GSpline extends GElement {
 
-    public static final String HEADER_STRING = "(Spline-name: ";
-    GCode start;
-    
-    GCode cp1, cp2, end;
+    public static final String HEADER_STRING = "(Spline-name: ";   
+    GCode start, cp1, cp2, end;
     
     private Rectangle2D bounds;
     private Shape shape;
     private G1Path flatten;
-    private final GCode gcodeG5 = new GCode();
     
     public GSpline(String name0) {
         super(name0);
@@ -69,6 +66,7 @@ public class GSpline extends GElement {
         start.setG(0);
         cp1 = cp;
         end = e;
+        validateG5();
     }
     
     public GSpline( String name0, GCode s, GCode p1, GCode p2, GCode e) {
@@ -78,6 +76,7 @@ public class GSpline extends GElement {
         cp1 = p1;
         cp2 = p2;
         end = e;
+        validateG5();
     }
     
     @Override
@@ -89,26 +88,8 @@ public class GSpline extends GElement {
     public GCode getElementAt(int index) {
         if ( index == 0) return start;
         else if ( index == 1) { 
-            if ( gcodeG5.isEmpty()) {
-                gcodeG5.set(5, end.getX(), end.getY());               
-                if ( cp1 == null) { 
-                    // Plane
-                    //GCode p = start.getMiddlePointTo(end);
-                    //gcodeG5.add( new GWord('I', p.getX()- start.getX()));
-                    //gcodeG5.add( new GWord('J', p.getY()- start.getY()));
-                } else {
-                    // Cubic
-                    gcodeG5.add( new GWord('I', cp1.getX() - start.getX()));
-                    gcodeG5.add( new GWord('J', cp1.getY() - start.getY()));
-                    // Quadratic
-                    if ( cp2 != null) { 
-                        // l.setG( 5.1);               
-                        if ( Math.abs(cp2.getX() + end.getX()) > 0.000001) gcodeG5.add( new GWord('P', cp2.getX() - end.getX()));
-                        if ( Math.abs(cp2.getY() + end.getY()) > 0.000001) gcodeG5.add( new GWord('Q', cp2.getY() - end.getY()));
-                    }  
-                }
-            } 
-            return gcodeG5;
+            validateG5();
+            return end;
         }
         return null;
     }
@@ -154,8 +135,9 @@ public class GSpline extends GElement {
 
     @Override
     protected void informAboutChange() {
-        shape = null; flatten = null; 
-        gcodeG5.clear();
+        shape = null; 
+        flatten = null; 
+        
         if (cp1 != null && end != null) {
             if ( cp1.isAtSamePosition(start) ||
                  cp1.isAtSamePosition(end)) {
@@ -169,6 +151,7 @@ public class GSpline extends GElement {
                         cp2 = null;
             }
         }
+        validateG5();
         super.informAboutChange();
     }
 
@@ -250,7 +233,7 @@ public class GSpline extends GElement {
 
     @Override
     public Area getOffsetArea(double param) {
-        return flatten().getOffsetArea(param);
+        return getFlatten().getOffsetArea(param);
     }
 
     @Override
@@ -270,7 +253,7 @@ public class GSpline extends GElement {
         if ( (lastPoint==null) || ! lastPoint.isAtSamePosition(start)) fw.append(start.toString()+"\n");
         String e;
         fw.append(e=getElementAt(1)+"\n");
-        return gcodeG5;
+        return getElementAt(1);
     }
 
     @Override
@@ -289,14 +272,13 @@ public class GSpline extends GElement {
             res = start;
             dmin = start.distance(pt);
         }
-        if ( ((discareIt==null)||(discareIt.indexOf(getElementAt(1))==-1)) && (dmin > gcodeG5.distance(pt))) {
-            res =  gcodeG5;
-            dmin = gcodeG5.distance(pt);
+        if ( ((discareIt==null)||(discareIt.indexOf(getElementAt(1))==-1)) && (dmin > end.distance(pt))) {
+            res =  end;
+            dmin = end.distance(pt);
         }
         GCode p;
         if ( res == null) {
-            updateFlatten();
-            if (((p=flatten.getCloserPoint(pt, dmin, discareIt, true))!=null) && ! p.isIn(discareIt))
+            if (((p=getFlatten().getCloserPoint(pt, dmin, discareIt, true))!=null) && ! p.isIn(discareIt))
                 return p;
         }
         
@@ -307,7 +289,7 @@ public class GSpline extends GElement {
 
     @Override
     public boolean contains(GCode line) {
-        return (line==start) || (line==getElementAt(1)) || (line==cp1) || (line==cp2);
+        return (line==start) || (line==getElementAt(1)) || (line==cp1) || (line==cp2) || (line==end);
     }
 
     @Override
@@ -318,15 +300,13 @@ public class GSpline extends GElement {
 
     @Override
     double getLength() {
-        updateFlatten();
-        return flatten.getLength();
+        return getFlatten().getLength();
     }
 
     @Override
     public double getLenOfSegmentTo(GCode point) { 
-        if ( point == gcodeG5) {
-            updateFlatten();
-            return flatten.getLength();
+        if ( point == end) {
+            return getFlatten().getLength();
         }
         return Double.NaN;
     }
@@ -340,23 +320,17 @@ public class GSpline extends GElement {
 
     @Override
     public double getDistanceTo(GCode pt) {
-        updateFlatten();
-        return flatten.getDistanceTo(pt);
+        return getFlatten().getDistanceTo(pt);
     }
 
     @Override
     public boolean movePoint(GCode point, double dx, double dy) {
-        if ((point == start) || (point==cp1) || (point==cp2)) {
-            point.translate(dx, dy);           
-        } else
-            if (point==gcodeG5) {
-                end.translate(dx,dy);
-            }
-            else 
-                return false;
-        
-        informAboutChange();
-        return true;
+        if ((point == start) || (point==cp1) || (point==cp2) || (point==end)) {
+            point.translate(dx, dy); 
+            informAboutChange();
+            return true;
+        }
+        return false; 
     }
     
     @Override
@@ -364,8 +338,7 @@ public class GSpline extends GElement {
         boolean moved = false;
         for( GCode p : points) {
             if ( contains(p)) {
-                if ( p == gcodeG5) end.translate(dx, dy);
-                else p.translate(dx, dy);
+                p.translate(dx, dy);
                 moved = true;
             }
         }
@@ -439,7 +412,7 @@ public class GSpline extends GElement {
                 start.setG(0);
                 break;
             case 1:
-                if (gcode.getG() != 5)  return;
+                if (gcode.getG() != 5)  gcode.setG(5);
                 GCode l = new GCode(gcode);
                 double x = Double.isNaN(l.getX()) ? 0 : l.getX();
                 double y = Double.isNaN(l.getY()) ? 0 : l.getY();
@@ -580,8 +553,7 @@ public class GSpline extends GElement {
 
     @Override
     public G1Path flatten() {
-        updateFlatten();
-        G1Path res = (G1Path)flatten.clone();
+        G1Path res = (G1Path)getFlatten().clone();
         if ( properties != null) res.properties = properties.clone();
         return res;
     }
@@ -609,7 +581,7 @@ public class GSpline extends GElement {
                 "M " +start.toSVGPoint(origin) + 
                " C " + ((cp1==null)?start:cp1).toSVGPoint(origin) +
               ((cp2!=null)? " " + cp2.toSVGPoint(origin) : "") +
-               gcodeG5.toSVGPoint(origin) + "\"";            
+               end.toSVGPoint(origin) + "\"";            
     }
 
     @Override
@@ -636,14 +608,15 @@ public class GSpline extends GElement {
     
 
 
-    private void updateFlatten() {
+    private G1Path getFlatten() {
         if ( flatten == null) {
             updateShape();
             ArrayList<GElement> flat = G1Path.makeBlocksFromArea("flatten-spline", shape);
             flatten = flat.isEmpty() ? 
                         new G1Path("flatten-spline", start, end)
                         : (G1Path)flat.get(0);
-        }       
+        } 
+        return flatten;
     }
 
     /**
@@ -662,6 +635,7 @@ public class GSpline extends GElement {
 
     void translateFirstPoint(double dx, double dy) {
         start.translate(dx, dy);
+        // translate I,J too ???
         informAboutChange();
     }
     
@@ -679,10 +653,7 @@ public class GSpline extends GElement {
                     shape = new CubicCurve2D.Double(start.getX(), start.getY(), cp1.getX(), cp1.getY(), cp2.getX(), cp2.getY(), end.getX(), end.getY());
             }
             
-            //bounds = shape.getBounds2D();
-            //flatten = null;
-            flatten();
-            bounds = flatten.getBounds();
+            bounds = getFlatten().getBounds();
         }
     }
 
@@ -694,5 +665,25 @@ public class GSpline extends GElement {
     @Override
     public GCode getPoint(int p) {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    /**
+     * Recalculate I,J, Q,P into G5 code according to cp1 and cp2
+     */
+    private void validateG5() {
+        GCode p = end.clone();
+        end.clear();
+        end.set(5, p.getX(), p.getY());
+        if (cp1 !=null) {
+            // Cubic
+            end.add( new GWord('I', cp1.getX() - start.getX()));
+            end.add( new GWord('J', cp1.getY() - start.getY()));          
+            if ( cp2 != null) { 
+                // Quadratic
+                // l.setG( 5.1);               
+                if ( Math.abs(cp2.getX() + end.getX()) > 0.0000001) end.add( new GWord('P', cp2.getX() - end.getX()));
+                if ( Math.abs(cp2.getY() + end.getY()) > 0.0000001) end.add( new GWord('Q', cp2.getY() - end.getY()));
+            }  
+        }
     }
 }

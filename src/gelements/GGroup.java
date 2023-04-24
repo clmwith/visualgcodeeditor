@@ -583,17 +583,17 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return modif;
     }
     
-    public GCode getCloserPoint(GCode pt, double dmin, ArrayList<GElement> discareElement, ArrayList<GCode> discarePoints) {
+    public GCode getCloserPoint(GCode pt, double dmax, ArrayList<GElement> discareElement, ArrayList<GCode> discarePoints) {
         GCode closer, closest = null;
         double d;
         for( GElement s : elements) {
             closer=null;
             if ( (discareElement!=null) && discareElement.contains(s)) continue;
-            if ( s instanceof GGroup) closer = ((GGroup)s).getCloserPoint(pt, dmin, discareElement, discarePoints);
-            else closer = s.getCloserPoint(pt, dmin, discarePoints, false);
-            if ((closer != null) && ((d = pt.distance(closer)) < dmin) && ((discarePoints == null) || (discarePoints.indexOf(closer)==-1))) {
+            if ( s instanceof GGroup) closer = ((GGroup)s).getCloserPoint(pt, dmax, discareElement, discarePoints);
+            else closer = s.getCloserPoint(pt, dmax, discarePoints, false);
+            if ((closer != null) && ((d = pt.distance(closer)) < dmax) && ((discarePoints == null) || (discarePoints.indexOf(closer)==-1))) {
                 closest = closer;
-                dmin = d;
+                dmax = d;
             }
         }
         return closest;
@@ -757,7 +757,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
         for( GElement e : elements) 
             if ( e instanceof GGroup) ((GGroup)e).toDXF(out, flattenSPline);
             else 
-                if ( flattenSPline && ((e instanceof GMixedPathPath) ||
+                if ( flattenSPline && ((e instanceof GMixedPath) ||
                         (e instanceof GSpline)))
                             e.flatten().toDXF(out);
                 else e.toDXF(out);

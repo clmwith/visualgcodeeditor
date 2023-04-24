@@ -44,7 +44,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
      */
     boolean getConfiguration(String confName) {
         if ( conf.restore(confName)) {            
-            jComboBox1.getEditor().setItem(selected=confName);
+            jComboBoxConfiguration.getEditor().setItem(selected=confName);
             updateGUI();
             return true;
             
@@ -89,7 +89,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
                     });
                 } else {
                     if ( conf.restore(selected)) {
-                        jComboBox1.setSelectedIndex(conf.getSavedNames().indexOf(selected)+1);
+                        jComboBoxConfiguration.setSelectedIndex(conf.getSavedNames().indexOf(selected)+1);
                         updateGUI();
                     }
                 } 
@@ -145,6 +145,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldBSX.setText(df.format(conf.backLashX));
         jTextFieldBSY.setText(df.format(conf.backLashY));
         jTextFieldBSZ.setText(df.format(conf.backLashZ));
+        jTextFieldShowLaserPosition.setText("" + conf.showLaserPowerValue);
+        jTextFieldMinG1Move.setText("" + conf.minG1move);
     }
 
     /**
@@ -157,6 +159,21 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private void initComponents() {
         java.awt.GridBagConstraints gridBagConstraints;
 
+        jPanelConf = new javax.swing.JPanel();
+        jLabel17 = new javax.swing.JLabel();
+        jButtonLoadConf = new javax.swing.JButton();
+        jComboBoxConfiguration = new javax.swing.JComboBox<>();
+        jButtonUpdate = new javax.swing.JButton();
+        jLabel18 = new javax.swing.JLabel();
+        jButtonDelete = new javax.swing.JButton();
+        jPanel5 = new javax.swing.JPanel();
+        jButtonSaveConf = new javax.swing.JButton();
+        jLabel22 = new javax.swing.JLabel();
+        jLabel21 = new javax.swing.JLabel();
+        jButtonCancel = new javax.swing.JButton();
+        jButtonOk = new javax.swing.JButton();
+        jTabbedPane1 = new javax.swing.JTabbedPane();
+        jPanel4 = new javax.swing.JPanel();
         jPanelHomePos = new javax.swing.JPanel();
         jRadioButtonUL = new javax.swing.JRadioButton();
         jRadioButtonUR = new javax.swing.JRadioButton();
@@ -167,18 +184,6 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldWidth = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
         jTextFieldHeight = new javax.swing.JTextField();
-        jPanelDefVal = new javax.swing.JPanel();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jTextFieldFeedR = new javax.swing.JTextField();
-        jTextFieldLaserP = new javax.swing.JTextField();
-        jTextFieldMoveZ = new javax.swing.JTextField();
-        jLabel11 = new javax.swing.JLabel();
-        jLabel12 = new javax.swing.JLabel();
-        jTextFieldToolDiameter = new javax.swing.JTextField();
-        jCheckBoxAdaptativePower = new javax.swing.JCheckBox();
-        jLabel13 = new javax.swing.JLabel();
-        jTextFieldJogSpeed = new javax.swing.JTextField();
         jPanelRotation = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
@@ -195,6 +200,17 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldPerimeter = new javax.swing.JTextField();
         jTextFieldObjectLength = new javax.swing.JTextField();
         jLabel10 = new javax.swing.JLabel();
+        jPanelExecution = new javax.swing.JPanel();
+        jPanelDefVal = new javax.swing.JPanel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jTextFieldFeedR = new javax.swing.JTextField();
+        jTextFieldLaserP = new javax.swing.JTextField();
+        jTextFieldMoveZ = new javax.swing.JTextField();
+        jLabel11 = new javax.swing.JLabel();
+        jCheckBoxAdaptativePower = new javax.swing.JCheckBox();
+        jLabel13 = new javax.swing.JLabel();
+        jTextFieldJogSpeed = new javax.swing.JTextField();
         jPanelBackLash = new javax.swing.JPanel();
         jCheckBoxBackLash = new javax.swing.JCheckBox();
         jLabel14 = new javax.swing.JLabel();
@@ -203,31 +219,101 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldBSX = new javax.swing.JTextField();
         jTextFieldBSY = new javax.swing.JTextField();
         jTextFieldBSZ = new javax.swing.JTextField();
-        jPanelOkCancel = new javax.swing.JPanel();
-        jLabel19 = new javax.swing.JLabel();
-        jButtonCancel = new javax.swing.JButton();
-        jLabel21 = new javax.swing.JLabel();
-        jButtonOk = new javax.swing.JButton();
-        jLabel20 = new javax.swing.JLabel();
-        jPanelConf = new javax.swing.JPanel();
-        jLabel17 = new javax.swing.JLabel();
-        jButtonDelete = new javax.swing.JButton();
-        jComboBox1 = new javax.swing.JComboBox<>();
-        jButtonUpdate = new javax.swing.JButton();
-        jLabel18 = new javax.swing.JLabel();
-        jButtonSaveConf = new javax.swing.JButton();
-        jButtonLoadConf = new javax.swing.JButton();
-        jPanelHeadFoot = new javax.swing.JPanel();
-        jPanel1 = new javax.swing.JPanel();
+        jPanelGCode = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextArea1 = new javax.swing.JTextArea();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         jTextArea2 = new javax.swing.JTextArea();
+        jPanelEditor = new javax.swing.JPanel();
+        jLabel19 = new javax.swing.JLabel();
+        jTextFieldShowLaserPosition = new javax.swing.JTextField();
+        jLabel20 = new javax.swing.JLabel();
+        jLabel23 = new javax.swing.JLabel();
+        jTextFieldMinG1Move = new javax.swing.JTextField();
+        jLabel24 = new javax.swing.JLabel();
+        jTextFieldToolDiameter = new javax.swing.JTextField();
+        jLabel12 = new javax.swing.JLabel();
 
         setTitle("Configuration");
-        getContentPane().setLayout(new java.awt.GridBagLayout());
+
+        jLabel17.setText("Configuration");
+        jPanelConf.add(jLabel17);
+
+        jButtonLoadConf.setText("Load");
+        jButtonLoadConf.setToolTipText("Load a configuration from file");
+        jButtonLoadConf.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonLoadConfActionPerformed(evt);
+            }
+        });
+        jPanelConf.add(jButtonLoadConf);
+
+        jComboBoxConfiguration.setEditable(true);
+        jComboBoxConfiguration.setModel(comboModel);
+        jComboBoxConfiguration.setToolTipText("Use same name as third GRBL $I value for auto-loading");
+        jPanelConf.add(jComboBoxConfiguration);
+
+        jButtonUpdate.setText("Update");
+        jButtonUpdate.setToolTipText("Update this configuration with current values");
+        jButtonUpdate.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonUpdateActionPerformed(evt);
+            }
+        });
+        jPanelConf.add(jButtonUpdate);
+
+        jLabel18.setText("        ");
+        jPanelConf.add(jLabel18);
+
+        jButtonDelete.setText("Delete");
+        jButtonDelete.setToolTipText("Delete this configuration");
+        jButtonDelete.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonDeleteActionPerformed(evt);
+            }
+        });
+        jPanelConf.add(jButtonDelete);
+
+        getContentPane().add(jPanelConf, java.awt.BorderLayout.NORTH);
+
+        jButtonSaveConf.setText("Save");
+        jButtonSaveConf.setToolTipText("Save a configuration to file");
+        jButtonSaveConf.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonSaveConfActionPerformed(evt);
+            }
+        });
+        jPanel5.add(jButtonSaveConf);
+
+        jLabel22.setText("     ");
+        jPanel5.add(jLabel22);
+
+        jLabel21.setText("  ");
+        jPanel5.add(jLabel21);
+
+        jButtonCancel.setText("Cancel");
+        jButtonCancel.setToolTipText("Cancel changes");
+        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonCancelActionPerformed(evt);
+            }
+        });
+        jPanel5.add(jButtonCancel);
+
+        jButtonOk.setText("Ok");
+        jButtonOk.setToolTipText("Use this configuration");
+        jButtonOk.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonOkActionPerformed(evt);
+            }
+        });
+        jPanel5.add(jButtonOk);
+
+        getContentPane().add(jPanel5, java.awt.BorderLayout.SOUTH);
+
+        jPanel4.setLayout(new java.awt.GridBagLayout());
 
         jPanelHomePos.setBorder(javax.swing.BorderFactory.createTitledBorder("Home position"));
         jPanelHomePos.setLayout(new java.awt.GridLayout(2, 2));
@@ -265,13 +351,13 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jPanelHomePos.add(jRadioButtonDR);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 2;
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
         gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        getContentPane().add(jPanelHomePos, gridBagConstraints);
+        jPanel4.add(jPanelHomePos, gridBagConstraints);
 
-        jPanelWorkspace.setBorder(javax.swing.BorderFactory.createTitledBorder("Workspace dimensions"));
+        jPanelWorkspace.setBorder(javax.swing.BorderFactory.createTitledBorder("Workspace dimensions (mm)"));
         jPanelWorkspace.setLayout(new java.awt.GridBagLayout());
 
         jLabel1.setText("Width");
@@ -323,141 +409,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.gridy = 2;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        getContentPane().add(jPanelWorkspace, gridBagConstraints);
-
-        jPanelDefVal.setBorder(javax.swing.BorderFactory.createTitledBorder("Default values"));
-        jPanelDefVal.setLayout(new java.awt.GridBagLayout());
-
-        jLabel3.setText("Feed rate");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jLabel3, gridBagConstraints);
-
-        jLabel4.setText("Spindle/Laser power");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jLabel4, gridBagConstraints);
-
-        jTextFieldFeedR.setColumns(8);
-        jTextFieldFeedR.setText("100");
-        jTextFieldFeedR.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldFeedRActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.ipadx = 88;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jTextFieldFeedR, gridBagConstraints);
-
-        jTextFieldLaserP.setColumns(8);
-        jTextFieldLaserP.setText("1000");
-        jTextFieldLaserP.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldLaserPActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.ipadx = 88;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jTextFieldLaserP, gridBagConstraints);
-
-        jTextFieldMoveZ.setColumns(8);
-        jTextFieldMoveZ.setText("10");
-        jTextFieldMoveZ.setToolTipText("The Z position when moving");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 7;
-        gridBagConstraints.ipadx = 88;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jTextFieldMoveZ, gridBagConstraints);
-
-        jLabel11.setText("Move at Z Level");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 7;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jLabel11, gridBagConstraints);
-
-        jLabel12.setText("Tool diameter");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 9;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jLabel12, gridBagConstraints);
-
-        jTextFieldToolDiameter.setColumns(8);
-        jTextFieldToolDiameter.setText("0");
-        jTextFieldToolDiameter.setToolTipText("The working Z level");
-        jTextFieldToolDiameter.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldToolDiameterActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 9;
-        gridBagConstraints.ipadx = 88;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jTextFieldToolDiameter, gridBagConstraints);
-
-        jCheckBoxAdaptativePower.setText("Adaptative power (M3/M4)");
-        jCheckBoxAdaptativePower.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jCheckBoxAdaptativePowerActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 6;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
-        jPanelDefVal.add(jCheckBoxAdaptativePower, gridBagConstraints);
-
-        jLabel13.setText("JOG Speed");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        jPanelDefVal.add(jLabel13, gridBagConstraints);
-
-        jTextFieldJogSpeed.setText("5000");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.ipadx = 88;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        jPanelDefVal.add(jTextFieldJogSpeed, gridBagConstraints);
-
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
-        getContentPane().add(jPanelDefVal, gridBagConstraints);
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        jPanel4.add(jPanelWorkspace, gridBagConstraints);
 
         jPanelRotation.setBorder(javax.swing.BorderFactory.createTitledBorder("Rotation Axe"));
         jPanelRotation.setLayout(new java.awt.GridBagLayout());
@@ -642,7 +595,121 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        getContentPane().add(jPanelRotation, gridBagConstraints);
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        jPanel4.add(jPanelRotation, gridBagConstraints);
+
+        jTabbedPane1.addTab("Workspace", jPanel4);
+
+        jPanelExecution.setLayout(new java.awt.GridBagLayout());
+
+        jPanelDefVal.setBorder(javax.swing.BorderFactory.createTitledBorder("Default values"));
+        jPanelDefVal.setLayout(new java.awt.GridBagLayout());
+
+        jLabel3.setText("Feed rate");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jLabel3, gridBagConstraints);
+
+        jLabel4.setText("Spindle/Laser power");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jLabel4, gridBagConstraints);
+
+        jTextFieldFeedR.setColumns(8);
+        jTextFieldFeedR.setText("100");
+        jTextFieldFeedR.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldFeedRActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.ipadx = 88;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jTextFieldFeedR, gridBagConstraints);
+
+        jTextFieldLaserP.setColumns(8);
+        jTextFieldLaserP.setText("1000");
+        jTextFieldLaserP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldLaserPActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.ipadx = 88;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jTextFieldLaserP, gridBagConstraints);
+
+        jTextFieldMoveZ.setColumns(8);
+        jTextFieldMoveZ.setText("10");
+        jTextFieldMoveZ.setToolTipText("The Z position when moving");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 7;
+        gridBagConstraints.ipadx = 88;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jTextFieldMoveZ, gridBagConstraints);
+
+        jLabel11.setText("Move at Z Level");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 7;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jLabel11, gridBagConstraints);
+
+        jCheckBoxAdaptativePower.setText("Adaptative power (M3/M4)");
+        jCheckBoxAdaptativePower.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jCheckBoxAdaptativePowerActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.gridwidth = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelDefVal.add(jCheckBoxAdaptativePower, gridBagConstraints);
+
+        jLabel13.setText("JOG Speed");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        jPanelDefVal.add(jLabel13, gridBagConstraints);
+
+        jTextFieldJogSpeed.setText("5000");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.ipadx = 88;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        jPanelDefVal.add(jTextFieldJogSpeed, gridBagConstraints);
+
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
+        jPanelExecution.add(jPanelDefVal, gridBagConstraints);
 
         jPanelBackLash.setBorder(javax.swing.BorderFactory.createTitledBorder("BackLash"));
         jPanelBackLash.setLayout(new java.awt.GridBagLayout());
@@ -653,7 +720,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.gridy = 0;
         gridBagConstraints.gridwidth = 10;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 5, 0);
         jPanelBackLash.add(jCheckBoxBackLash, gridBagConstraints);
 
         jLabel14.setText("X value");
@@ -662,12 +729,13 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.gridy = 1;
         gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
         jPanelBackLash.add(jLabel14, gridBagConstraints);
 
         jLabel15.setText("Y value");
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 2;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
         gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
@@ -675,8 +743,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
         jLabel16.setText("Z value");
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 8;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
@@ -688,6 +756,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 1;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
         jPanelBackLash.add(jTextFieldBSX, gridBagConstraints);
 
         jTextFieldBSY.setColumns(8);
@@ -698,18 +767,20 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             }
         });
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 3;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
         gridBagConstraints.gridwidth = 5;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
         jPanelBackLash.add(jTextFieldBSY, gridBagConstraints);
 
         jTextFieldBSZ.setColumns(8);
         jTextFieldBSZ.setText("jTextField3");
         gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 9;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
         jPanelBackLash.add(jTextFieldBSZ, gridBagConstraints);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
@@ -719,98 +790,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 4, 0);
-        getContentPane().add(jPanelBackLash, gridBagConstraints);
+        jPanelExecution.add(jPanelBackLash, gridBagConstraints);
 
-        jLabel19.setText("    ");
-        jPanelOkCancel.add(jLabel19);
-
-        jButtonCancel.setText("Cancel");
-        jButtonCancel.setToolTipText("Cancel changes");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancelActionPerformed(evt);
-            }
-        });
-        jPanelOkCancel.add(jButtonCancel);
-
-        jLabel21.setText("  ");
-        jPanelOkCancel.add(jLabel21);
-
-        jButtonOk.setText("Apply");
-        jButtonOk.setToolTipText("Use this configuration");
-        jButtonOk.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonOkActionPerformed(evt);
-            }
-        });
-        jPanelOkCancel.add(jButtonOk);
-
-        jLabel20.setText("    ");
-        jPanelOkCancel.add(jLabel20);
-
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 3;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
-        getContentPane().add(jPanelOkCancel, gridBagConstraints);
-
-        jLabel17.setText("Configuration");
-        jPanelConf.add(jLabel17);
-
-        jButtonDelete.setText("Delete");
-        jButtonDelete.setToolTipText("Delete this configuration");
-        jButtonDelete.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonDeleteActionPerformed(evt);
-            }
-        });
-        jPanelConf.add(jButtonDelete);
-
-        jComboBox1.setEditable(true);
-        jComboBox1.setModel(comboModel);
-        jComboBox1.setToolTipText("Use same name as third GRBL $I value for auto-loading");
-        jPanelConf.add(jComboBox1);
-
-        jButtonUpdate.setText("Update");
-        jButtonUpdate.setToolTipText("Update this configuration with current values");
-        jButtonUpdate.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonUpdateActionPerformed(evt);
-            }
-        });
-        jPanelConf.add(jButtonUpdate);
-
-        jLabel18.setText("        ");
-        jPanelConf.add(jLabel18);
-
-        jButtonSaveConf.setText("Save");
-        jButtonSaveConf.setToolTipText("Save a configuration to file");
-        jButtonSaveConf.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonSaveConfActionPerformed(evt);
-            }
-        });
-        jPanelConf.add(jButtonSaveConf);
-
-        jButtonLoadConf.setText("Load");
-        jButtonLoadConf.setToolTipText("Load a configuration from file");
-        jButtonLoadConf.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonLoadConfActionPerformed(evt);
-            }
-        });
-        jPanelConf.add(jButtonLoadConf);
-
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
-        getContentPane().add(jPanelConf, gridBagConstraints);
-
-        jPanelHeadFoot.setPreferredSize(new java.awt.Dimension(0, 0));
-        jPanelHeadFoot.setLayout(new java.awt.BorderLayout());
-
-        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.Y_AXIS));
+        jTabbedPane1.addTab("Execution", jPanelExecution);
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("GCode header"));
         jPanel3.setLayout(new java.awt.BorderLayout());
@@ -821,7 +803,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
         jPanel3.add(jScrollPane1, java.awt.BorderLayout.CENTER);
 
-        jPanel1.add(jPanel3);
+        jPanelGCode.add(jPanel3);
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("GCode footer"));
         jPanel2.setLayout(new java.awt.BorderLayout());
@@ -832,17 +814,66 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
         jPanel2.add(jScrollPane2, java.awt.BorderLayout.CENTER);
 
-        jPanel1.add(jPanel2);
+        jPanelGCode.add(jPanel2);
 
-        jPanelHeadFoot.add(jPanel1, java.awt.BorderLayout.CENTER);
+        jTabbedPane1.addTab("GCode", jPanelGCode);
 
+        jPanelEditor.setLayout(new java.awt.GridBagLayout());
+
+        jLabel19.setText("Power of the \"ShowLaser position\" ");
+        jLabel19.setToolTipText("The power/spindle value to show laser position from the CNC");
+        jPanelEditor.add(jLabel19, new java.awt.GridBagConstraints());
+
+        jTextFieldShowLaserPosition.setColumns(10);
+        jPanelEditor.add(jTextFieldShowLaserPosition, new java.awt.GridBagConstraints());
+
+        jLabel20.setText(" <= 10 = 1%");
+        jPanelEditor.add(jLabel20, new java.awt.GridBagConstraints());
+
+        jLabel23.setText("Paths precision");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        jPanelEditor.add(jLabel23, gridBagConstraints);
+
+        jTextFieldMinG1Move.setColumns(10);
+        jTextFieldMinG1Move.setToolTipText("the minimum distance between two G1 points");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        jPanelEditor.add(jTextFieldMinG1Move, gridBagConstraints);
+
+        jLabel24.setText(" mm");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 2;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.gridheight = 4;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-        getContentPane().add(jPanelHeadFoot, gridBagConstraints);
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        jPanelEditor.add(jLabel24, gridBagConstraints);
+
+        jTextFieldToolDiameter.setColumns(10);
+        jTextFieldToolDiameter.setText("0");
+        jTextFieldToolDiameter.setToolTipText("for pocket path");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 9;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
+        jPanelEditor.add(jTextFieldToolDiameter, gridBagConstraints);
+
+        jLabel12.setText("Tool diameter");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 9;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
+        jPanelEditor.add(jLabel12, gridBagConstraints);
+
+        jTabbedPane1.addTab("Editor", jPanelEditor);
+
+        getContentPane().add(jTabbedPane1, java.awt.BorderLayout.CENTER);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -909,6 +940,18 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             conf.backLashX = Double.parseDouble(jTextFieldBSX.getText());
             conf.backLashY = Double.parseDouble(jTextFieldBSY.getText());
             conf.backLashZ = Double.parseDouble(jTextFieldBSZ.getText());
+            
+            conf.minG1move = Double.parseDouble( jTextFieldMinG1Move.getText());
+            
+            int v = Integer.decode( jTextFieldShowLaserPosition.getText());
+            if ( v >= 10) {
+                jTextFieldShowLaserPosition.setText("10");
+                JOptionPane.showMessageDialog(this, "Warning the laser power should be as small as possible to avoid fire !", "Danger !", JOptionPane.WARNING_MESSAGE);
+        
+            } else
+                conf.showLaserPowerValue = 10;
+
+            
         } catch ( NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Error saving configuration :\n"+e.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -1000,12 +1043,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
     private void jButtonUpdateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonUpdateActionPerformed
         updateConf();
-        conf.save(jComboBox1.getSelectedItem().toString());
+        conf.save(jComboBoxConfiguration.getSelectedItem().toString());
     }//GEN-LAST:event_jButtonUpdateActionPerformed
-
-    private void jTextFieldToolDiameterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldToolDiameterActionPerformed
-        conf.toolDiameter = Double.parseDouble(jTextFieldToolDiameter.getText());
-    }//GEN-LAST:event_jTextFieldToolDiameterActionPerformed
 
     /**
      * @param args the command line arguments
@@ -1047,7 +1086,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JButton jButtonUpdate;
     private javax.swing.JCheckBox jCheckBoxAdaptativePower;
     private javax.swing.JCheckBox jCheckBoxBackLash;
-    private javax.swing.JComboBox<String> jComboBox1;
+    private javax.swing.JComboBox<String> jComboBoxConfiguration;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
@@ -1062,6 +1101,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
+    private javax.swing.JLabel jLabel22;
+    private javax.swing.JLabel jLabel23;
+    private javax.swing.JLabel jLabel24;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -1069,15 +1111,17 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanelBackLash;
     private javax.swing.JPanel jPanelConf;
     private javax.swing.JPanel jPanelDefVal;
-    private javax.swing.JPanel jPanelHeadFoot;
+    private javax.swing.JPanel jPanelEditor;
+    private javax.swing.JPanel jPanelExecution;
+    private javax.swing.JPanel jPanelGCode;
     private javax.swing.JPanel jPanelHomePos;
-    private javax.swing.JPanel jPanelOkCancel;
     private javax.swing.JPanel jPanelRotation;
     private javax.swing.JPanel jPanelWorkspace;
     private javax.swing.JRadioButton jRadioButton1;
@@ -1090,6 +1134,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JRadioButton jRadioButtonUR;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JTextArea jTextArea2;
     private javax.swing.JTextField jTextFieldBSX;
@@ -1100,10 +1145,12 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JTextField jTextFieldHeight;
     private javax.swing.JTextField jTextFieldJogSpeed;
     private javax.swing.JTextField jTextFieldLaserP;
+    private javax.swing.JTextField jTextFieldMinG1Move;
     private javax.swing.JTextField jTextFieldMoveZ;
     private javax.swing.JTextField jTextFieldObjectLength;
     private javax.swing.JTextField jTextFieldPerimeter;
     private javax.swing.JTextField jTextFieldPulse;
+    private javax.swing.JTextField jTextFieldShowLaserPosition;
     private javax.swing.JTextField jTextFieldToolDiameter;
     private javax.swing.JTextField jTextFieldUnitFor1Turn;
     private javax.swing.JTextField jTextFieldWidth;

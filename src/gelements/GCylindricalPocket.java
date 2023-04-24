@@ -122,7 +122,7 @@ public final class GCylindricalPocket extends GPocket3D {
         double dy = origin.getY();
         if (angleToo) {
             GCode p2; 
-            rotationAngle=getAngle(lines.get(RECTANGLE_GCODE_LINE_NUMBER+1), p2=lines.get(RECTANGLE_GCODE_LINE_NUMBER+2));
+            rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER+1), p2=lines.get(RECTANGLE_GCODE_LINE_NUMBER+2));
             len = GWord.round(lines.get(RECTANGLE_GCODE_LINE_NUMBER+1).distance(p2));
         }
         double h = (radius-inlayDepth);
@@ -177,18 +177,18 @@ public final class GCylindricalPocket extends GPocket3D {
         if ((selectedPoints.size()==1)) {
             int i = lines.indexOf(selectedPoints.get(0));
             if ( i == (RECTANGLE_GCODE_LINE_NUMBER+1))
-                rotationAngle=getAngle(lines.get(RECTANGLE_GCODE_LINE_NUMBER), lines.get(RECTANGLE_GCODE_LINE_NUMBER+1)) - 3*Math.PI/2;
+                rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER), lines.get(RECTANGLE_GCODE_LINE_NUMBER+1)) - 3*Math.PI/2;
             else if ( i==(RECTANGLE_GCODE_LINE_NUMBER+5))
-                rotationAngle=getAngle(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5), lines.get(RECTANGLE_GCODE_LINE_NUMBER)) - 3*Math.PI/2;
+                rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5), lines.get(RECTANGLE_GCODE_LINE_NUMBER)) - 3*Math.PI/2;
             else if ( (i == (RECTANGLE_GCODE_LINE_NUMBER+3)) || (i==RECTANGLE_GCODE_LINE_NUMBER)) {
                 len = lines.get(RECTANGLE_GCODE_LINE_NUMBER).distance(lines.get(RECTANGLE_GCODE_LINE_NUMBER+3));
-                rotationAngle=getAngle(lines.get(RECTANGLE_GCODE_LINE_NUMBER), lines.get(RECTANGLE_GCODE_LINE_NUMBER+3));
+                rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER), lines.get(RECTANGLE_GCODE_LINE_NUMBER+3));
             } else if ( (i == (RECTANGLE_GCODE_LINE_NUMBER+1)) || (i==(RECTANGLE_GCODE_LINE_NUMBER+2))) {
                 len = lines.get(RECTANGLE_GCODE_LINE_NUMBER+1).distance(lines.get(RECTANGLE_GCODE_LINE_NUMBER+2));
-                rotationAngle=getAngle(lines.get(RECTANGLE_GCODE_LINE_NUMBER+1), lines.get(RECTANGLE_GCODE_LINE_NUMBER+2));
+                rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER+1), lines.get(RECTANGLE_GCODE_LINE_NUMBER+2));
             } else if (i == (RECTANGLE_GCODE_LINE_NUMBER+4)) {
                 len = lines.get(RECTANGLE_GCODE_LINE_NUMBER+4).distance(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5));
-                rotationAngle=getAngle(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5), lines.get(RECTANGLE_GCODE_LINE_NUMBER+4));
+                rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5), lines.get(RECTANGLE_GCODE_LINE_NUMBER+4));
             }
             recalculate(null, false);
         } else
