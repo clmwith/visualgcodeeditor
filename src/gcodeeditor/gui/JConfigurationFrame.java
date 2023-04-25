@@ -235,6 +235,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jLabel24 = new javax.swing.JLabel();
         jTextFieldToolDiameter = new javax.swing.JTextField();
         jLabel12 = new javax.swing.JLabel();
+        jPanelNotes = new javax.swing.JPanel();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        jTextArea3 = new javax.swing.JTextArea();
 
         setTitle("Configuration");
 
@@ -873,6 +876,14 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Editor", jPanelEditor);
 
+        jTextArea3.setColumns(30);
+        jTextArea3.setRows(5);
+        jScrollPane3.setViewportView(jTextArea3);
+
+        jPanelNotes.add(jScrollPane3);
+
+        jTabbedPane1.addTab("Notes", jPanelNotes);
+
         getContentPane().add(jTabbedPane1, java.awt.BorderLayout.CENTER);
 
         pack();
@@ -1122,6 +1133,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JPanel jPanelExecution;
     private javax.swing.JPanel jPanelGCode;
     private javax.swing.JPanel jPanelHomePos;
+    private javax.swing.JPanel jPanelNotes;
     private javax.swing.JPanel jPanelRotation;
     private javax.swing.JPanel jPanelWorkspace;
     private javax.swing.JRadioButton jRadioButton1;
@@ -1134,9 +1146,11 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JRadioButton jRadioButtonUR;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JTextArea jTextArea2;
+    private javax.swing.JTextArea jTextArea3;
     private javax.swing.JTextField jTextFieldBSX;
     private javax.swing.JTextField jTextFieldBSY;
     private javax.swing.JTextField jTextFieldBSZ;

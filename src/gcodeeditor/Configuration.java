@@ -62,6 +62,7 @@ public class Configuration  {
     public String editorSettings;
     public int showLaserPowerValue;
     public double minG1move;
+    public String CNCnotes;
 
     public Configuration() {  
         getDefault();
@@ -94,6 +95,7 @@ public class Configuration  {
         toolDiameter = prefs.getDouble("toolDiameter", 3);
         showLaserPowerValue = prefs.getInt("showLaserPowerValue", DEFAULT_SHOW_LASER_POWER);             
         minG1move = prefs.getDouble("minG1move", 1);
+        CNCnotes = prefs.get("CNCnote", "");
     }
     
     public ArrayList<String> getSavedNames() {
@@ -123,7 +125,8 @@ public class Configuration  {
         String vals = prefs.get(SAVE_HEADER+nodeName+SAVE_VALUE, null);
         if ( vals != null) {
             GCODEHeader  = prefs.get(SAVE_HEADER+nodeName+"øheader", "");
-            GCODEFooter  = prefs.get(SAVE_HEADER+nodeName+"øfooter", "");      
+            GCODEFooter  = prefs.get(SAVE_HEADER+nodeName+"øfooter", "");  
+            CNCnotes = prefs.get(SAVE_HEADER+nodeName+"ønotes", "");  
             String v[] = vals.split(",");
             try  {
             workspaceWidth = Integer.parseInt(v[0]);
@@ -182,6 +185,7 @@ public class Configuration  {
             minG1move);
             prefs.put(SAVE_HEADER+nodeName+"øheader", GCODEHeader);
             prefs.put(SAVE_HEADER+nodeName+"øfooter", GCODEFooter);
+            prefs.put(SAVE_HEADER+nodeName+"ønotes", CNCnotes);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
@@ -228,6 +232,7 @@ public class Configuration  {
             prefs.putDouble("toolDiameter", toolDiameter);
             prefs.putInt( "showLaserPowerValue", showLaserPowerValue);
             prefs.putDouble("minG1move", minG1move);
+            prefs.put("CNCnotes", CNCnotes);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {

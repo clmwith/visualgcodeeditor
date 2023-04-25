@@ -530,9 +530,13 @@ public class GMixedPath extends GElement {
         if ( bestSegment != null) {
             GCode newP = new GCode(point); 
             if (bestSegment instanceof Segment2D) {
+                
                 int i = getIndexOfPoint(((Segment2D)bestSegment).p2);
+                gContent.add(i, new GCode(1, point.getX(), point.getY()));
+                /*
                 final GSpline newC = new GSpline("", ((Segment2D)bestSegment).p1.clone(), point, ((Segment2D)bestSegment).p2.clone());
                 gContent.set( i, newC);
+                gContent.get(i);*/
                 informAboutChange();
                 return point;
             } else 
@@ -949,30 +953,25 @@ public class GMixedPath extends GElement {
     public void simplify(double angleMin, double distanceMax) { }
 
     @Override
-    public void setLine(int row, GCode value) {
-        Object o = gContent.get(row);
+    public void setLine(int row, GCode value) {  
+       
+        if (row == 0) {
+            // first point must be G0 point with (X,Y)
+            GCode v = new GCode(value);
+            if (v.isAPoint() && (v.getG()==0)||(v.getG()==1)) gContent.set(0, new GCode(0,v.getX(), v.getY()));
+            return;
+        }
         
-        if ((o instanceof GCode) && ! (value.isASpline() | value.isAnArc()) ) {
-            if ( value.isAPoint()) value.setG(1);
-            ((GCode)o).set(value);
-        }
-        else {
-            final Point2D p = getFirstPointFor(o);
-            if ( o == null) // no first point => convert to a simple final point
-                gContent.set( row, new GCode(1, p.getX(), p.getX()));
-            else 
-            if ( value.isASpline()) {
-                if (o instanceof GSpline) ((GElement)o).setLine(1, value);
-                else {
-                    gContent.set(row, new GSpline("", p, value));
-                }
-            } else if ( value.isAnArc()) {
-                if (o instanceof GArc) ((GElement)o).setLine(1, value);
-                else {                   
-                    gContent.set(row, new GArc("", p, value));
-                }
-            }
-        }
+        Object o = gContent.get(row);      
+        if (o instanceof GCode) {
+            if ( ! (value.isASpline() || value.isAnArc() || value.isComment()))
+                gContent.set(row, value);
+            
+        } else if ( value.isASpline()) {          
+            gContent.set(row, new GSpline("", getFirstPointFor( o), value));       
+        } else if ( value.isAnArc()) {
+            gContent.set(row, new GArc("", getFirstPointFor(o), value));                
+        }       
         informAboutChange();
     }
 

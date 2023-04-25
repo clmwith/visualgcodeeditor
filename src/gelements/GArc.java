@@ -223,8 +223,15 @@ public class GArc extends GElement {
         double d = Double.POSITIVE_INFINITY;
         double a = GCode.getAngleInDegre(center, pt);
         
-        if ( a < arcStart) a += 360;        
-        if ((a >= arcStart)&&(a<= arcStart+arcLen)) d = Math.abs(radius-center.distance(pt));        
+        if ( ! clockwise) {
+            if ( a < arcStart) a += 360;        
+            if ((a >= arcStart)&&(a<= arcStart+arcLen)) d = Math.abs(radius-center.distance(pt));        
+        } else {
+            double a1 = arcStart+arcLen;
+            double a2 = a1+(360-arcLen);
+            if ( a < a1) a += 360;
+            if ((a >= a1)&&(a <= a2)) d = Math.abs(radius-center.distance(pt));     
+        }
         
         return Math.min(d,Math.min(center.distance(pt),Math.min( start.distance(pt), end.distance(pt))));
     }
@@ -555,13 +562,13 @@ public class GArc extends GElement {
         if (this.clockwise != other.clockwise) {
             return false;
         }
-        if (start.distance(other.start) > 0.00001) {
+        if (! start.isAtSamePosition(other.start)) {
             return false;
         }
-        if (end.distance(other.end) > 0.00001) {
+        if (! end.isAtSamePosition(other.end)) {
             return false;
         }
-        return center.distance(other.center) <= 0.00001;
+        return center.isAtSamePosition(other.center);
     }
     
     @Override
@@ -578,7 +585,7 @@ public class GArc extends GElement {
         if ( flatten == null) {
             flatten = new G1Path("flattenArc-"+name);
             int nbp = (int)(((2 * Math.PI * radius * (arcLen/360))/12)+1)*12;
-            double angle = arcStart, a = arcLen / nbp;
+            double angle = arcStart, a = (clockwise?-(360-arcLen):arcLen) / nbp;
             while(nbp-- > 0) {
                 flatten.add(GCode.newAngularPoint(center, radius, angle, false));
                 angle+=a;
@@ -667,7 +674,7 @@ public class GArc extends GElement {
         if (arcLen < 10e-6) arcLen=360;
                 
         bounds = new Rectangle2D.Double(center.getX()-radius, center.getY()-radius, 2*radius, 2*radius);
-        shape = new Arc2D.Double(bounds, -arcStart, -arcLen, Arc2D.OPEN);
+        shape = new Arc2D.Double(bounds, -arcStart, clockwise?360-arcLen:-arcLen, Arc2D.OPEN);
         bounds = shape.getBounds2D();  
     }
 
