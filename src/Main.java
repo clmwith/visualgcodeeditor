@@ -5,6 +5,7 @@
  */
 
 import gcodeeditor.GCode;
+import gcodeeditor.JBlocksViewer;
 import gcodeeditor.gui.JEditorFrame;
 import gelements.GArc;
 import java.awt.EventQueue;
@@ -50,8 +51,10 @@ public class Main {
                
             } else {
                 f = new JEditorFrame(false, true);
-                f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -150));
-                f.addGElement( new GArc("arc", new GCode(100,100), 50, 45, 150));
+                f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -360));
+                //f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -150));
+                //f.addGElement( new GArc("arc", new GCode(100,100), 50, 45, 150));
+                //f.addGElement( JBlocksViewer.importGCODE("/tmp/toto.gcode", null));
                 //f.addGElement(JBlocksViewer.importSVG("/tmp/dessin.svg"));
                 //f.addGElement(JBlocksViewer.importGCODE2("/home/clm/Documents/Perso/Créations/Imprimante3D/CNC_Fraisage/piecesV4/gabari_percage_3axes.gcode")); 
                 //f.addGElement(GArc.makeBulge(new GCLine(1.5,0), new GCLine(0,1.5), -0.414214));

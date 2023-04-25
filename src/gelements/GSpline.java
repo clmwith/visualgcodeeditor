@@ -278,7 +278,7 @@ public class GSpline extends GElement {
         }
         GCode p;
         if ( res == null) {
-            if (((p=getFlatten().getCloserPoint(pt, dmin, discareIt, true))!=null) && ! p.isIn(discareIt))
+            if (((p=getFlatten().getCloserPoint(pt, dmin, discareIt, true))!=null) && ! p.isIn(discareIt)) 
                 return p;
         }
         
@@ -483,19 +483,24 @@ public class GSpline extends GElement {
         
         updateShape();
         if (pc.color == PaintContext.EDIT_COLOR) {
-            g.setColor(Color.lightGray);
+            
             int x1 = 0, y1 = 0;
             if ( cp1 != null) {           
                 x1 = (int)(cp1.getX()*zoomFactor);
                 y1 = -(int)(cp1.getY()*zoomFactor);
-                g.drawLine(sx, sy, x1, y1);
+                g.setColor(Color.LIGHT_GRAY);
                 drawPoint(g, zoomFactor, cp1);
+                g.setColor(Color.DARK_GRAY);
+                g.drawLine(sx, sy, x1, y1);
             }
             if ( cp2 != null) {
                     x1 = (int)(cp2.getX()*zoomFactor);
                     y1 = -(int)(cp2.getY()*zoomFactor);
-                    g.drawLine(ex, ey, x1, y1);
+                    g.setColor(Color.LIGHT_GRAY);
                     drawPoint(g, zoomFactor, cp2);
+                    g.setColor(Color.DARK_GRAY);
+                    g.drawLine(ex, ey, x1, y1);
+                    
             } 
             if ((cp1 != null) && (cp2==null)) g.drawLine(ex, ey, x1, y1); 
         }

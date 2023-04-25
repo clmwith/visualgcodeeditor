@@ -4009,10 +4009,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             if ( c == ArrayList.class ) {
                 jLabelEditType.setText("Selection");
                 jTextFieldEditedBlock.setEnabled(false);
+            } else {
+                jTextFieldEditedBlock.setEnabled(true);            
+                if ( c == GGroup.class) jLabelEditType.setText("Group ");
+                else jLabelEditType.setText("Elem ");
             }
-            else jTextFieldEditedBlock.setEnabled(true);
-            if ( c == GGroup.class) jLabelEditType.setText("Group ");
-            else jLabelEditType.setText("Elem ");
         }
         
         jLabelFormInfo.setText(blocksviewer.getSelectedBlocksInfo());
@@ -4145,6 +4146,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jToggleButtonAddRects.setSelected(! edit && (blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_RECTANGLES));
         jToggleButtonAddCircles.setSelected(! edit && blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_OVAL); 
         jToggleButtonAddLines.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_LINES);  
+
     }
 
     @Override

@@ -133,13 +133,11 @@ public class EditListAction extends AbstractAction
                 editTextField.addFocusListener( new FocusListener() {
                     @Override
                     public void focusGained(FocusEvent e) {
-                        //System.out.println("focus gained");
                         shapeviewer.setKeyFocus(false);
                     }
 
                     @Override
-                    public void focusLost(FocusEvent e) {
-                        //System.out.println("focus lost");
+                    public void focusLost(FocusEvent e) {                       
                         shapeviewer.setKeyFocus(true);
                     }
                 });

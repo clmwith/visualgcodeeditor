@@ -1002,15 +1002,27 @@ public class GGroup extends GElement implements Iterator<GElement> {
      */
     public void removeExtraGroups() {
         GElement g;
+        boolean restart;
+        do {
+            restart = false;
+            for( GElement e : elements) {
+                if ( e instanceof GGroup) {  
+                    ((GGroup)e).removeExtraGroups();
+                    
+                    if (((GGroup)e).size() == 1) elements.add(((GGroup)e).remove(0));
+                    
+                    if (((GGroup)e).isEmpty()) {
+                        remove(e);
+                        restart = true;
+                        break;
+                    }
+                }
+            }
+        } while ( restart);
+        
         while ( (elements.size() == 1) && ((g=elements.get(0)) instanceof GGroup)) {
             remove(0);
             addAll(((GGroup)g).elements);
-        }
-        for( GElement e : elements) {
-            if ( e instanceof GGroup) {                
-                ((GGroup)e).removeExtraGroups();
-                if (((GGroup)e).isEmpty()) remove(e);
-            }
         }
     }
 

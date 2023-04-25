@@ -244,12 +244,14 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
         return (getG() == 2) || (getG()==3);
     }
     
+   
     /**
-     * Return true if this line is a GO or a G1 line (with or without X,Y,Z).
-     * @return true if G0 or G1
+     * Return true if this line is a GO,1,2,3,5 move (with or without X,Y,Z).
+     * @return true if G is O,1,2,3,5
      */
     public final boolean isAMove() {
-        return (getG()==0) || (getG()==1);
+        final int g = getG();
+        return (g>=0) && (g<6) && (g!=4);
     }
 
     /**
@@ -486,8 +488,10 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     }
 
     public void translate(double dx, double dy) {
-        x.value += dx;
-        y.value += dy;
+        if (x == null) setX(dx);
+        else x.value += dx;
+        if (y==null) setY(dy);
+        else y.value += dy;
     }
     
     /** 

@@ -99,7 +99,7 @@ public class GArc extends GElement {
         if ( arcExtent == 0) arcExtent = 360;
         arcStart = (360+startAngle)%360;
         clockwise = arcExtent >= 0;
-        arcLen = Math.abs(arcExtent);      
+        arcLen = Math.abs(arcExtent); 
         
         this.center = new GCode(center);
         
@@ -180,8 +180,8 @@ public class GArc extends GElement {
 
     @Override
     public boolean contains(GCode line) {
-        if ( (flatten != null) && flatten.contains(line)) return true;
-        else return (start==line) || (end==line) || (center.distance(line) < 0.00001);
+        return start.isAtSamePosition(line) || end.isAtSamePosition(line) 
+               || center.isAtSamePosition(line) || getFlatten().contains(line);
     }
     
     @Override
@@ -220,6 +220,8 @@ public class GArc extends GElement {
 
     @Override
     public double getDistanceTo(GCode pt) {
+        if ( arcLen == 360) return Math.abs(radius-center.distance(pt));
+        
         double d = Double.POSITIVE_INFINITY;
         double a = GCode.getAngleInDegre(center, pt);
         
@@ -297,10 +299,12 @@ public class GArc extends GElement {
             // put the selected point from old flat to the new one
             getFlatten();
             GCode tmp = flatten.getCloserPoint(p, Math.max(Math.abs(dx),Math.abs(dy))+1, null, true);         
-            int i = flatten.indexOf(tmp);
-            p.set(tmp);
-            flatten.remove(i);
-            flatten.insertLine(i, p);
+            if ( tmp != null) {
+                int i = flatten.indexOf(tmp);            
+                p.set(tmp);
+                flatten.remove(i);
+                flatten.insertLine(i, p);
+            }
             return true;
         }
         else return false;
@@ -320,7 +324,7 @@ public class GArc extends GElement {
     public void translate(double dx, double dy) {
         start.translate(dx, dy);
         end.translate(dx, dy);
-        center.translate(dx, dy); //setLocation(center.getX()+dx, center.getY()+dy);
+        center.translate(dx, dy);
         informAboutChange();
     }
     
@@ -440,7 +444,7 @@ public class GArc extends GElement {
                 else if (p == end) g.fillOval(ex-3,ey-3, 6, 6);
             });
         
-        if ( pc.editedElement == this) {
+        if ( pc.color == PaintContext.EDIT_COLOR) {
             g.setColor(PaintContext.EDIT_COLOR);
             g.drawOval(sx-3,sy-3, 6, 6);  
             g.drawOval(ex-3,ey-3, 6, 6);  
@@ -584,8 +588,8 @@ public class GArc extends GElement {
     G1Path getFlatten() { 
         if ( flatten == null) {
             flatten = new G1Path("flattenArc-"+name);
-            int nbp = (int)(((2 * Math.PI * radius * (arcLen/360))/12)+1)*12;
-            double angle = arcStart, a = (clockwise?-(360-arcLen):arcLen) / nbp;
+            int nbp = 12 * (int)((2 * Math.PI * radius * (arcLen/360))/12);
+            double angle = arcStart, a = (clockwise?-(360-((arcLen==360)?0:arcLen)):arcLen) / nbp;
             while(nbp-- > 0) {
                 flatten.add(GCode.newAngularPoint(center, radius, angle, false));
                 angle+=a;
@@ -661,20 +665,29 @@ public class GArc extends GElement {
      */
     public void revalidate() {
         flatten = null;   
-        Segment2D t = new Segment2D(start, end).getTangentSegment();
+        if ( ! start.isAtSamePosition(end)) {
+
+            Segment2D t = new Segment2D(start, end).getTangentSegment();
+
+            center.set( t.getClosestPointFrom( center));
+            if ( Double.isNaN(center.getX())) 
+                center.setX( start.getX());
+            if ( Double.isNaN(center.getY())) 
+                center.setY( start.getY());
+            
+            end.set('I', center.getX() - start.getX());
+            end.set('J', center.getY() - start.getY());    
+        }
         
-        center.set( t.getClosestPointFrom( center));
-        end.set('I', center.getX() - start.getX());
-        end.set('J', center.getY() - start.getY());
         end.setG(clockwise?2:3);
-        
         radius = center.distance(start);
         arcStart = GCode.getAngleInDegre(center, start);
         arcLen = (360+GCode.getAngleInDegre(center, end) - arcStart)%360;
+
         if (arcLen < 10e-6) arcLen=360;
-                
+        
         bounds = new Rectangle2D.Double(center.getX()-radius, center.getY()-radius, 2*radius, 2*radius);
-        shape = new Arc2D.Double(bounds, -arcStart, clockwise?360-arcLen:-arcLen, Arc2D.OPEN);
+        shape = new Arc2D.Double(bounds, -arcStart, clockwise?360-((arcLen==360)?0:arcLen):-arcLen, Arc2D.OPEN);
         bounds = shape.getBounds2D();  
     }
 

@@ -1168,7 +1168,12 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         Node xx = document.getElementsByTagName("svg").item(0).getAttributes().getNamedItem("viewBox");
         //if ( xx != null) System.out.println("SVG Box= " + xx.getNodeValue());
         
-        readSVGtree(walker, "", res);  
+        try {
+            readSVGtree(walker, "", res);  
+        } catch ( Exception e) {
+            System.err.println(e);
+            e.printStackTrace();
+        }
         
         res.removeExtraGroups();
         return res;
@@ -1192,8 +1197,8 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     String transform = ((Element) noeud).getAttribute("transform");
                     
                     if ( ((Element) noeud).getTagName().equals("polyline")) {
-                    String pts = "M " + ((Element) noeud).getAttribute("points");
-                    g = readSVGPath( id, pts);
+                        String pts = "M " + ((Element) noeud).getAttribute("points");
+                        g = readSVGPath( id, pts);
                     } else {
                         String d = ((Element) noeud).getAttribute("d");
                         g = readSVGPath( id, d);
@@ -1245,9 +1250,16 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     double cy = Double.parseDouble(((Element) noeud).getAttribute("cy"));
                     double rx = Double.parseDouble(((Element) noeud).getAttribute("rx"));
                     double ry = Double.parseDouble(((Element) noeud).getAttribute("ry"));   
-                    parent.add( G1Path.makeOval(new Point2D.Double(cx, cy), rx, ry, 0.1));                                    
+                    parent.add( G1Path.makeOval(new Point2D.Double(cx, cy), rx, ry, conf.minG1move));   
+                    break;
+                case "circle":
+                    cx = Double.parseDouble(((Element) noeud).getAttribute("cx"));
+                    cy = Double.parseDouble(((Element) noeud).getAttribute("cy"));
+                    rx = Double.parseDouble(((Element) noeud).getAttribute("r"));
+                    parent.add( new GArc("circle"+GElement.getUniqID(), new GCode(cx,cy), rx, 0, 360));   
+                    break;
                 default:
-                    System.out.println("importSVG: ignoring <"+((Element) noeud).getTagName());              
+                    System.out.println("importSVG: ignoring <"+((Element) noeud).getTagName()+"...");              
             }
             for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
               readSVGtree(walker, indent + "  ", parent);
@@ -1360,12 +1372,20 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                         sh.moveTo((float)currentPosition.getX(), (float)currentPosition.getY());
                         
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                        pt[0] = currentPosition.clone(); // radiusx
+                        pt[0] = currentPosition.clone(); // radiusX,radiusY
                                                         
                         float rotate = Float.parseFloat(commands[cn++]);
-                        boolean largeArcFlag = Integer.parseInt(commands[cn++]) == 1;
-                        boolean sweepFlag = Integer.parseInt(commands[cn++]) == 1;
-                                
+                        
+                        boolean largeArcFlag,sweepFlag;
+                        if ( commands[cn].contains(",")) {
+                            String[] vals = commands[cn++].split(",");
+                            largeArcFlag= Integer.parseInt(vals[0]) == 1;
+                            sweepFlag = Integer.parseInt(vals[1]) == 1;                            
+                        } else {
+                            largeArcFlag= Integer.parseInt(commands[cn++]) == 1;
+                            sweepFlag = Integer.parseInt(commands[cn++]) == 1;
+                        }
+    
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         pt[2] = currentPosition.clone(); // last point 
                         
@@ -1637,7 +1657,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 screenMousePressPosition = e.getPoint();
                 break;
                 
-            case MouseEvent.BUTTON3: // quick add/move a point in editElement ?    
+            case MouseEvent.BUTTON3: // quick add+move a point in editElement ?    
                 if (mouseMode != MOUSE_MODE_NONE) return;
                 
                 if ((editedElement != null) && (editedElement.getDistanceTo(screenToCoordPoint(e.getPoint())) < 10 / zoomFactor)) {    
@@ -2711,12 +2731,19 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                     
             case ACTION_ADD_POINTS_AT_CENTER:
                 if ( ! selectedPoints.isEmpty() && (editedElement != null)) {
+            
                     if ( editedElement instanceof G1Path) {
                        selectedPoints = ((G1Path)editedElement).addAtCenter( selectedPoints);
-                       if ( ! selectedPoints.isEmpty()) saveState(true);
+                       
                     }
-                    else if ( editedElement instanceof GMixedPath) 
-                        ((GMixedPath)editedElement).addAtCenter( selectedPoints);
+                    else if ( editedElement instanceof GMixedPath) {
+                        selectedPoints = ((GMixedPath)editedElement).addAtCenter( selectedPoints);
+                    }
+                    
+                    if ( ! selectedPoints.isEmpty()) {
+                        inform( selectedPoints.size() + " point(s) added");
+                        saveState(true);
+                    }
                 }
                 break;
                 
@@ -4202,8 +4229,11 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
      * @param newName 
      */
     public void setEditedBlockName(String newName) {
-        getEditedElement().setName(newName);
-        saveState(true);
+        GElement e = getEditedElement();
+        if (e != null) {
+            e.setName(newName);        
+            saveState(true);
+        }
     }
     
     public Class getFirtsSelectedElementClass() {
@@ -4569,7 +4599,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     
     public String getSelectedBlockName() {
         GElement e = getEditedElement();
-        return (e != null) ? e.getName() : "<selection>";
+        return (e != null) ? e.getName() : "";
     }
         
     /**
