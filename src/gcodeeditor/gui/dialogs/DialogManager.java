@@ -62,14 +62,15 @@ public class DialogManager extends javax.swing.JDialog {
      * @param panelClass the class of the panel to show
      * @return null if closed by 'cancel' button or the panel
      */
-    public Object showDialogFor(Class panelClass, Object param) {        
-        assert ( panelClass.isAssignableFrom(ManagedPanel.class));       
+    @SuppressWarnings("unchecked")
+    public Object showDialogFor(Class panelClass, Object param) {           
         ManagedPanel res = null; 
         
         if ( guiPanels.containsKey(panelClass)) res = guiPanels.get(panelClass);         
         else {
             try {
-                res = (ManagedPanel)panelClass.getConstructor().newInstance();                    
+                Object o = panelClass.getDeclaredConstructor().newInstance();
+                if ( o instanceof  ManagedPanel) res = (ManagedPanel)o;                    
             } catch (Exception e) {
                 Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, e);
                 e.printStackTrace();

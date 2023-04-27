@@ -24,6 +24,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
@@ -96,7 +97,11 @@ public class GArc extends GElement {
      */
     public GArc(String name0, Point2D center, double radius, double startAngle, double arcExtent) {
         super(name0);
-        if ( arcExtent == 0) arcExtent = 360;
+        assert( ! Double.isNaN(center.getX()) && ! Double.isNaN(center.getY()));
+        
+        if ( (arcExtent == 0) || Double.isNaN(arcExtent)) arcExtent = 360;
+        if ( Double.isNaN(startAngle)) startAngle = 0;
+
         arcStart = (360+startAngle)%360;
         clockwise = arcExtent >= 0;
         arcLen = Math.abs(arcExtent); 
@@ -254,7 +259,7 @@ public class GArc extends GElement {
 
     @Override
     public void scale(Point2D origin, double ratioX, double ratioY) {
-
+        
         if ( Math.abs(ratioX) != Math.abs(ratioY)) // keep ratio for a circle ...
             ratioY = Math.signum(ratioY) * Math.abs(ratioX);
         
@@ -270,7 +275,15 @@ public class GArc extends GElement {
         this.center.scale(origin, ratioX, ratioY);
         informAboutChange();
     }
-
+    
+    @Override
+    public void transform(AffineTransform t) {
+        start.transform(t);
+        center.transform( t);
+        end.transform(t);
+        informAboutChange();    
+    }  
+     
     @Override
     public boolean movePoint( GCode p, double dx, double dy) {
         if ( start == p) start.translate(dx, dy);
@@ -700,5 +713,5 @@ public class GArc extends GElement {
     public GCode getPoint(int p) {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
-
+  
 }

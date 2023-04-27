@@ -8,6 +8,7 @@ import gcodeeditor.GCode;
 import gcodeeditor.JBlocksViewer;
 import gcodeeditor.gui.JEditorFrame;
 import gelements.GArc;
+import gelements.GMixedPath;
 import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -42,43 +43,62 @@ public class Main {
                 if (!prefRep.isDirectory()) prefRep.mkdir();
             }
             
-            JEditorFrame f;
-            try {
-            if ( args.length > 1) {
-                
-                    f = new JEditorFrame(args[1]);
-                    f.setVisible(true);
-               
-            } else {
-                f = new JEditorFrame(false, true);
-                f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -360));
-                //f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -150));
-                //f.addGElement( new GArc("arc", new GCode(100,100), 50, 45, 150));
-                //f.addGElement( JBlocksViewer.importGCODE("/tmp/toto.gcode", null));
-                //f.addGElement(JBlocksViewer.importSVG("/tmp/dessin.svg"));
-                //f.addGElement(JBlocksViewer.importGCODE2("/home/clm/Documents/Perso/Créations/Imprimante3D/CNC_Fraisage/piecesV4/gabari_percage_3axes.gcode")); 
-                //f.addGElement(GArc.makeBulge(new GCLine(1.5,0), new GCLine(0,1.5), -0.414214));
-                //new GArc("circle", new GCLine(1.5,1.5), 1.5, 90, 90));
-                /* LibreCadFont font;
-                try {
-                font = LibreCadFont.getFont(15);
-                f.addGElement( font.getTextPaths("e"));
-                } catch (IOException ex) {
-                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-                }*/
-                
-                EventQueue.invokeLater( new Runnable() {
-                    @Override
-                    public void run() {
-                        f.setVisible(true);                        
-                    }
-                });
-                
-                //f.addGElement(f.blocksviewer.importSVG("/tmp/coeur2.svg"));
-            }
-             } catch (IOException ex) {
+            
+            try {                
+                if ( args.length > 1) {  
+                    for( String arg : args) {
+                        if ( arg.endsWith(".svg")) {
+                            JEditorFrame f1 = new JEditorFrame(false, true);
+                            f1.addGElement(f1.blocksviewer.readSVGfile(arg)); 
+                            EventQueue.invokeLater( new Runnable() {                                
+                                @Override
+                                public void run() { f1.setVisible(true); } });
+                        } else if ( arg.endsWith(".dxf")) {
+                            JEditorFrame f2 = new JEditorFrame(false, true);
+                            f2.blocksviewer.importDXF(arg);                        
+                            EventQueue.invokeLater( new Runnable() {                                
+                                @Override
+                                public void run() { f2.setVisible(true); } });
+                        } else {                    
+                            JEditorFrame f3 = new JEditorFrame(arg);
+                            EventQueue.invokeLater( new Runnable() {                                
+                                @Override
+                                public void run() { f3.setVisible(true); } });
+                        }
+                    }  
+                } else {
+                    JEditorFrame
+                    f = new JEditorFrame(false, true);
+                    //f.addGElement(GMixedPath.makeRounRect(200, 300, 30));
+                    //f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -360));
+                    //f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -150));
+                    //f.addGElement( new GArc("arc", new GCode(100,100), 50, 45, 150));
+                    //f.addGElement( JBlocksViewer.importGCODE("/tmp/toto.gcode", null));
+                    //f.addGElement(f.blocksviewer.readSVGfile("/tmp/dessin.svg"));
+                    //f.addGElement(f.blocksviewer.readSVGfile("/tmp/tools-report-bug.svg")); // tools-report-bug
+                    //f.addGElement(f.blocksviewer.readSVGfile("/tmp/coeur2.svg"));
+                    //f.addGElement(JBlocksViewer.importGCODE2("/home/clm/Documents/Perso/Créations/Imprimante3D/CNC_Fraisage/piecesV4/gabari_percage_3axes.gcode")); 
+                    //f.addGElement(GArc.makeBulge(new GCLine(1.5,0), new GCLine(0,1.5), -0.414214));
+                    //new GArc("circle", new GCLine(1.5,1.5), 1.5, 90, 90));
+                    /* LibreCadFont font;
+                    try {
+                    font = LibreCadFont.getFont(15);
+                    f.addGElement( font.getTextPaths("e"));
+                    } catch (IOException ex) {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+                    }*/
+
+                    EventQueue.invokeLater( new Runnable() {
+                        @Override
+                        public void run() {
+                            f.setVisible(true);                        
+                        }
+                    });
                 }
+            } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(null, ex.getLocalizedMessage(), "Error",  JOptionPane.ERROR_MESSAGE);
+                    ex.printStackTrace();
+            }
             //f.addGElement( GBlock.makeCircle(new Point2D.Double(0,0), 24, 30));
             // try {
             

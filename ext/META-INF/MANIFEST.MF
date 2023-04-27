@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Main-Class: org.ninjacave.jarsplice.JarSpliceLauncher
+Launcher-Main-Class: Main
+Launcher-VM-Args: 
+

@@ -18,6 +18,7 @@ package gelements;
 
 import gcodeeditor.GCode;
 import gcodeeditor.JBlocksViewer;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
@@ -212,6 +213,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public void translate(double d, double d0) {
         elements.forEach((e) -> { 
             e.translate(d, d0);
+        });
+    }
+    
+    @Override
+    public void transform(AffineTransform t) {
+        elements.forEach((o) -> { 
+            o.transform( t);
         });
     }
     

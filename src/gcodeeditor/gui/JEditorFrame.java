@@ -2328,27 +2328,28 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         fc.addChoosableFileFilter(new FileNameExtensionFilter("Drawing Exchange File (*.dxf)", "dxf"));
         fc.addChoosableFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode)", "ngc", "nc", "tap","gcode"));
         fc.addChoosableFileFilter(new FileNameExtensionFilter("Scalable Vector Graphics (*.svg)", "svg"));        
+        fc.setMultiSelectionEnabled(true);
         if ( curDir != null) fc.setCurrentDirectory(curDir);
 
         if(fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
             curDir = fc.getCurrentDirectory();
-     
-            try {
-                if ( lastImportDir == null) 
-                    lastImportDir = fc.getSelectedFile().getParentFile();
-                
-                if ( fc.getSelectedFile().getAbsolutePath().toLowerCase().endsWith(".svg")) 
-                        addGElement(blocksviewer.importSVG(fc.getSelectedFile().getAbsolutePath()));
-                else 
-                    if ( fc.getSelectedFile().getAbsolutePath().toLowerCase().endsWith(".dxf"))
-                        blocksviewer.importDXF(fc.getSelectedFile().getAbsolutePath());
+                 
+            if ( lastImportDir == null) 
+                lastImportDir = fc.getSelectedFile().getParentFile();
+
+                for ( File f : fc.getSelectedFiles()) { 
+                    try {              
+                    if ( f.getAbsolutePath().toLowerCase().endsWith(".svg")) 
+                            addGElement(blocksviewer.readSVGfile(f.getAbsolutePath()));
                     else 
-                        addGElement(JBlocksViewer.importGCODE(fc.getSelectedFile().getAbsolutePath(), null));
-                
-            } catch ( ParserConfigurationException | SAXException | IOException | ParseException ex) {
-                JOptionPane.showMessageDialog(this, "Error reading file : \n\n" + ex.toString(), "Import error", JOptionPane.ERROR_MESSAGE);
-               // Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, ex);
-               ex.printStackTrace();
+                        if ( f.getAbsolutePath().toLowerCase().endsWith(".dxf"))
+                            blocksviewer.importDXF(f.getAbsolutePath());
+                        else 
+                            addGElement(JBlocksViewer.importGCODE(f.getAbsolutePath(), null));                
+                } catch ( ParserConfigurationException | SAXException | IOException | ParseException ex) {
+                    JOptionPane.showMessageDialog(this, "Error reading file : \n\n" + ex.toString(), "Import error", JOptionPane.ERROR_MESSAGE);           
+                    ex.printStackTrace();
+                }                     
             }
         }
     }//GEN-LAST:event_jMenuItemImportActionPerformed

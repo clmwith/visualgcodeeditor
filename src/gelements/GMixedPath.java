@@ -77,9 +77,9 @@ public class GMixedPath extends GElement {
         informAboutChange();
     }
     
-    public boolean add(GElement circleOrCurve) {
+    public boolean add(GElement g1OrCircleOrCurve) {
        
-        return concat(circleOrCurve, 0.0000001);
+        return concat(g1OrCircleOrCurve, 10e-6);
     }
     
     public void addAll(ArrayList<GCode> copy) {
@@ -104,6 +104,12 @@ public class GMixedPath extends GElement {
         return clone;
     }
     
+    /**
+     * append a path if distance is under dmax
+     * @param gElement
+     * @param dmax
+     * @return true if gElement is added
+     */
     @Override
     public boolean concat(GElement gElement, double dmax) {
         final GCode p = gElement.getFirstPoint();
@@ -665,7 +671,7 @@ public class GMixedPath extends GElement {
         
         for( int i = 0; i < points.size(); i++) {
             GCode p = points.get(i);
-            boolean hasNextPoint = (i < points.size()-2);
+            boolean hasNextPoint = (i < points.size()-1);
            
             for( Object o : gContent) {
                 assert( o != null);
@@ -1029,4 +1035,24 @@ public class GMixedPath extends GElement {
         return res;
     }
     
+    /**
+     * Make a round rectangle with G1 and G2 feeds.
+     * @param w
+     * @param h
+     * @param radius
+     * @return the path
+     */
+    public static GMixedPath makeRounRect(double w, double h, double radius) {           
+        GMixedPath s = new GMixedPath("roundRect"+GElement.getUniqID());
+        s.add( new GCode(radius, 0));
+        s.add( new GCode(w-radius, 0));
+        s.add( new GArc("", new Point2D.Double(w-radius,radius), radius, 270, -90));
+        s.add( new GCode(w, h-radius));
+        s.add( new GArc("", new Point2D.Double(w-radius,h-radius), radius, 0, -90));
+        s.add( new GCode(radius, h));
+        s.add( new GArc("", new Point2D.Double(radius,h-radius), radius, 90, -90));
+        s.add( new GCode(0, radius));
+        s.add( new GArc("", new Point2D.Double(radius,radius), radius, 180, -90));
+        return s;
+    }
 }

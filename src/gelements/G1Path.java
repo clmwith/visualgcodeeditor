@@ -274,13 +274,14 @@ public class G1Path extends GElement implements Iterable<GCode> {
      * @param dx
      * @param dy */
     @Override
-   public void translate(double dx, double dy) {
+    public void translate(double dx, double dy) {
        lines.forEach((p) -> {
            if ( p.isAPoint()) p.setLocation(p.getX() + dx, p.getY() + dy);
         });
         informAboutChange();
     }
    
+    @Override
    public void transform(AffineTransform t) {
         lines.forEach((p) -> {
            if ( p.isAPoint()) p.transform( t);

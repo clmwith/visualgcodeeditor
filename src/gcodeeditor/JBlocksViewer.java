@@ -64,7 +64,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -329,10 +331,10 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             showWorkspace = vs[7].equals("true");
             applyConfiguration();
         }
-        if ( newEmptyDoc) setContent(new GGroup("Document"), true); 
-        
+           
         crossCursor = createCrossCursor(null);
         jogCursor = createCrossCursor("JOG");
+        if ( newEmptyDoc) setContent(new GGroup("Document"), true); 
     }
     
     public BackgroundPictureParameters getBackgroundPictureParameters() {
@@ -1153,13 +1155,23 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     
     
     private GCode currentPosition;
-    public GGroup importSVG( String fileName) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
+    /**
+     * Read SVG file and return his content
+     * 
+     * @param svgFileName
+     * @return
+     * @throws FileNotFoundException
+     * @throws IOException
+     * @throws ParserConfigurationException
+     * @throws SAXException 
+     */
+    public GGroup readSVGfile( String svgFileName) throws FileNotFoundException, IOException, ParserConfigurationException, SAXException {
 
-        String name = (fileName.lastIndexOf('/') != -1) ? fileName.substring( fileName.lastIndexOf('/')+1) : fileName;    
+        String name = (svgFileName.lastIndexOf('/') != -1) ? svgFileName.substring( svgFileName.lastIndexOf('/')+1) : svgFileName;    
         if ( name.lastIndexOf('.')!=-1) name = name.substring(0, name.lastIndexOf('.'));
         GGroup res = new GGroup(name);
        
-        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new File( fileName));
+        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new File( svgFileName));
         document.getDocumentElement().normalize();  
         DocumentTraversal traversal = (DocumentTraversal) document;
         TreeWalker walker = traversal.createTreeWalker(
@@ -1171,8 +1183,16 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         try {
             readSVGtree(walker, "", res);  
         } catch ( Exception e) {
-            System.err.println(e);
-            e.printStackTrace();
+            EventQueue.invokeLater( new Runnable() {
+                @Override
+                public void run() {
+                    JOptionPane.showInternalMessageDialog(null, 
+                            "Error while reading the file : \n\n" + svgFileName + "\n\n" + e.getLocalizedMessage()+
+                                    "\n\nTry plain/simple SVG format (with Inkscape)", 
+                            "Error", JOptionPane.INFORMATION_MESSAGE);
+                    
+                    e.printStackTrace();
+                } });
         }
         
         res.removeExtraGroups();
@@ -1180,99 +1200,115 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
     }
 
     private void readSVGtree(TreeWalker walker, String indent, GGroup parent) {
-        Node noeud = walker.getCurrentNode();
-        if (noeud instanceof Element) {
-            String id = ((Element) noeud).getAttribute("id");
-            //System.out.println(indent + "- " + ((Element) noeud).getTagName() + "(" + id + ")");
+        Node node = walker.getCurrentNode();
+        if (node instanceof Element) {
+            Element element = (Element)node;
+            
+            String id = element.getAttribute("id"); 
+            String transform = element.getAttribute("transform");
+            
+            //System.out.println(indent + "- " + element.getTagName() + "(" + id + ") transform="+transform);                      
 
-            switch ( ((Element) noeud).getTagName()) {
+            switch ( element.getTagName()) {
                 case "g":
                     GGroup g = new GGroup( (id == null) ? "g" : id);
                     parent.add(g);
                     parent = g;
+                    for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
+                        readSVGtree(walker, indent + "  ", parent);
+                    }
+                    walker.setCurrentNode(node);
+                    applySVGTransformation(transform, g);
                     break;
                     
                 case "polyline":                        
-                case "path":
-                    String transform = ((Element) noeud).getAttribute("transform");
-                    
-                    if ( ((Element) noeud).getTagName().equals("polyline")) {
-                        String pts = "M " + ((Element) noeud).getAttribute("points");
+                case "path": 
+                    if ( element.getTagName().equals("polyline")) {
+                        String pts = "M " + element.getAttribute("points");
                         g = readSVGPath( id, pts);
                     } else {
-                        String d = ((Element) noeud).getAttribute("d");
+                        String d = element.getAttribute("d");
                         g = readSVGPath( id, d);
                     }
                     
-                    if ( (transform != null) && ! transform.isBlank() ) {
-                        Pattern pat = Pattern.compile("^([^\\(]+)\\(([^\\)]+)\\)"); 
-                        Matcher m = pat.matcher(transform);
-                        if( m.matches()) {
-                            //System.out.println(m.group(1) + " et " + m.group(2));
-
-                            switch( m.group(1)) {
-                                case "matrix":
-                                    double matrix[] = new double[6];
-                                    int i = 0;
-                                    for( String s : m.group(2).split(","))
-                                        matrix[i++] = Double.parseDouble(s);
-                                    
-                                    AffineTransform t = new AffineTransform(matrix);
-                                    g.transform( t);
-                                    
-                                    break;
-                                case "scale":
-                                    double sx, sy;
-                                    sx = Double.parseDouble(m.group(2).split(",")[0]);
-                                    sy = m.group(2).contains(",") ? 
-                                                Double.parseDouble(m.group(2).split(",")[1]) : sx;
-                                                                            
-                                    g.scale(new Point2D.Double(), sx, sy);
-                                default: 
-                                    System.out.println("importSVG: unknow transform="+transform);
-                            }
-                        }                                                            
-                    } 
+                    applySVGTransformation(transform, g);                    
                     if ( g.size() == 1) parent.add( g.get(0));
                     else parent.add( g);
                     break;
 
                 case "rect":
-                    double x = Double.parseDouble(((Element) noeud).getAttribute("x"));
-                    double y = Double.parseDouble(((Element) noeud).getAttribute("y"));
-                    double w = Double.parseDouble(((Element) noeud).getAttribute("width"));
-                    double h = Double.parseDouble(((Element) noeud).getAttribute("height"));                     
-                    parent.add( G1Path.newRectangle(new GCode(x, y), new GCode(x+w, y+h)));
+                    double x = Double.parseDouble(element.getAttribute("x"));
+                    double y = Double.parseDouble(element.getAttribute("y"));
+                    double w = Double.parseDouble(element.getAttribute("width"));
+                    double h = Double.parseDouble(element.getAttribute("height"));  
+                    
+                    double rx = Double.NaN, ry = Double.NaN;
+                    if ( !  element.getAttribute("rx").isBlank()) {
+                        rx = Double.parseDouble(element.getAttribute("rx"));                        
+                    }
+                    if ( !  element.getAttribute("ry").isBlank()) {
+                        ry = Double.parseDouble(element.getAttribute("ry"));                        
+                    }
+                    
+                    G1Path g1p;
+                    if ( ! Double.isNaN(rx) || ! Double.isNaN(ry)) {
+                        if ( Double.isNaN(rx)) rx = ry;
+                        if ( Double.isNaN(ry)) ry = rx;
+                        g1p = G1Path.makeRounRect(w, h, Math.max(rx, ry)); // TODO: use ry !
+                        g1p.translate(x, y);
+                    } else                    
+                        g1p = G1Path.newRectangle(new GCode(x, y), new GCode(x+w, y+h));
+                    
+                    applySVGTransformation(transform, g1p);
+                    parent.add( g1p);
                     break;
                     
                 case "ellipse":
-                    double cx = Double.parseDouble(((Element) noeud).getAttribute("cx"));
-                    double cy = Double.parseDouble(((Element) noeud).getAttribute("cy"));
-                    double rx = Double.parseDouble(((Element) noeud).getAttribute("rx"));
-                    double ry = Double.parseDouble(((Element) noeud).getAttribute("ry"));   
-                    parent.add( G1Path.makeOval(new Point2D.Double(cx, cy), rx, ry, conf.minG1move));   
+                    double cx = Double.parseDouble(element.getAttribute("cx"));
+                    double cy = Double.parseDouble(element.getAttribute("cy"));
+                    rx = Double.parseDouble(element.getAttribute("rx"));
+                    ry = Double.parseDouble(element.getAttribute("ry")); 
+                    
+                    g1p = G1Path.makeOval(new Point2D.Double(cx, cy), rx, ry, conf.minG1move);
+                    applySVGTransformation(transform, g1p);
+                    parent.add( g1p );   
                     break;
                 case "circle":
-                    cx = Double.parseDouble(((Element) noeud).getAttribute("cx"));
-                    cy = Double.parseDouble(((Element) noeud).getAttribute("cy"));
-                    rx = Double.parseDouble(((Element) noeud).getAttribute("r"));
-                    parent.add( new GArc("circle"+GElement.getUniqID(), new GCode(cx,cy), rx, 0, 360));   
+                    cx = Double.parseDouble(element.getAttribute("cx"));
+                    cy = Double.parseDouble(element.getAttribute("cy"));
+                    rx = Double.parseDouble(element.getAttribute("r"));
+                    GArc garc = new GArc("circle"+GElement.getUniqID(), new GCode(cx,cy), rx, 0, 360);
+                    applySVGTransformation(transform, garc);
+                    parent.add( garc);   
+                    break;
+
+                case "svg":
+                    /*if ( ! element.getAttribute("height").isBlank()) {
+                        double height = Double.parseDouble(element.getAttribute("height"));
+                        double width = Double.parseDouble(element.getAttribute("width"));
+                    }*/
+                    for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
+                        readSVGtree(walker, indent + "  ", parent);
+                    }
                     break;
                 default:
-                    System.out.println("importSVG: ignoring <"+((Element) noeud).getTagName()+"...");              
-            }
-            for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
-              readSVGtree(walker, indent + "  ", parent);
-            }
-
+                    System.out.println("(info) importSVG: ignoring <"+element.getTagName()+"...");  
+                    for (Node n = walker.firstChild(); n != null; n = walker.nextSibling()) {
+                        readSVGtree(walker, indent + "  ", parent);
+                    }
+            }            
         }
-        walker.setCurrentNode(noeud);
+        walker.setCurrentNode(node);
     }      
     
-
-    public GGroup readSVGPath( String name, String pathString) {
+    /**
+     * Read a SVG Path as described here https://svg-path-visualizer.netlify.app/
+     * 
+     * @return the group containing all draw of this data
+    */
+    public GGroup readSVGPath( String name, String dataPathString) {
         GGroup res = new GGroup(name);
-        GMixedPath path = new GMixedPath( name);
+        GMixedPath mixPath = new GMixedPath( name);
         
         currentPosition = new GCode(0,0,0);
         
@@ -1281,7 +1317,7 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         GCode p, firstPoint = null, pt[] = new GCode[4], lastBezierPoint2 = null, lastBezierEnd = null;
         int patchNumber = 0, spNumber = 0, idSubPath = 1;
         
-        String[] commands = pathString.split(" ");
+        String[] commands = dataPathString.split(" ");
         for( int cn = 0; cn < commands.length; ) {
             
             while ( commands[cn].isBlank() && (cn < commands.length)) cn++;
@@ -1307,71 +1343,83 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 switch( currentMode) {
                         //if ( firstPoint != null) System.err.println("SVGImport : moveTo in path");
                     case 'H':                        
-                        p = currentPosition.clone();
-                        if ( absolute) p.setX(Double.parseDouble( commands[cn++]));
-                        else p.translate(Double.parseDouble( commands[cn++]), 0);
-                        path.add( p);
+                        if ( absolute) currentPosition.setX(Double.parseDouble( commands[cn++]));
+                        else currentPosition.translate(Double.parseDouble( commands[cn++]), 0);
+                        mixPath.add( currentPosition.clone());
                         break;
                     case 'V':   
-                        p = currentPosition.clone();
-                        if ( absolute) p.setY(Double.parseDouble( commands[cn++]));
-                        else p.translate(0, Double.parseDouble( commands[cn++]));
-                        path.add( p);                        
+                        if ( absolute) currentPosition.setY(Double.parseDouble( commands[cn++]));
+                        else currentPosition.translate(0, Double.parseDouble( commands[cn++]));
+                        mixPath.add( currentPosition.clone());  
                         break;
                     case 'M':   
                         if ( firstPoint != null) {
-                            res.add( path);
-                            path = new GMixedPath( name + "." + idSubPath++);
+                            res.add( mixPath);
+                            mixPath = new GMixedPath( name + "." + idSubPath++);
                         }                      
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                        path.add( firstPoint = currentPosition.clone()); 
+                        mixPath.add( firstPoint = currentPosition.clone()); 
                         currentMode = 'L'; // for polyline implementation
                         break;
                     case 'L':
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);                                   
-                        path.add( currentPosition.clone());      
+                        mixPath.add( currentPosition.clone());      
                         break;
                     case 'C': // bezier
-                        pt[0] = currentPosition.clone();
+                        pt[0] = currentPosition.clone();                        
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         pt[1] = currentPosition.clone();
-                        if ( ! absolute) currentPosition.set( pt[0]);
+                        if ( ! absolute) currentPosition = pt[0].clone();
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierPoint2 = pt[2] = currentPosition.clone();
-                        if ( ! absolute) currentPosition.set( pt[0]);
+                        if ( ! absolute) currentPosition = pt[0].clone();
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierEnd = pt[3] = currentPosition.clone();
-                        path.add(new GSpline("sp"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
+                        GElement el = new GSpline("sp"+spNumber++, pt[0], pt[1], pt[2], pt[3]);
+                        if ( ! mixPath.add(el)) {
+                            res.add( mixPath);
+                            res.add(el);
+                            mixPath = new GMixedPath( name + "." + idSubPath++);
+                            mixPath.add( currentPosition.clone());
+                        }
                         break;
+
                     case 'S': // bezier chained
                         pt[0] = lastBezierEnd.clone();
                         pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierPoint2 = pt[2] = currentPosition.clone();
+                        if ( ! absolute) currentPosition = pt[0].clone();
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierEnd = pt[3] = currentPosition.clone();
-                        path.add(new GSpline("s"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
+                        mixPath.add(new GSpline("s"+spNumber++, pt[0], pt[1], pt[2], pt[3]));
                         break;
                     case 'Q': // quad
                         pt[0] = currentPosition.clone();
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierPoint2 = pt[1] = currentPosition.clone();
+                        if ( ! absolute) currentPosition = pt[0].clone();
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
-                        lastBezierEnd =  pt[2] = currentPosition.clone();
-                        path.add(new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]));
-                        break;
+                        lastBezierEnd = pt[2] = currentPosition.clone();
+                        mixPath.add(new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]));
+                        break;                        
                     case 'T': // quad chained
                         pt[0] = lastBezierEnd.clone();
                         lastBezierPoint2 = pt[1] = lastBezierEnd.getMirrorPoint(lastBezierPoint2 );
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         lastBezierEnd = pt[2] = currentPosition.clone();
-                        path.add(new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]));
+                        el = new GSpline("q"+spNumber++, pt[0], pt[1], pt[2]);
+                        if ( ! mixPath.add( el)) {                                
+                            res.add( mixPath);
+                            res.add(el);
+                            mixPath = new GMixedPath( name + "." + idSubPath++);
+                            mixPath.add( currentPosition.clone());
+                        } 
                         break;
-                    case 'A': // elliptical Arc (rx,ry rotate LargeArcFlag SweepFlag fx,fy)
-                        Path2D sh = new Path2D.Double();
-                        sh.moveTo((float)currentPosition.getX(), (float)currentPosition.getY());
+                    case 'A': // elliptical Arc (rx,ry rotate LargeArcFlag SweepFlag fx,fy)    
+                        pt[1] = currentPosition.clone();
                         
-                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
+                        cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, true);
                         pt[0] = currentPosition.clone(); // radiusX,radiusY
                                                         
                         float rotate = Float.parseFloat(commands[cn++]);
@@ -1386,20 +1434,26 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                             sweepFlag = Integer.parseInt(commands[cn++]) == 1;
                         }
     
+                        if ( ! absolute) currentPosition = pt[1].clone();
                         cn = getNextSVGPosition( cn, commands, currentMode, currentPosition, absolute);
                         pt[2] = currentPosition.clone(); // last point 
                         
                         // radiusx, radiusy, xAxisRotation, boolean largeArcFlag, boolean sweepFlag, x, y                     
-                        arcTo(sh, (float)pt[0].getX(), (float)pt[0].getY(), rotate, largeArcFlag, 
+                        el = arcTo(pt[1], (float)pt[0].getX(), (float)pt[0].getY(), rotate, largeArcFlag, 
                                         sweepFlag, (float)currentPosition.getX(), (float)currentPosition.getY());
-                        
-                        path.add( G1Path.makeFromShape( "ea"+GElement.getUniqID(), sh, "").get(0));                          
+                                                
+                        if ( ! mixPath.add( el)) {                                
+                            res.add( mixPath);
+                            res.add(el);
+                            mixPath = new GMixedPath( name + "." + idSubPath++);
+                            mixPath.add( currentPosition.clone());
+                        }                           
                         break;
                     case 'Z':
                         if ( firstPoint != null) {
                             currentPosition.set(firstPoint.clone());
-                            path.add( currentPosition.clone());                           
-                        } 
+                            mixPath.add( currentPosition.clone());                           
+                        }
                         break;
                     default:
                         System.err.println("importSVG: command '"+currentMode+"' in path is not implemented yet.");
@@ -1407,9 +1461,56 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
                 }
             }
         }
-        res.add( path);
+        res.add( mixPath);
         return res;
-    }      
+    } 
+    
+        private void applySVGTransformation(String transform, GElement elem) {
+        if ( (transform != null) && ! transform.isBlank() ) {
+            Pattern pat = Pattern.compile("^([^\\(]+)\\(([^\\)]+)\\)"); 
+            Matcher m = pat.matcher(transform);
+            if( m.matches()) {
+                //System.out.println(m.group(1) + " et " + m.group(2));
+
+                switch( m.group(1)) {
+                    case "translate":
+                        String vals[] = new String[2];
+                        vals[1] = m.group(2);
+                        vals = extractNumberFrom(vals[1]);
+                        double tx = Double.parseDouble( vals[0]);
+                        vals = extractNumberFrom(vals[1]);
+                        double ty = Double.parseDouble(vals[0]);
+                        elem.translate(tx, ty);
+                        break;
+                        
+                    case "matrix":
+                        double matrix[] = new double[6];
+                        vals = new String[2];
+                        vals[1] = m.group(2);
+                        for( int i = 0; i < 6; i++) {
+                            vals = extractNumberFrom(vals[1]);
+                            matrix[i] = Double.parseDouble(vals[0]);
+                        }
+                        AffineTransform t = new AffineTransform(matrix);
+                        elem.transform( t);
+                        break;
+                        
+                    case "scale":
+                        vals = new String[2];
+                        vals[1] = m.group(2);
+                        vals = extractNumberFrom(vals[1]);
+                        double sx = Double.parseDouble( vals[0]);
+                        vals = extractNumberFrom(vals[1]);
+                        double sy = Double.parseDouble(vals[0]);                                                
+                        elem.scale(new Point2D.Double(), sx, sy);
+                        break;
+                        
+                    default: 
+                        System.out.println("importSVG: unknow transform="+transform);
+                }
+            }                                                            
+        }    
+    }
     
     /**
      * Update the current position accordint to the SVG d:path:element[number]
@@ -1425,17 +1526,20 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         while( cn < commands.length ) {
             String p = commands[cn++];
             if ( ! p.isBlank()) {
-                String[] coord = new String[2];
-                if ( p.contains(",") ) {
-                    coord = p.split(",");
-                    
+                String[] v2, v1 = extractNumberFrom( p);                
+                if ( v1[1].isBlank()) {
+                    v2 = extractNumberFrom( commands[cn++]);
                 } else {
-                    coord[0] = p;
-                    coord[1] = commands[cn++];
+                    v2 = extractNumberFrom(v1[1]);
                 }
+                if ( ! v2[1].isBlank()) {
+                    cn--;
+                    commands[cn] = v2[1];
+                }
+                
                 currentPosition.set(currentCommand=='M'?0:1,
-                                    Double.parseDouble(coord[0]) + (absolute ? 0 : currentPosition.getX()),
-                                    Double.parseDouble(coord[1]) + (absolute ? 0 : currentPosition.getY()));
+                                    Double.parseDouble(v1[0]) + (absolute ? 0 : currentPosition.getX()),
+                                    Double.parseDouble(v2[0]) + (absolute ? 0 : currentPosition.getY()));
                
                 return cn;
             }
@@ -1443,15 +1547,46 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         return Integer.MAX_VALUE;
     }
     
-
-    public static final void arcTo(Path2D path, float rx, float ry, float theta, boolean largeArcFlag, boolean sweepFlag, float x, float y) {
+    
+    /**
+     * Extract a number from 'input' string.
+     * 
+     * @param input the string to read the number
+     * @return String[0] == the number, String[1] == the rest of 'input'
+     */
+    public static String[] extractNumberFrom( String input) {
+        Pattern pat = Pattern.compile("^[,\\s]*(-?(([\\d]+\\.[\\d]+)|([\\d]+)|(\\.\\d+))([Ee]-?\\d+)?)(.*)$");
+        Matcher m = pat.matcher(input);
+        String res[] = new String[2];
+        if( m.matches()) {
+            res[0] = m.group(1).isEmpty() ? m.group(2) : m.group(1);
+            res[1] = m.group(7);
+        } else {
+            res[1] = input;
+        }       
+        return res;
+    }
+    
+    /**
+     * Taken from internet.
+     * 
+     * @param startPoint
+     * @param rx
+     * @param ry
+     * @param theta
+     * @param largeArcFlag
+     * @param sweepFlag
+     * @param x
+     * @param y
+     * @return 
+     */
+    public static final GElement arcTo(GCode startPoint, float rx, float ry, float theta, boolean largeArcFlag, boolean sweepFlag, float x, float y) {
+            
             // Ensure radii are valid
-            if (rx == 0 || ry == 0) {
-                    path.lineTo(x, y);
-                    return;
-            }
+            if (rx == 0 || ry == 0) return new G1Path("arc"+GElement.getUniqID());
+                  
             // Get the current (x, y) coordinates of the path
-            Point2D p2d = path.getCurrentPoint();
+            Point2D p2d = startPoint;
             float x0 = (float) p2d.getX();
             float y0 = (float) p2d.getY();
             // Compute the half distance between the current and the final point
@@ -1497,11 +1632,9 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             //
             float sx2 = (x0 + x) / 2.0f;
             float sy2 = (y0 + y) / 2.0f;
-            float cx = sx2
-                            + (float) (Math.cos(theta) * (double) cx1 - Math.sin(theta)
+            float cx = sx2 + (float) (Math.cos(theta) * (double) cx1 - Math.sin(theta)
                                             * (double) cy1);
-            float cy = sy2
-                            + (float) (Math.sin(theta) * (double) cx1 + Math.cos(theta)
+            float cy = sy2 + (float) (Math.sin(theta) * (double) cx1 + Math.cos(theta)
                                             * (double) cy1);
 
             //
@@ -1537,7 +1670,17 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
             arc.height = ry * 2.0f;
             arc.start = -angleStart;
             arc.extent = -angleExtent;
-            path.append(arc, true);
+            
+            if ( rx == ry) {
+                // Create GArc                
+                return new GArc("arc", new GCode(cx,cy), rx, angleStart, -angleExtent);
+                        
+            } else {
+                Path2D path = new Path2D.Double();
+                path.moveTo((float)startPoint.getX(), (float)startPoint.getY());                        
+                path.append(arc, true);
+                return G1Path.makeFromShape( "ea"+GElement.getUniqID(), path, "").get(0);
+            }
     }
     
     
@@ -1648,15 +1791,17 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         mousePressed = true;
         setKeyFocus(true);      
             
-        switch (e.getButton()) {      
-            case MouseEvent.BUTTON2: // translate view
+        if ( (e.getButton() == MouseEvent.BUTTON2) || ((e.getButton() == MouseEvent.BUTTON3) && e.isControlDown())) {
+                // translate view
                 ox=dx;
                 oy=dy;
                 modeBeforDragViewMode = mouseMode;
                 mouseMode = MOUSE_MODE_DRAG_VIEW;
                 screenMousePressPosition = e.getPoint();
-                break;
                 
+                
+        } else switch (e.getButton()) { 
+              
             case MouseEvent.BUTTON3: // quick add+move a point in editElement ?    
                 if (mouseMode != MOUSE_MODE_NONE) return;
                 
@@ -4126,6 +4271,8 @@ public final class JBlocksViewer extends javax.swing.JPanel implements Backgroun
         boolean newDoc = (document == null);
         if ( ! newDoc) setEditedElement(null);           
         document = content;
+        stateHasChanged = true;
+        
         if (content.isEmpty())
             gcodeHeader = gcodeFooter = null;
         else {
