@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import gcodeeditor.Configuration;
 import gcodeeditor.JBlocksViewer;
 import gcodeeditor.GRBLControler;
+import java.util.Iterator;
 
 /**
  * Class used to render the document into GCode to send to GRBL and|or save it in a file.
@@ -36,6 +37,7 @@ public class GCodeDocumentRender implements Runnable {
     ParserState state;
     boolean stopThread;
     
+    // Read only variables to know what is currently doing.
     GGroup document, currentGroup;
     GElement currentPath, lastBlock;
     String currentGLine;
@@ -108,15 +110,13 @@ public class GCodeDocumentRender implements Runnable {
                 sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving)+"M5S0");
             }
             
-            sendCmd("F"+GWord.GCODE_NUMBER_FORMAT.format(conf.feedRate));
-            sendCmd("S"+GWord.GCODE_NUMBER_FORMAT.format(conf.spindleLaserPower));
-            
-            // Start with default engraving values
-            sendGroup(document, new EngravingProperties(conf));
+            // Execute laser/milling job with defaults values
+            sendGroup(document, new EngravingProperties(conf), true);
 
-            if ( ! laserMode)
+            if ( ! laserMode) {
+                // Return to safe Z position
                 sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving)+"M5S0");
-            else
+            } else
                 sendCmd("G0M5S0"); 
 
             updateGUI();
@@ -126,7 +126,7 @@ public class GCodeDocumentRender implements Runnable {
                 try { Thread.sleep(100); } catch ( InterruptedException e) { }
 
             sendCmd("M2");
-            sendCmd(";End of Gcode");
+            sendCmd(";End of Job");
             // Wait task finished
             while( ! grbl.isControlerIdle()) try { Thread.sleep(100); } catch ( InterruptedException e) { }
             grbl.stopFileLogger();            
@@ -150,171 +150,122 @@ public class GCodeDocumentRender implements Runnable {
         state.updateContextWith(new GCode(cmd)); // TODO: use grbl.parserState ?
     }
 
-    private void sendGroup(GGroup group, EngravingProperties herited) throws IOException {                                                                                                 
+    private void sendGroup(GGroup group, EngravingProperties currentProperties, boolean firstPass) throws IOException {                                                                                                 
         if ( ! group.isEnabled()) return;
-        EngravingProperties p = group.properties;
+        currentGroup=group;
+        
+        final EngravingProperties groupProp = group.properties;
 
-        if ( herited.isAllAtOnce()) { 
-            // We are into a flat execution : parse one time without Pass parameters
-            if ( ! Double.isNaN(p.getFeed())) herited.setFeed( p.getFeed());
-            if ( p.getPower() != -1) herited.setPower( p.getPower());
+        if ( currentProperties.isAllAtOnce()) { 
+            // We are into a one time flat execution at fixed Z : parse one time without Pass parameters
+            // update only speed and power
+            if ( ! Double.isNaN(groupProp.getFeed())) currentProperties.setFeed( groupProp.getFeed());
+            if ( groupProp.getPower() != -1) currentProperties.setPower( groupProp.getPower());
 
-            for ( GElement b : group.getAll()) {
+            for ( GElement b : group.getAll()) {  
+                if ( b instanceof GGroup)
+                    sendGroup((GGroup) b, currentProperties.clone(), firstPass);               
+                else 
+                    sendElement(b, currentProperties.clone(), firstPass);
+                
                 currentGroup=group;
-                if ( b instanceof GGroup) sendGroup((GGroup) b, herited.clone());
-                else sendElement(b, herited.clone());
             }
             return;
         }
-
-        if ( p.isAllAtOnce()) {
-            // Execute all content as simple(s) flat paths
-            EngravingProperties.udateHeritedProps(herited, p);
-            currentZStart = herited.getZStart();     
-            currentZEnd   = herited.getZEnd();
-            currentZPassDepth = herited.getPassDepth();    
-            if ((currentPassCount < 1) && ((Double.isNaN(currentZStart) || Double.isNaN(currentZEnd) || Double.isNaN(currentZPassDepth)))) {
-                currentPassCount = -1;
-            } else {
-                currentPassCount = (int)Math.ceil((currentZStart - currentZEnd) / currentZPassDepth) + 1;
-                currentZ = currentZStart;
-            }
-            if ( currentPassCount < 1) currentPassCount = 1;
-            currentZ = currentZStart;
-            if ( ! laserMode && Double.isNaN(currentZ)) throw new Error("Can find zLevel for element " + group);
-
+        
+        
+        EngravingProperties.udateHeritedProps(currentProperties, groupProp);
+        if ( groupProp.isAllAtOnce()) {
+            // Execute all content as simple(s) flat paths at fixed Z
+            
             sendCmd(";START_GROUPED_EXECUTION: group:"+group.getName());
-            sendCmd(";PASS_COUNT:"+currentPassCount);
-            for( currentPass = 1; ! stopThread && (currentPass <= currentPassCount); currentPass++) {
+            sendCmd(";PASS_COUNT:"+currentProperties.getPassCount());
+            
+            Iterator<Double> it = currentProperties.iterator();
+            int cP = 0;
+            while ( it.hasNext()) {
+                currentZ = it.next();
+                if ( ! laserMode && Double.isNaN(currentZ)) throw new Error("Can find zLevel for element " + group);
+                
+                currentPass = ++cP;
+                currentZStart = currentProperties.getZStart();     
+                currentZEnd   = currentProperties.getZEnd();
+                currentZPassDepth = currentProperties.getPassDepth();                 
+            
                 sendCmd(";PASS:" + currentPass + (Double.isNaN(currentZ)?"": ", at Z="+currentZ));
 
+                EngravingProperties onePassProp = new EngravingProperties();
+                onePassProp.allAtOnce = true;
+                onePassProp.zStart = currentZ;
+                onePassProp.passCount = 1;
                 for( GElement e : group.getAll()) {
-                    if ( e instanceof GGroup) sendGroup((GGroup) e, herited.clone());
-                    else sendElement(e, herited.clone());
-                }
-
-                if ( ! Double.isNaN(currentZ) && ! Double.isNaN(currentZPassDepth)) {
-                    currentZ -= currentZPassDepth;
-                    if (  currentZ < currentZEnd) currentZ = currentZEnd;
+                    currentGroup=group;
+                    if ( e instanceof GGroup) sendGroup((GGroup) e, onePassProp.clone(), (cP==1));
+                    else sendElement(e, onePassProp.clone(), (cP==1));        
                 }
             }       
             sendCmd(";END_GROUPED_EXECUTION: group:"+group.getName());
+            
         } else {
-            // Normal sequential mode, remplace properties and execute content sequentially
-            herited = EngravingProperties.udateHeritedProps(herited, group.properties);
+            // Normal sequential/recursive mode, remplace properties and execute content sequentially
+            currentProperties = EngravingProperties.udateHeritedProps(currentProperties, group.properties);
 
             for ( GElement b : group.getAll()) {
                 currentGroup=group;
+                
                 if ( b instanceof GGroup) 
-                    sendGroup((GGroup) b, herited.clone());
+                    sendGroup((GGroup) b, currentProperties.clone(), true);
                 else 
-                    sendElement(b,  herited.clone());
+                    sendElement(b,  currentProperties.clone(), true);
                 if ( stopThread) return;
             }
         }                   
     }
 
     /** 
-     * Send an entire element one time (if onePass mode) or for all pass needed.
+     * Send an entire element one time (if onePass mode) or multiple times according to pass values.
      * @param path
-     * @param herited
+     * @param currProps
      * @throws IOException 
      */
-    private void sendElement(GElement path, EngravingProperties herited) throws IOException {
+    private void sendElement(GElement path, EngravingProperties currProps, boolean firstPass) throws IOException {
         if ( ! path.isEnabled()) return;
-        currentPath=path;
-        boolean onePass = herited.isAllAtOnce();
 
-        sendCmd(";Element: " + path.getName());
-        herited = EngravingProperties.udateHeritedProps(herited, path.properties);
+        boolean onePass = currProps.isAllAtOnce();
+
+        sendCmd(";BEGIN_ELEMENT: " + path.getName());
+        currProps = EngravingProperties.udateHeritedProps(currProps, path.properties);
 
         // remplace Feed and Spindle if needed
-        if ( ! Double.isNaN(herited.getFeed()) && (state.getFeed() != herited.getFeed())) 
-            sendCmd("F" + (currentFeed=herited.getFeed()));
-        if ( (herited.getPower() != -1) && (state.getPower() != herited.getPower()))
-            sendCmd("S" + GWord.GCODE_NUMBER_FORMAT.format(currentPower=herited.getPower()));
+        if ( ! Double.isNaN(currProps.getFeed())) sendCmd("F" + (currentFeed=currProps.getFeed()));
+        if ( currProps.getPower() != -1) sendCmd("S" + GWord.GCODE_NUMBER_FORMAT.format(currentPower=currProps.getPower()));
 
         if ( onePass) {
             // flat execution mode of the path
-            sendAllLines(path);
+            sendAllLines((G1Path)path.flatten());
 
         } else {
             // MultiPass mode : remplace PassParameters and execute the content for each Pass
-            // TODO: prendre la plus petite valeur de passe entre PassCount (si fixé) et le calcul normal.
-
-            EngravingProperties.udateHeritedProps(herited, path.properties);
-            currentZStart = herited.getZStart();     
-            currentZEnd   = herited.getZEnd();
-            currentZPassDepth = herited.getPassDepth();
-            
-            if ( Double.isNaN(currentZEnd) || Double.isNaN(currentZPassDepth)) {
-                currentPassCount = herited.getPassCount();
-                if ( Double.isNaN(currentZEnd)) currentZEnd = currentZStart - currentZPassDepth * currentPassCount;
-                else
-                    currentZPassDepth = (currentZStart - currentZEnd) / currentPassCount;
-            } else {
-                currentPassCount = (int)Math.ceil((currentZStart - currentZEnd) / currentZPassDepth) + 1;
-                currentZ = currentZStart;
-            }
-            if ( currentPassCount < 1) currentPassCount = 1;
-            currentZ = currentZStart;
-            
-            sendCmd(";START_PATH:"+path.getName());
-            sendCmd(";PASS_COUNT:"+currentPassCount);
-
-            // Special case for Drill point emulation ?
+ 
             if ( path instanceof GDrillPoint) {
-                if ( laserMode ) return;
-                GCode l = path.getLine(1);
-                double safeZ = Double.isNaN(l.getValue('R')) ? conf.safeZHeightForMoving : l.getValue('R');
-                currentZPassDepth = Double.isNaN(l.getValue('Q')) ? path.properties.getPassDepth() : l.getValue('Q');
-                if ( Double.isNaN(currentZStart) || Double.isNaN(currentZEnd) || Double.isNaN(currentZPassDepth)) {
-                    currentPassCount = -1;
-                } else {
-                    currentPassCount = (int)Math.ceil((currentZStart - currentZEnd) / currentZPassDepth) + 1;
-                    currentZ = currentZStart;
-                }
-                if ( currentPassCount < 1) currentPassCount = 1;
-
-                 // Go up if we must translate to destination
-                safeMoveTo(l, Double.NaN, safeZ);                     
-                updateGUI();
-                if ( Double.isNaN(currentZPassDepth)) { 
-                    // one shot drill
-                    sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZEnd));
-                } else { 
-                    // multi pass drill
-                    currentZ=currentZStart-currentZPassDepth;
-                    boolean finished;
-                    do {
-                        if ( currentZ < currentZEnd) currentZ = currentZEnd;
-                        sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZ));
-
-                        finished = Math.abs(currentZ - currentZEnd) < 0.00001;
-                        if ( ! finished) 
-                            sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
-
-                        currentZ -= currentZPassDepth;
-                    } while ( ! finished);
-                }
-                if ( l.get('P') != null) // make a pause ?
-                        sendCmd("G4 P"+ l.get('P').getIntValue());
-
-                sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
+                // Special case for Drill point emulation
+                sendGDrillPoint((GDrillPoint) path, currProps);
 
             } else {
-                currentZ = currentZStart;
-                for( currentPass = 1; ! stopThread && (currentPass <= currentPassCount); currentPass++) {
-                    sendCmd(";PASS:" + currentPass + (Double.isNaN(currentZ)?"": ", at Z="+currentZ));
-
-                    if ( path instanceof GTextOnPath) {
-                        EngravingProperties ep = new EngravingProperties();
-                        ep.setZStart(currentZ);
-                        ep.setPassCount(1);
-                        ep.setAllAtOnce(true);
-                        sendGroup(((GTextOnPath)path).getGText(), ep);
+                G1Path flatPath;
+                if ( path instanceof G1Path) flatPath = (G1Path) path;
+                else flatPath = (G1Path)path.flatten();
+                
+                sendCmd(";START_PATH:"+path.getName());
+                sendCmd(";PASS_COUNT:"+currProps.getPassCount());
+                
+                currentPass = 1;
+                currentPassCount = currProps.getPassCount();                         
+                for( Iterator<Double> passHeight = currProps.iterator(); passHeight.hasNext(); currentPass++) {
+                    currentZ = passHeight.next();
                     
-                    } else if ( path instanceof GPocket3D) {
+                    sendCmd(";PASS:" + currentPass + (Double.isNaN(currentZ)?"": ", at Z="+currentZ));
+                    if ( path instanceof GPocket3D) {
                         // Special case for the pocket 3D
                         if ( currentZStart-currentZ < ((GPocket3D)path).getInlayDepth()) {
                             ArrayList<GElement> l = new ArrayList<>();
@@ -323,67 +274,100 @@ public class GCodeDocumentRender implements Runnable {
                             ep.setZStart(currentZ);
                             ep.setPassCount(1);
                             ep.setAllAtOnce(true);
-                            sendGroup(G1Path.makePocket(l, conf.toolDiameter/2), ep);
+                            sendGroup(G1Path.makePocket(l, conf.toolDiameter/2), ep, false);
                         }
-                    } else
-                        sendAllLines(path);
-
-                    if ( ! Double.isNaN(currentZ) && ! Double.isNaN(currentZPassDepth)) {
-                        currentZ -= currentZPassDepth;
-                        if (  currentZ < currentZEnd) currentZ = currentZEnd;
+                        
+                    } else {
+                        sendAllLines(flatPath);
                     }
                 }  
             }
-            lastBlock=path;
-            sendCmd(";END_PATH:"+path.getName());
+            lastBlock=path;           
         }
+        sendCmd(";END_ELEMENT: "+path.getName());
     }
-
+    
+    
     /**
      * Send one time all lines of this path at current zLevel.
      * @param path
      * @throws IOException 
      */
-    private void sendAllLines(GElement path) throws IOException {
+    private void sendAllLines(G1Path path) throws IOException {
         if (path==null) return;
 
         if ( !(path instanceof G1Path))
             path = path.flatten();
 
-        //boolean first = true;
-        // send all lines
         for( currentBlockLine = 0; ! stopThread && (currentBlockLine < path.size()); currentBlockLine++) {
 
             updateGUI();
             GCode l = (GCode) path.getLine(currentBlockLine).clone();
             if ( l.isComment()) continue;
-
-            // Go up if we must translate to next point without a Laser
-            if ( /* first && */ ! laserMode && (l.getG()==0) && l.isAPoint()) {
-                //first = false; 
-                double d = l.distance(state.getGXYPositon());
-                if ( ! Double.isNaN(currentZ) && (state.getZ() < conf.safeZHeightForMoving) && 
-                    (Double.isNaN(d) || (d > 0.0001)))
-                        sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving));
-            }
-
-            // Starting engraving ?
-            if ( ! state.isEngraving() && (l.getG()>0)) {
-                if ( ! Double.isNaN(currentZ) && (Double.isNaN(state.getZ()) || 
-                        ((Math.abs(state.getZ() -currentZ) > 0.00001))))
-                    if ( laserMode)
-                        sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZ));
-                    else
-                        sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZ));
-            }
-
-            sendCmd(currentGLine=l.toGRBLString());
-        }
+          
+            if ((l.getG()==0) && l.isAPoint() && (l.distance(state.getGXYPositon()) > 0.00001))
+                safeMoveTo(l, currentZ, Double.NaN);             
+            else
+                sendCmd(currentGLine=l.toGRBLString());
+        }    
         lastBlock = path;
+    }
+    
+    /**
+     * Send Drill point emulation GCode.
+     * @param path
+     * @param herited 
+     */
+    private void sendGDrillPoint(GDrillPoint path, EngravingProperties herited) throws IOException {
+        if ( laserMode ) return;
+        EngravingProperties.udateHeritedProps(herited, path.properties);
+                
+        currentPath = path;
+        currentZStart = herited.zStart;
+        currentZEnd = herited.zEnd;
+ 
+        GCode l = path.getLine(1);
+        double safeZ = Double.isNaN(l.getValue('R')) ? conf.safeZHeightForMoving : l.getValue('R');
+        currentZPassDepth = Double.isNaN(l.getValue('Q')) ? path.properties.getPassDepth() : l.getValue('Q');
+        
+        if ( Double.isNaN(currentZStart) || Double.isNaN(currentZEnd) || Double.isNaN(currentZPassDepth)) {
+            currentPassCount = -1;
+        } else {
+            currentPassCount = (int)Math.ceil((currentZStart - currentZEnd) / currentZPassDepth) + 1;
+            currentZ = currentZStart;
+        }
+        if ( currentPassCount < 1) currentPassCount = 1;
+
+         // Go up if we must translate to destination
+        safeMoveTo(l, Double.NaN, safeZ);                     
+        
+        if ( Double.isNaN(currentZPassDepth)) { 
+            // one shot drill
+            sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZEnd));
+        } else { 
+            // multi pass drill
+            currentZ=currentZStart-currentZPassDepth;
+            boolean finished;
+            do {
+                if ( currentZ < currentZEnd) currentZ = currentZEnd;
+                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZ));
+
+                finished = Math.abs(currentZ - currentZEnd) < 0.00001;
+                if ( ! finished) 
+                    sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
+
+                currentZ -= currentZPassDepth;
+            } while ( ! finished);
+        }
+        if ( l.get('P') != null) // make a pause ?
+                sendCmd("G4 P"+ l.get('P').getIntValue());
+
+        sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
     }
 
     /**
-     * Used to safe start a new path.
+     * Used to go safely to start position of a new path.
+     * 
      * @param moveAtZheight start with a <i>G0 Zxx</i> to go to destination if needed
      * @param destination   send a G0 <i>destination.getX()</i>  <i>destination.getY()</i> if needed
      * @param zLevelDestination after translate, if not NaN, do a G1 to this Z if needed
@@ -405,6 +389,8 @@ public class GCodeDocumentRender implements Runnable {
         if ( Double.isNaN(zLevelDestination)) return;
         if( Double.isNaN(state.getZ()) || Math.abs(state.getZ() - zLevelDestination) > 0.00001)
                 sendCmd("G1"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
+        
+        updateGUI();
     }
     
     

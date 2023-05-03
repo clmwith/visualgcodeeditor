@@ -50,8 +50,8 @@ public class SphericalPocketInputPanel extends ManagedPanel {
     
     @Override
     public boolean validateFields() {
-        double radius = containsValidNumber(jTextFieldR, false);
-        double height = containsValidNumber(jTextFieldH, false);
+        double radius = parseExpression(jTextFieldR, false);
+        double height = parseExpression(jTextFieldH, false);
         if ( isNaN(radius) || isNaN(height)) return false;
         
         if ( ! sp.setValues( radius, height)) {

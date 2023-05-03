@@ -24,10 +24,20 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
- * A G-Code line (with only one G : don't work with multiple G in a line "G90 G81 ..."
+ * A simplified G-Code line implementation :
+ * 
+ * Possibles formats:
+ * - ( comment1 )
+ * - ; comment2
+ * - Ann.nnn B Cnnn ...
+ * 
+ * Restrictions :
+ * - only one 'G' per line (multiple G line like "G90 G81 ..." must be splitted)
+ * - only absolutes moves (relatives moves 'A{+/-}nn.nn' must be converted)
+ * 
  * @author Clément
  */
-public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
+public class GCode extends Point2D implements Iterable<GWord> {
           
     /** List of Gword that compose the line. */
     ArrayList<GWord> words;  
@@ -497,13 +507,13 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     /** 
      * Rotate this point around origin
      * @param origin
-     * @param angle (in radian)
+     * @param radianAngle (in radian)
      */
-    public void rotate(java.awt.geom.Point2D origin, double angle) {
+    public void rotate(java.awt.geom.Point2D origin, double radianAngle) {
         final double d = distance(origin);
         final double a = getAngle(origin, this);
-        x.value = (origin.getX() + Math.cos(a+angle)*d);
-        y.value = (origin.getY() + Math.sin(a+angle)*d);
+        x.value = (origin.getX() + Math.cos(a+radianAngle)*d);
+        y.value = (origin.getY() + Math.sin(a+radianAngle)*d);
     }
     
     /**
@@ -546,10 +556,11 @@ public class GCode extends java.awt.geom.Point2D implements Iterable<GWord> {
     }
 
     /**
-     * Return (I,J) of throw an Error !!
+     * Return (I,J) or throw an Error !!
      */
     public GCode getArcCenter(GCode startPoint) {
-        if ( ! isAnArc()) throw new Error("GCLine.getArcCenter() : is not an arc");
+        if ( ! isAnArc()) 
+            throw new Error("GCLine.getArcCenter() : "+this.toString()+" is not an arc");
         
         final GCode res = (GCode) startPoint.clone();
         res.translate(java.lang.Double.isNaN(getValue('I')) ? 0 : getValue('I'), 

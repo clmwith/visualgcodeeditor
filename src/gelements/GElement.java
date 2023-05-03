@@ -228,7 +228,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
             while (s.charAt(i) == ' ') {
                 i++;
             }
-            return ManagedPanel.isValidExpression(s.substring(i));
+            return ManagedPanel.parseExpression(s.substring(i));
         } catch (Exception e) {
         }
         return Double.NaN;
@@ -392,7 +392,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     abstract public void setLine(int row, GCode value);
 
     /**
-     * Add a new point in the shape
+     * Add a new point in the shape (near the closest move)
      *
      * @param point
      * @return the new point created or null if none
@@ -457,8 +457,8 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
      * and return the line read or null if EOF).
      *
      * @param stream
-     * @param lastGState to know the current Gx state (this method must update
-     * it : at least G,X,Y)
+     * @param lastGState to know the current Gx state <b>(this method must update
+     * it with .set() according to his last poing : at least G,X,Y words)</b>
      * @return the last line readden from the <i>stream</i> but not included in
      * this element.
      * @throws IOException
@@ -502,7 +502,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
         return new ArrayList<>();
     }
 
-    abstract public GCode getPoint(int p);
+    //abstract public GCode getPoint(int p);
 
     public void transform(AffineTransform t) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.

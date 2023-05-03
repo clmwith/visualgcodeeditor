@@ -667,11 +667,6 @@ public class GSpline extends GElement {
                 ((cp2==null)||cp2.isAtSamePosition(start)||cp2.isAtSamePosition(end));
     }
 
-    @Override
-    public GCode getPoint(int p) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-
     /**
      * Recalculate I,J, Q,P into G5 code according to cp1 and cp2
      */

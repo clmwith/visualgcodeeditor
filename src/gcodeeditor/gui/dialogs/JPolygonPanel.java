@@ -37,12 +37,12 @@ public class JPolygonPanel extends ManagedPanel {
     @Override
     public boolean validateFields() {
 
-            nbEdge = containsValidInteger(jTextFieldNbEdges, false);
+            nbEdge = parseIntExpression(jTextFieldNbEdges, false);
                         
-            edgeLen = containsValidNumber(jTextFieldEdgeLen, true);
+            edgeLen = parseExpression(jTextFieldEdgeLen, true);
             if ( edgeLen == Double.MIN_VALUE) edgeLen = -1;           
             
-            radius = containsValidNumber(jTextFieldRadius, true );
+            radius = parseExpression(jTextFieldRadius, true );
             if ( radius == Double.NEGATIVE_INFINITY) radius = -1;
             
             clockwise = jCheckBoxClockwise.isSelected();

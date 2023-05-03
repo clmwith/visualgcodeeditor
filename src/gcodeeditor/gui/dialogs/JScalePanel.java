@@ -52,17 +52,17 @@ public class JScalePanel extends ManagedPanel {
         fromCenter = jRadioButtonOCenter.isSelected();  
         
         if ( jTabbedPane1.getSelectedComponent() == jPanelFactor) {
-            xScale = containsValidNumber(jTextFieldXFactor, false);
-            yScale = containsValidNumber(jTextFieldYFactor, false);
-            copies = containsValidInteger(jTextFieldCopies, false);
+            xScale = parseExpression(jTextFieldXFactor, false);
+            yScale = parseExpression(jTextFieldYFactor, false);
+            copies = parseIntExpression(jTextFieldCopies, false);
             keepOriginal = jCheckBoxKeepOrig.isSelected();
             if ( isNaN(copies)) return false;
             
         } else {            
-            xScale = containsValidNumber(jTextFieldWidth, false);
+            xScale = parseExpression(jTextFieldWidth, false);
             if ( ! isNaN(xScale)) xScale /= dim.getWidth();
             
-            yScale = containsValidNumber(jTextFieldHeight, false);
+            yScale = parseExpression(jTextFieldHeight, false);
             if ( ! isNaN(yScale)) yScale /= dim.getHeight();
             
             copies = 1;

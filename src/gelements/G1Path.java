@@ -1599,7 +1599,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
      * @param selectedPoints
      * @return the new points insered
      */
-    public ArrayList<GCode> addAtCenter(ArrayList<GCode> selectedPoints) {
+    public ArrayList<GCode> addAtHalf(ArrayList<GCode> selectedPoints) {
         ArrayList<GCode> res = new ArrayList<>(selectedPoints.size());
         
         GCode lastPoint = null;

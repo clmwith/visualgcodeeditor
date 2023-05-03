@@ -917,7 +917,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
             
             final boolean saveToFile = jCheckBoxSaveToFile.isSelected();
             final boolean laserMode = grbl.isConnected()?grbl.isLaserMode():
-                         JOptionPane.showConfirmDialog(parent, "<html>Use Laser mode ?<br><i>(without Z axis moves)</i></html>",
+                         JOptionPane.showConfirmDialog(parent, "<html>Use Laser mode ?<br><i>(without failsafe Z height moves before each GO)</i></html>",
                             "Which mode...", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
                             new javax.swing.ImageIcon(getClass().getResource("/icons/Laser.png"))) == JOptionPane.YES_OPTION;
                         

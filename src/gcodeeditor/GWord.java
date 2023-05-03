@@ -21,7 +21,7 @@ import java.text.DecimalFormat;
 import java.util.Locale;
 
 /**
- * A word [char][numeric value] that compose a line of G-Code
+ * A word [char][numeric_value] that compose a line of G-Code
  * @author Clément
  */
 public class GWord {
@@ -43,6 +43,7 @@ public class GWord {
     /** can be ';' or '(' for text, or any other normal uppercase G-Code cmd letter */
     char letter = UNDEF;
     double value = Double.NaN;
+    /** the text associated to lettres ';' and '(' */
     String text = null;
 
     public GWord() { }
@@ -58,6 +59,15 @@ public class GWord {
      */
     public GWord(String s) {
         extractGWord(s);
+    }
+    
+    
+    /**
+     * Clear the value or the text associated to the 'letter'
+     */
+    public void clear() {
+        if ( isComment()) text = "";
+        else value = Double.NaN;
     }
     
     @Override
@@ -129,6 +139,11 @@ public class GWord {
     public boolean isMotion() {
         return (letter == 'G') && (value>=0) && (value<=5);
     }
+    
+    /**
+     * Return the lettre associated to this GWord
+     * @return 
+     */
     public char getLetter() {
         return letter;
     }
@@ -151,6 +166,8 @@ public class GWord {
     
     /**
      * Return an optimisez GRBL GWord.
+     * Note : into GRBL, position values cannot be less than 0.001mm or 0.0001in, because machines can not be physically more precise this.
+     * 
      * @return empty string if text or minimal GWord value.
      */
     public String toGRBLString() {

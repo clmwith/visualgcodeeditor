@@ -496,11 +496,6 @@ public class GTextOnPath extends GElement implements ListDataListener {
         return Double.NaN;
     }
 
-    @Override
-    public GCode getPoint(int p) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-
     public GFont getFont() {
         return font;
     }

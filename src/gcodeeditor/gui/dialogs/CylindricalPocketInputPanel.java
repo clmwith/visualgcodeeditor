@@ -46,10 +46,10 @@ public class CylindricalPocketInputPanel extends ManagedPanel {
     
     @Override
     public boolean validateFields() {
-        double radius = containsValidNumber(jTextFieldRadius, false);
-        double len = containsValidNumber(jTextFieldLength, false);
-        double inlayDepth = containsValidNumber(jTextFieldInlay, false);
-        double rotationAngle = containsValidNumber(jTextFieldRotation, false);
+        double radius = parseExpression(jTextFieldRadius, false);
+        double len = parseExpression(jTextFieldLength, false);
+        double inlayDepth = parseExpression(jTextFieldInlay, false);
+        double rotationAngle = parseExpression(jTextFieldRotation, false);
             
         if ( isNaN(radius) || isNaN(len) || isNaN(inlayDepth) || isNaN(rotationAngle)) return false;
         cp.setValues(radius, len, inlayDepth, rotationAngle);

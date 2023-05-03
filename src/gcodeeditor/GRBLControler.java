@@ -449,6 +449,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     }
             }
 
+            /* not needed
             // add backLash move to return to the good start point for the next move if next move is G1
             if ( (dest.getG()==1) && addBackLashCommand && (lastCorrectedDestination != null)) { 
                 //GCLine backLashAdjustment = (GCode)dest.clone();
@@ -458,7 +459,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     lastTrueDestination.setY(lastTrueDestination.getY()+backLashCompensation[1]);
 
                 sendCmd(lastTrueDestination, " ; backLash");          
-            }
+            }*/
             
             lastCorrectedDestination = (GCode) dest.clone();
             if ( ! Double.isNaN(dest.getX())) lastCorrectedDestination.setX( dest.getX()+backLashCompensation[0]);
@@ -703,11 +704,16 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         return (grblState == GRBL_STATE_IDLE);
     }
 
+    /**
+     * Flush cmdQueue and close serialPort.
+     * @param forceClose 
+     */
     @SuppressWarnings("SleepWhileInLoop")
     public void disconnect(boolean forceClose) {
+        clearCmdQueue();
         stopThread = true;
         if ( commPort == null) return;
-        clearCmdQueue();
+        
         while ( senderThread != null ) 
             try { Thread.sleep(250); } catch (InterruptedException ex) { }
         
@@ -716,6 +722,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
             serialIn.close();
             serialOut.close();
         } catch (IOException ex) { }    
+        
         serialWriter.close();
         serialWriter = null;
         if ( forceClose) commPort.close();
@@ -737,8 +744,13 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     Matcher m;
                     // Read ACK
                     String l = serialReader.readLine();
-                    for( GRBLCommListennerInterface li : listeners) 
+                    try {
+                        for( GRBLCommListennerInterface li : listeners) 
                                 li.receivedLine(l);  
+                    } catch (Exception e) {
+                        System.err.println("GRBLCtrl.serialEvent: a listener has thrown an exception "+ e.getLocalizedMessage());
+                        e.printStackTrace();
+                    }
             
                     if( l.startsWith("<")) updateGRBLStatus( l);
                     else if( l.startsWith(GRBL_INIT_STRING_HEADER)) {
@@ -788,6 +800,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                         if ( grblState != GRBL_STATE_IDLE)
                             lastCorrectedDestination = lastTrueDestination = null;
                         
+                        grblParserState.reset();
                         setState( GRBL_STATE_ALARM);
                         listeners.forEach((li) -> {
                             li.receivedAlarm(Integer.parseInt(l.split(":")[1])); 
@@ -796,6 +809,8 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                         clearCmdQueue(); 
                     } 
                     else if (l.startsWith("error:")) {
+                        // Clear GRBBParserState
+                        grblParserState.reset();
                         // TODO verify backLash states !!
                         String wrongLine = grblBufferContent.remove(0);
                         grblBufferFree += wrongLine.length(); 
@@ -937,8 +952,8 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
      * Immediately halts and safely resets Grbl without a power-cycle.
      */
     public void softReset() {
-        sendRTCmd((char)0x18);
         clearCmdQueue();
+        sendRTCmd((char)0x18);       
     }
     
     @SuppressWarnings("SleepWhileInLoop")
@@ -1076,22 +1091,23 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     
     /**
      *  Return GRBL 1.1 Parser State.<br>
-  Possibles values :
-  Motion Mode - (G0), G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
-  Coordinate System Select - (G54), G55, G56, G57, G58, G59
-  Plane Select - (G17 =XY), G18, G19
-  Distance Mode - (G90 =absolute), G91
-  Arc IJK Distance Mode - (G91.1 =IJ relative) not returned
-  Feed Rate Mode : G93, (G94)
-  Units Mode : G20, (G21)
-  Cutter Radius Compensation : (G40) not returned
-  Tool Length Offset : G43.1, (G49)
-  Program Mode : (M0), M1, M2, M30 not returned
-  Spindle State : M3, M4, (M5)
-  Coolant State : M7, M8, (M9)
- 
- Supported Non-Modal Commands (because they only affect the current line they are commanded serialReader) :
- G4, G10 L2, G10 L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
+     * 
+            Possibles values :
+            Motion Mode - (G0), G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
+            Coordinate System Select - (G54), G55, G56, G57, G58, G59
+            Plane Select - (G17 =XY), G18, G19
+            Distance Mode - (G90 =absolute), G91
+            Arc IJK Distance Mode - (G91.1 =IJ relative) not returned
+            Feed Rate Mode : G93, (G94)
+            Units Mode : G20, (G21)
+            Cutter Radius Compensation : (G40) not returned
+            Tool Length Offset : G43.1, (G49)
+            Program Mode : (M0), M1, M2, M30 not returned
+            Spindle State : M3, M4, (M5)
+            Coolant State : M7, M8, (M9)
+
+           Supported Non-Modal Commands (because they only affect the current line they are commanded serialReader) :
+           G4, G10 L2, G10 L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
      * 
      * @return a string like "G2 G54 G17 G21 G90 G94 M5 M9 T0 F100 S0"
      */

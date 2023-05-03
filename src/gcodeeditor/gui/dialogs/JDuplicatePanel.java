@@ -33,15 +33,14 @@ public class JDuplicatePanel extends ManagedPanel {
        
     @Override
     public boolean validateFields() {
-            nbCopies = containsValidInteger(jTextFieldCopies, false);            
-            deltaX = containsValidNumber(jTextFieldX, true);
-            deltaY = containsValidNumber(jTextFieldY, true);
+            nbCopies = parseIntExpression(jTextFieldCopies, false);            
+            deltaX = parseExpression(jTextFieldX, true);
+            deltaY = parseExpression(jTextFieldY, true);
             
             packed = jCheckBoxPacked.isSelected();
             grouped = jCheckBoxGrouped.isSelected();
             
-            return ! ((nbCopies == Integer.MAX_VALUE) || Double.isNaN(deltaX) || Double.isNaN(deltaY) ||
-                      (Double.POSITIVE_INFINITY == deltaX) && (Double.POSITIVE_INFINITY == deltaY));    
+            return ! ((nbCopies == Integer.MAX_VALUE) || Double.isNaN(deltaX) || Double.isNaN(deltaY));    
     } 
 
     /**

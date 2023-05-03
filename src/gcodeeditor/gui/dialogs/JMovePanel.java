@@ -31,8 +31,8 @@ public class JMovePanel extends ManagedPanel {
     
     @Override
     public boolean validateFields() {
-        return ! (Double.isNaN(deltaX = containsValidNumber(jTextFieldX, true)) ||
-                  Double.isNaN(deltaY = containsValidNumber(jTextFieldY, true)));
+        return ! (Double.isNaN(deltaX = parseExpression(jTextFieldX, true)) ||
+                  Double.isNaN(deltaY = parseExpression(jTextFieldY, true)));
     }
 
     /**

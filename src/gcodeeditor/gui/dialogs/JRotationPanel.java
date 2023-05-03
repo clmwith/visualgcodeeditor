@@ -39,8 +39,8 @@ public class JRotationPanel extends ManagedPanel {
     
     @Override
     public boolean validateFields() {
-        angle = containsValidNumber(jTextFieldAngle, false);
-        copies = containsValidInteger(jTextFieldCopies, false);
+        angle = parseExpression(jTextFieldAngle, false);
+        copies = parseIntExpression(jTextFieldCopies, false);
         keepOriginal = jCheckBoxOriginal.isSelected();
         fromCenter = jRadioButtonOCenter.isSelected();
         keepOrientation = jCheckBoxOrientation.isSelected() && jRadioButtonO2D.isSelected();
@@ -101,18 +101,16 @@ public class JRotationPanel extends ManagedPanel {
         jLabel2.setText("Count");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(6, 0, 0, 0);
         add(jLabel2, gridBagConstraints);
 
         jTextFieldCopies.setColumns(6);
         jTextFieldCopies.setText("1");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.gridheight = 2;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.ipadx = 66;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 8, 0, 0);
@@ -121,17 +119,15 @@ public class JRotationPanel extends ManagedPanel {
         jLabel1.setText("Angle");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
-        gridBagConstraints.insets = new java.awt.Insets(12, 12, 0, 0);
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.insets = new java.awt.Insets(6, 0, 0, 0);
         add(jLabel1, gridBagConstraints);
 
         jTextFieldAngle.setColumns(6);
         jTextFieldAngle.setToolTipText("Angle in degre (can be negative)");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.gridheight = 2;
+        gridBagConstraints.gridy = 1;
         gridBagConstraints.ipadx = 66;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(6, 8, 0, 0);
@@ -158,7 +154,7 @@ public class JRotationPanel extends ManagedPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jRadioButtonO2DStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jRadioButtonO2DStateChanged
-        jCheckBoxOrientation.setEnabled(jRadioButtonO2D.isSelected());
+        //jCheckBoxOrientation.setEnabled(jRadioButtonO2D.isSelected());
     }//GEN-LAST:event_jRadioButtonO2DStateChanged
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

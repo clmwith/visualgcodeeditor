@@ -17,6 +17,7 @@
 package gelements;
 
 import gcodeeditor.Configuration;
+import java.util.Iterator;
 
 /**
  *
@@ -128,42 +129,50 @@ public class EngravingProperties {
         return ! ((enabled|!withDisable) && ! allAtOnce && Double.isNaN(feed) && Double.isNaN(zStart) && Double.isNaN(zEnd) && Double.isNaN(passDepth) &&
                   (power==-1) && (passCount == -1));
     }  
+    
     public boolean isEnabled() {
         return enabled;
     }
+    
     public boolean isAllAtOnce() {
         return allAtOnce;
     }
+    
     /**
      * @return Double.NaN if not defined
      */
     public double getFeed() {
         return feed;
     }
+    
     /**
      * @return -1 if not defined
      */
     public int getPassCount() {
         return passCount;
     }
+    
     /**
      * @return -1 if not defined
      */
     public int getPower() {
         return power;
     }
+    
     /**
      * @return Double.NaN if not defined
      */
     public double getZStart() {
         return zStart;
     }
+    
     /**
      * @return Double.NaN if not defined
      */
     public double getZEnd() {
         return zEnd;
     }
+    
     /**
      * @return Double.NaN if not defined
      */
@@ -171,6 +180,49 @@ public class EngravingProperties {
         return passDepth;
     }
     
+    /**
+     * Return the pass Z height iterator, the priority is passDepth
+     * @param enabled 
+     */
+    public Iterator<Double> iterator() {
+        return new Iterator<Double>() {
+            double zS, pD, pC, zE, cZ;
+            /** true if the number of pass is fixed (without any Z move) */
+            boolean fixed;
+            
+            public Iterator<Double> init() {
+                zS = cZ = zStart;
+                zE = zEnd;
+                pD = passDepth;
+                pC = getPassCount();
+                fixed = Double.isNaN(zStart + zEnd + passDepth);
+                return this;
+            }
+            
+            @Override
+            public boolean hasNext() {
+                return fixed ? pC > 0 : cZ > zE;
+            }
+
+            /**
+             * Return the next passZ height, or NaN if no Z value to change.
+             */
+            @Override
+            public Double next() {
+                if ( fixed) {
+                    assert (pC > 0);
+                    pC--;
+                    return Double.NaN;
+                } else {
+                    assert( cZ > zE);
+                    cZ -= pD;
+                    if ( cZ < zE) cZ = zE;
+                    return cZ;
+                }
+            }
+        }.init();
+    }
+            
     public void setEnabled(boolean enabled) {
         if ( this.enabled != enabled) {
             this.enabled = enabled;
@@ -184,40 +236,87 @@ public class EngravingProperties {
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.ALL);
         }
     }
+    
     public void setFeed(double feed) {
-        if ( this.feed != feed) {
+        if ((Double.isNaN(this.feed) ^ Double.isNaN(feed)) || (Math.abs(this.feed - feed) > 10e-6 )) {
             this.feed = feed;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.FEED);
         }
     }
+    
     public void setPower(int power) {
         if ( this.power != power) {
             this.power = power;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.POWER);
         }
     }
+    
+    /**
+     * Set the passCount, and update passDepth if zStart ans zEnd values existes.
+     * @param passCount 
+     */
     public void setPassCount(int passCount) {
         if ( this.passCount != passCount) {
             this.passCount = passCount;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.COUNT);
+            if ( listener != null) listener.propertyChanged(PropertieChangeListener.COUNT);         
         }
+        validatePass( true);
     }
-    public void setPassDepth(double passDepth) {
-        if ( this.passDepth != passDepth) {
+    
+    /**
+     * verify/update passCount too.
+     * @param passDepth 
+     */
+    public void setPassDepth(double passDepth) {   
+        if ( (Double.isNaN(this.passDepth) ^ Double.isNaN(passDepth)) || (Math.abs(this.passDepth - passDepth) > 10e-6 )) {
             this.passDepth = passDepth;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.DEPTH);
+            validatePass(false);
         }
     }
+    
     public void setZStart(double zStart) {
-        if ( this.zStart != zStart) {
+        if ( ! Double.isNaN(zEnd) && (zStart < zEnd)) zStart = zEnd;
+        
+        if ( (Double.isNaN(this.zStart) ^ Double.isNaN( zStart)) || (Math.abs(this.zStart - zStart) > 10e-6 )) {     
             this.zStart = zStart;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.START);
+            validatePass(false);
         }
     }
+    
     public void setZEnd(double zEnd) {
-        if ( this.zEnd != zEnd) {
+        if ( ! Double.isNaN(zStart) && (zStart < zEnd)) zEnd = zStart;
+        
+        if ( (Double.isNaN(this.zEnd) ^ Double.isNaN( zEnd)) || (Math.abs(this.zEnd - zEnd) > 10e-6 )) {
             this.zEnd = zEnd;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.END);
+            validatePass(false);
+        }
+    }
+    
+    /**
+     * Update correctly passDepth or passCount according to zStart en zEnd
+     * @param priority2TheCount 
+     */
+    private void validatePass(boolean priority2TheCount) {
+        if ( Double.isNaN(zStart) || Double.isNaN(zEnd)) return;
+        if ( zEnd > zStart ) zEnd = zStart;
+        
+        if ( Double.isNaN(passCount) && Double.isNaN(passDepth) ) return;
+                
+        if ( (priority2TheCount && (passCount > 0)) || Double.isNaN(passDepth) || ((passDepth==0) && (zStart != zEnd))) {
+            if ( passCount == 0) passCount = 1;
+            setPassDepth((zStart - zEnd) / passCount);     
+            
+        } else {
+            if ( (zStart - zEnd) < 10e-6) setPassDepth(0);
+            else if ( passDepth > 0) {
+                int pc = (int)((zStart - zEnd) / passDepth);
+                if (Math.abs((zStart - (pc * passDepth)) - zEnd) > 0.001) pc++;
+                if ( passCount == 0) passCount = 1;
+                if ( passCount != pc) setPassCount(pc);
+            }
         }
     }
    
@@ -238,27 +337,29 @@ public class EngravingProperties {
     }
     
     /**
-     * Update herited properties according to new one
-     * @param herited
+     * Update properties properties according to the new one, and recalculate passCount if needed.
+     * @param props
      * @param newProps
-     * @return Return <i>herited</i> parameter (not a clone)
+     * @return Return <i>props</i> parameter (not a clone)
      */
-    public static EngravingProperties udateHeritedProps(EngravingProperties herited, EngravingProperties newProps) {
-        if ( herited == null) {
+    public static EngravingProperties udateHeritedProps(EngravingProperties props, EngravingProperties newProps) {
+        if ( props == null) {
             return newProps.clone();
         } else {
-            herited.setEnabled( herited.isEnabled() && newProps.isEnabled());
-            if ( ! Double.isNaN(newProps.getFeed())) herited.setFeed( newProps.getFeed());
-            if ( newProps.getPower() != -1) herited.setPower( newProps.getPower());
+            props.setEnabled( props.isEnabled() && newProps.isEnabled());
+            if ( ! Double.isNaN(newProps.getFeed())) props.setFeed( newProps.getFeed());
+            if ( newProps.getPower() != -1) props.setPower( newProps.getPower());
 
-            if ( ! herited.isAllAtOnce()) {
-                herited.setAllAtOnce( herited.isAllAtOnce() | newProps.isAllAtOnce());
-                if ( ! Double.isNaN(newProps.getZStart())) herited.setZStart( newProps.getZStart());
-                if ( ! Double.isNaN(newProps.getZEnd())) herited.setZEnd( newProps.getZEnd());
-                if ( ! Double.isNaN(newProps.getPassDepth())) herited.setPassDepth(  newProps.getPassDepth());
-                if (newProps.getPassCount() != -1) herited.setPassCount( newProps.getPassCount()); 
+            if ( ! props.isAllAtOnce()) {
+                props.setAllAtOnce( newProps.isAllAtOnce());
+                if ( ! Double.isNaN(newProps.getZStart())) props.zStart = newProps.getZStart();
+                if ( ! Double.isNaN(newProps.getZEnd())) props.zEnd = newProps.getZEnd();
+                if ( ! Double.isNaN(newProps.getPassDepth())) props.passDepth = newProps.getPassDepth();
+                if (newProps.getPassCount() != -1) props.passCount = newProps.getPassCount();
+                if ( ! Double.isNaN( props.zStart + props.zEnd + props.passDepth))                                  
+                    props.validatePass(false);
             }
         }
-        return herited;
+        return props;
     }
 }

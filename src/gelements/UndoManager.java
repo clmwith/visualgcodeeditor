@@ -43,8 +43,20 @@ public class UndoManager {
         undoStackPosition = 0;
     }
 
-    public boolean canUndo() {
-        return undoStackPosition > 1;
+    /**
+     * Does the stack contains older state tha the current document ?
+     * @param currentDocumentState
+     * @return true if the stack contains sth. different from the current document state.
+     */
+    public boolean canUndo( /* GGroup currentDocument*/) {
+        /*if (undoStackPosition > 1) return true;
+        GElement e = undoStack.get( undoStack.size()-1).modified[0];
+        if ( e instanceof GGroup) {
+            GGroup last = (GGroup)e;
+            return ! last.equals( currentDocument);
+        }
+        rerturn false;*/
+        return true;
     }
     
     public boolean canRedo() {
@@ -88,57 +100,56 @@ public class UndoManager {
      */
     public GElement undo(GGroup document) {
         GElement res = null;
-        if ( canUndo()) { 
-            UndoRecord prev = undoStack.get(--undoStackPosition); 
-            System.out.println("UndoRec="+prev);
-            System.out.println("undo stack["+undoStackPosition+" / "+ undoStack.size()+"]");
-            System.out.flush();
-            
-            // full restoration of the document
-            if ( (prev.modified.length==1) && (prev.modified[0].getID() == document.getID())) {     
-                document.clear();
-                ((GGroup)prev.modified[0]).getAll().forEach((l) -> { document.elements.add((GElement)l.cloneWithSameID()); });
-                clearModifiedFlagOn(document);
-                return document;
-            }
-            
-            // restore previous version of what have changed at last backup
-            for( GElement m : prev.modified) {
-                GElement last = findLastVersionOf(m.getID());
-                if ( last == null) {
-                    // that was a new element, we remove it
-                    last = document.getElementID(m.getID()); 
-                    GGroup g = document.getParent(last);
-                    g.remove( last);
-                    g.modified = false;
-                    return g;
-                } else {
-                    if ( last instanceof GGroup) {
-                        // restore all modified element of this group since his last backup
-                        restoreLastStateOfElementsOf((GGroup)last);
-                    }
-                    GGroup g = document.getParent(document.getElementID(last.getID()));
-                    if ( g == null) {
-                        // no parent, that is the root group
-                        document.clear();
-                        if ( last instanceof GGroup)
-                            document.addAll(((GGroup)last).cloneWithSameID().getAll());
-                        else
-                            document.add( last.cloneWithSameID());
-                        
-                        document.modified = false;
-                        res = document;
-                    } else {
-                        g.remplace(last);
-                        g.modified = false;
-                        res = g;
-                    }   
-                    clearModifiedFlagOn(res);
-                }
-            }
-            return document.getElementID(prev.editedElement);
+        if ( undoStackPosition > 1) --undoStackPosition;
+        
+        UndoRecord prev = undoStack.get(undoStackPosition); 
+        System.out.println("UndoRec="+prev);
+        System.out.println("undo stack["+undoStackPosition+" / "+ undoStack.size()+"]");
+        System.out.flush();
+
+        // full restoration of the document
+        if ( (prev.modified.length==1) && (prev.modified[0].getID() == document.getID())) {     
+            document.clear();
+            ((GGroup)prev.modified[0]).getAll().forEach((l) -> { document.elements.add((GElement)l.cloneWithSameID()); });
+            clearModifiedFlagOn(document);
+            return document;
         }
-        return null;
+
+        // restore previous version of what have changed at last backup
+        for( GElement m : prev.modified) {
+            GElement last = findLastVersionOf(m.getID());
+            if ( last == null) {
+                // that was a new element, we remove it
+                last = document.getElementID(m.getID()); 
+                GGroup g = document.getParent(last);
+                g.remove( last);
+                g.modified = false;
+                return g;
+            } else {
+                if ( last instanceof GGroup) {
+                    // restore all modified element of this group since his last backup
+                    restoreLastStateOfElementsOf((GGroup)last);
+                }
+                GGroup g = document.getParent(document.getElementID(last.getID()));
+                if ( g == null) {
+                    // no parent, that is the root group
+                    document.clear();
+                    if ( last instanceof GGroup)
+                        document.addAll(((GGroup)last).cloneWithSameID().getAll());
+                    else
+                        document.add( last.cloneWithSameID());
+
+                    document.modified = false;
+                    res = document;
+                } else {
+                    g.remplace(last);
+                    g.modified = false;
+                    res = g;
+                }   
+                clearModifiedFlagOn(res);
+            }
+        }
+        return document.getElementID(prev.editedElement);     
     }
     
     /**
@@ -193,9 +204,11 @@ public class UndoManager {
      * @param editedElement 
      */
     public void saveState( GGroup document, int editedElement) {
+        // Remove unused saved states
         while( undoStackPosition < undoStack.size()) {
             undoStack.remove(undoStack.size()-1);
         }
+        
         ArrayList<GElement> modified = new ArrayList<>();
         getModified(document, modified, false);
         if ( modified.isEmpty()) return;

@@ -869,13 +869,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return res;
     }
 
-    @Override
+    /*@Override
     public GCode getPoint(int p) {
         for( GElement e : elements)
             if ( p < e.getNbPoints()) return e.getPoint(p);
             else p -= e.getNbPoints();
         return null;
-    }
+    }*/
 
     @Override
     public double getLenOfSegmentTo(GCode highlitedPoint) {

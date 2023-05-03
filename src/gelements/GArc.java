@@ -52,7 +52,7 @@ public class GArc extends GElement {
     public static final String HEADER_STRING = "(Arc-name: ";
     
     boolean clockwise;
-    private double arcStart,arcLen,radius; 
+    private double arcStart,arcExtend,radius; 
     GCode center;    
     
     GCode start;
@@ -104,7 +104,7 @@ public class GArc extends GElement {
 
         arcStart = (360+startAngle)%360;
         clockwise = arcExtent >= 0;
-        arcLen = Math.abs(arcExtent); 
+        arcExtend = Math.abs(arcExtent); 
         
         this.center = new GCode(center);
         
@@ -196,12 +196,12 @@ public class GArc extends GElement {
 
     @Override
     public double getLenOfSegmentTo(GCode point) {
-        return arcLen;
+        return arcExtend;
     }
     
     @Override
     double getLength() {       
-        return 2*Math.PI * radius / 360 * arcLen;
+        return arcExtend * 2 * Math.PI * radius / 360;
     }  
 
     @Override
@@ -225,17 +225,17 @@ public class GArc extends GElement {
 
     @Override
     public double getDistanceTo(GCode pt) {
-        if ( arcLen == 360) return Math.abs(radius-center.distance(pt));
+        if ( arcExtend == 360) return Math.abs(radius-center.distance(pt));
         
         double d = Double.POSITIVE_INFINITY;
         double a = GCode.getAngleInDegre(center, pt);
         
         if ( ! clockwise) {
             if ( a < arcStart) a += 360;        
-            if ((a >= arcStart)&&(a<= arcStart+arcLen)) d = Math.abs(radius-center.distance(pt));        
+            if ((a >= arcStart)&&(a<= arcStart+arcExtend)) d = Math.abs(radius-center.distance(pt));        
         } else {
-            double a1 = arcStart+arcLen;
-            double a2 = a1+(360-arcLen);
+            double a1 = arcStart+arcExtend;
+            double a2 = a1+(360-arcExtend);
             if ( a < a1) a += 360;
             if ((a >= a1)&&(a <= a2)) d = Math.abs(radius-center.distance(pt));     
         }
@@ -294,24 +294,24 @@ public class GArc extends GElement {
             
             p.translate(dx, dy);
             // try to calculate new circle from 3 points
-            GCode p1 = start;
-            GCode p2 = end;
-            GCode p3 = p;
-            double yDelta_a = p2.getY() - p1.getY();
-            double xDelta_a = p2.getX() - p1.getX();
-            double yDelta_b = p3.getY() - p2.getY();
-            double xDelta_b = p3.getX() - p2.getX();
-            double aSlope = yDelta_a/xDelta_a;
-            double bSlope = yDelta_b/xDelta_b;  
-            double cx = (aSlope*bSlope*(p1.getY() - p3.getY()) + bSlope*(p1.getX() + p2.getX())
-                            - aSlope*(p2.getX()+p3.getX()) )/(2* (bSlope-aSlope) );
-            double cy = -1*(cx - (p1.getX()+p2.getX())/2)/aSlope +  (p1.getY()+p2.getY())/2;
-            center.set( 0, cx, cy);
+            GCode c = getCenterOf3Points(start, end, p);           
+            center.set( c);            
             revalidate();
 
             // put the selected point from old flat to the new one
             getFlatten();
-            GCode tmp = flatten.getCloserPoint(p, Math.max(Math.abs(dx),Math.abs(dy))+1, null, true);         
+            GCode tmp = flatten.getCloserPoint(p, Math.max(Math.abs(dx),Math.abs(dy))+1, null, true);  
+            
+            if ( tmp == null) {
+                // try to flip G2G3
+                center.set( c);
+                clockwise = ! clockwise;
+                revalidate();
+                getFlatten();
+                tmp = flatten.getCloserPoint(p, radius, null, true);  
+                if ( tmp == null) clockwise = ! clockwise;
+            }
+            
             if ( tmp != null) {
                 int i = flatten.indexOf(tmp);            
                 p.set(tmp);
@@ -325,6 +325,37 @@ public class GArc extends GElement {
         informAboutChange();
         return true;
     }
+    
+    
+    public GCode getCenterOf3Points( GCode p1, GCode p2, GCode p3) {        
+        final double yDelta_a = p2.getY() - p1.getY();
+        final double xDelta_a = p2.getX() - p1.getX();
+        final double yDelta_b = p3.getY() - p2.getY();
+        final double xDelta_b = p3.getX() - p2.getX();
+        final double aSlope = yDelta_a/xDelta_a;
+        final double bSlope = yDelta_b/xDelta_b;  
+        double cx = (aSlope*bSlope*(p1.getY() - p3.getY()) + bSlope*(p1.getX() + p2.getX())
+                        - aSlope*(p2.getX()+p3.getX()) )/(2* (bSlope-aSlope) );
+        double cy = -1*(cx - (p1.getX()+p2.getX())/2)/aSlope +  (p1.getY()+p2.getY())/2;
+        
+        if ( Double.isNaN(cx) || Double.isNaN(cy)) {
+            // try 2n methode        
+            final double TOL = 0.000000001;              
+            final double offset = Math.pow(p2.getX(),2) + Math.pow(p2.getY(),2);
+            final double bc =   ( Math.pow(p1.getX(),2) + Math.pow(p1.getY(),2) - offset )/2.0;
+            final double cd =   (offset - Math.pow(p3.getX(), 2) - Math.pow(p3.getY(), 2))/2.0;
+            final double det =  (p1.getX() - p2.getX()) * (p2.getY() - p3.getY()) - (p2.getX() - p3.getX())* (p1.getY() - p2.getY());     
+            if (Math.abs(det) < TOL) {
+                System.out.println("Can't find center of (" + p1 + "), (" + p2 + "), (" + p3 + ")");
+            }
+            final double idet = 1/det;     
+            cx =  (bc * (p2.getY() - p3.getY()) - cd * (p1.getY() - p2.getY())) * idet;
+            cy =  (cd * (p1.getX() - p2.getX()) - bc * (p2.getX() - p3.getX())) * idet;
+            //final double radius = Math.sqrt( Math.pow(p2.getX() - cx,2) + Math.pow(p2.getY()-cy,2)); 
+        }
+        return new GCode(cx, cy);            
+    }
+    
     
     @Override
     public boolean movePoints(ArrayList<GCode> selectedPoints, double dx, double dy) {
@@ -425,7 +456,7 @@ public class GArc extends GElement {
                     GWord.GCODE_NUMBER_FORMAT.format(center.getY())+")<br>Radius = " +
                     GWord.GCODE_NUMBER_FORMAT.format(radius) + "<br>Start angle = " +
                     GWord.GCODE_NUMBER_FORMAT.format(arcStart) + " °<br>Arc lenght = " +
-                    GWord.GCODE_NUMBER_FORMAT.format(arcLen) + " °</HTML>";
+                    GWord.GCODE_NUMBER_FORMAT.format(arcExtend) + " °</HTML>";
     }
     
     @Override
@@ -601,8 +632,8 @@ public class GArc extends GElement {
     G1Path getFlatten() { 
         if ( flatten == null) {
             flatten = new G1Path("flattenArc-"+name);
-            int nbp = 12 * (int)((2 * Math.PI * radius * (arcLen/360))/12);
-            double angle = arcStart, a = (clockwise?-(360-((arcLen==360)?0:arcLen)):arcLen) / nbp;
+            int nbp = 12 * (int)((2 * Math.PI * radius * (arcExtend/360))/12);
+            double angle = arcStart, a = (clockwise?-(360-((arcExtend==360)?0:arcExtend)):arcExtend) / nbp;
             while(nbp-- > 0) {
                 flatten.add(GCode.newAngularPoint(center, radius, angle, false));
                 angle+=a;
@@ -666,10 +697,17 @@ public class GArc extends GElement {
         String l =  super.loadFromStream(stream, null);
         if ( l == null) return null;
         start = new GCode(l);
-        end = new GCode(stream.readLine());
+        if (start.isAnArc()) {
+            end = start;
+            start = new GCode(0, lastGState.getX(), lastGState.getY());
+        } else {
+            end = new GCode(stream.readLine());
+        }
         clockwise = (end.getG() == 2);
         center = end.getArcCenter(start);
         revalidate();
+        
+        lastGState.set(end);
         return stream.readLine();
     }
 
@@ -686,32 +724,26 @@ public class GArc extends GElement {
             if ( Double.isNaN(center.getX())) 
                 center.setX( start.getX());
             if ( Double.isNaN(center.getY())) 
-                center.setY( start.getY());
-            
-            end.set('I', center.getX() - start.getX());
-            end.set('J', center.getY() - start.getY());    
+                center.setY( start.getY());                        
         }
-        
+        end.set('I', center.getX() - start.getX());
+        end.set('J', center.getY() - start.getY());   
         end.setG(clockwise?2:3);
         radius = center.distance(start);
         arcStart = GCode.getAngleInDegre(center, start);
-        arcLen = (360+GCode.getAngleInDegre(center, end) - arcStart)%360;
+        arcExtend = (360+GCode.getAngleInDegre(center, end) - arcStart)%360;
 
-        if (arcLen < 10e-6) arcLen=360;
+        if ((Math.abs(arcExtend) < 10e-6) || (Math.abs(360-arcExtend) < 10e-6)) arcExtend=360;
         
         bounds = new Rectangle2D.Double(center.getX()-radius, center.getY()-radius, 2*radius, 2*radius);
-        shape = new Arc2D.Double(bounds, -arcStart, clockwise?360-((arcLen==360)?0:arcLen):-arcLen, Arc2D.OPEN);
+        shape = new Arc2D.Double(bounds, -arcStart, clockwise?360-((arcExtend==360)?0:arcExtend):-arcExtend, Arc2D.OPEN);
         bounds = shape.getBounds2D();  
     }
-
-    void translateFirstPoint(double dx, double dy) {
-        start.translate(dx, dy);
-        informAboutChange();
+    
+    GCode getArcHalfPoint() {
+        GCode arcCenter = start.clone();
+        arcCenter.rotate(center, Math.toRadians((clockwise ? -1 : 1) * arcExtend/2));
+        return arcCenter;
     }
 
-    @Override
-    public GCode getPoint(int p) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-  
 }

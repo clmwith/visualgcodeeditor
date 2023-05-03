@@ -104,10 +104,7 @@ public class ParserState {
      */
     public ParserState() {
         states = new GWord[DEFAULT_GRBL_PARSER_STATE.length];
-        for( int i = 0; i < DEFAULT_GRBL_PARSER_STATE.length; i++) {
-            GWord w = new GWord(DEFAULT_GRBL_PARSER_STATE[i]);
-            if ( w.getLetter() != GWord.UNDEF) states[i] = w;
-        }
+        reset();
     }
     
     public ParserState clone()
@@ -243,14 +240,7 @@ public class ParserState {
                           if ((val < 4) && (val == states[MOTION].getIntValue())) continue;
                           else 
                               return line.toGRBLString(); // don't remove any word in special Gnn commands
-                          
-                          
-                case 'T': if ( w.getIntValue() == states[TOOL_NUMBER].getIntValue()) continue;
-                          break;
-                case 'S': if ( w.getIntValue() == states[SPINDLE_SPEED].getIntValue()) continue;
-                          break;  
-                case 'F': if (Math.abs(w.value - states[FEED_SPEED].value) < 0.0000001) continue;
-                          break;
+                                                    
                 case 'X': if ((states[X] != null) &&
                               (Math.abs(w.value - states[X].value) < 0.0000001)) 
                                 continue;
@@ -263,6 +253,23 @@ public class ParserState {
                               (Math.abs(w.value - states[Z].value) < 0.0000001)) 
                                 continue;
                           break;
+/*                case 'A': if ((states[A] != null) &&
+                              (Math.abs(w.value - states[A].value) < 0.0000001)) 
+                                continue;
+                          break;
+                case 'E': if ((states[A] != null) &&
+                              (Math.abs(w.value - states[A].value) < 0.0000001)) 
+                                continue;                  
+                          break;*/
+                case 'T': states[MOTION].clear();
+                          if ( w.getIntValue() == states[TOOL_NUMBER].getIntValue()) continue;
+                          break;
+                case 'S': states[MOTION].clear();
+                          if ( w.getIntValue() == states[SPINDLE_SPEED].getIntValue()) continue;
+                          break;  
+                case 'F': states[MOTION].clear();
+                          if (Math.abs(w.value - states[FEED_SPEED].value) < 0.0000001) continue;
+                          break;                                              
             }
             res += w.toGRBLString();
         }
@@ -272,6 +279,16 @@ public class ParserState {
     
     public void updateTLO(String newTLO) {
         states[TOOL_LENGTH].value = Double.valueOf(newTLO);
+    }
+
+    /**
+     * Restore state to default values (after RESET or ERROR)
+     */
+    void reset() {
+        for( int i = 0; i < DEFAULT_GRBL_PARSER_STATE.length; i++) {
+            GWord w = new GWord(DEFAULT_GRBL_PARSER_STATE[i]);
+            if ( w.getLetter() != GWord.UNDEF) states[i] = w;
+        }
     }
 
 }

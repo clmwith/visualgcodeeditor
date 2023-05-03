@@ -23,11 +23,15 @@ import java.awt.geom.Point2D;
  * @author Clément
  */
 public interface JBlockViewerListenerInterface {
-    public void updateGUIAndStatus( String msg);
+    public void updateGUIAndStatus();
+    
     public void updateMouseCoord( int x, int y, double rx, double ry);
 
     public void updatePropertiesPanel();
+    
     public void moveGantry( Point2D newPosition);
 
     public void setVirtualMachinePosition(Point2D coordSnapPointFor);
+
+    public void inform(String msg);
 }

@@ -876,11 +876,13 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Editor", jPanelEditor);
 
+        jPanelNotes.setLayout(new java.awt.BorderLayout());
+
         jTextArea3.setColumns(30);
         jTextArea3.setRows(5);
         jScrollPane3.setViewportView(jTextArea3);
 
-        jPanelNotes.add(jScrollPane3);
+        jPanelNotes.add(jScrollPane3, java.awt.BorderLayout.CENTER);
 
         jTabbedPane1.addTab("Notes", jPanelNotes);
 
@@ -955,7 +957,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             conf.minG1move = Double.parseDouble( jTextFieldMinG1Move.getText());
             
             int v = Integer.decode( jTextFieldShowLaserPosition.getText());
-            if ( v >= 10) {
+            if ( v > 10) {
                 jTextFieldShowLaserPosition.setText("10");
                 JOptionPane.showMessageDialog(this, "Warning the laser power should be as small as possible to avoid fire !", "Danger !", JOptionPane.WARNING_MESSAGE);
         

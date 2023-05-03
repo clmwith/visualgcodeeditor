@@ -46,13 +46,13 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     }
     
     /**
-     * Verify that content of the field is a number.
+     * Return the result of the arithmetic expression from 'field'
      * 
      * @param field 
      * @param optional set to true to allow empty/optional value (that will return Double.NEGATIV_INFINITY)
      * @return Double.NEGATIVE_INFINITY, NaN, or the value
      */
-    public static double containsValidNumber( JTextField field, boolean optional) {
+    public static double parseExpression( JTextField field, boolean optional) {
 
         String val = field.getText();
         
@@ -62,24 +62,24 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
             else val ="err";
         }
         
-        double n =  isValidExpression( val);
+        double n =  ManagedPanel.parseExpression( val);
         if ( Double.isNaN(n) && ! val.isBlank()) field.setForeground(Color.red);
         
         return n;
     }    
     
     /**
-     * Verify that content of the field is a int
+     * Return the integer part of the arithmetic expression from 'field'
      * @param field 
      * @param optional set to true to allow empty/optional value (that will return Integer.MIN_VALUE)
      * @return the truncated int value or Integer.MIN_VALUE, or Integer.MAX_VALUE if not a number
      */
-    public static int containsValidInteger( JTextField field, boolean optional) {
+    public static int parseIntExpression( JTextField field, boolean optional) {
 
         field.setForeground(Color.black);
         if ( optional && field.getText().isBlank()) return Integer.MIN_VALUE;
         
-        double n = isValidExpression( field.getText());
+        double n = ManagedPanel.parseExpression( field.getText());
         if ( Double.isNaN(n)) {
             field.setForeground(Color.red);
             return Integer.MAX_VALUE;
@@ -90,26 +90,26 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     }
     
     /**
-     * Verify that the value is a number or an expression
+     * Return the result of the arithmetic expression from 'value'
      * @param field 
      * @return the result of expression or NaN if wrong
      */
-    public static double isValidExpression( String value) {
+    public static double parseExpression( String value) {
         try {
             return new ExpressionBuilder(value).variables("pi").build().setVariable("pi", Math.PI).evaluate();
             //return Double.parseDouble(value);
         } catch ( Exception e) {
-            System.out.println("err:"+e);
+            //System.out.println("err:"+e);
             return Double.NaN;
         }
     }
     
     /**
-     * Verify that the value is a int
+     * Return the int value contained in 'value'
      * @param field 
-     * @return Integer.MAX_VALUE if wrong number
+     * @return the int or Integer.MAX_VALUE if wrong number or missing
      */
-    public static int isValidInteger( String value) {
+    public static int parseInt( String value) {
         try {
             return Integer.parseInt(value);
         } catch ( Exception e) { 
