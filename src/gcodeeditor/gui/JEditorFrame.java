@@ -16,6 +16,7 @@
  */
 package gcodeeditor.gui;
 
+import gcodeeditor.gui.dialogs.BackgroundPicturePanel;
 import gcodeeditor.gui.dialogs.CylindricalPocketInputPanel;
 import gcodeeditor.gui.dialogs.SphericalPocketInputPanel;
 import gcodeeditor.gui.dialogs.JScalePanel;
@@ -35,8 +36,7 @@ import gelements.GDrillPoint;
 import gelements.GearHelper;
 import gcodeeditor.GWord;
 import gcodeeditor.Configuration;
-import gcodeeditor.JBlockViewerListenerInterface;
-import gcodeeditor.JBlocksViewer;
+import gcodeeditor.JProjectEditor;
 import gelements.GSphericalPocket;
 import gnu.io.NoSuchPortException;
 import gnu.io.PortInUseException;
@@ -90,43 +90,63 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.LookAndFeel;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 import javax.swing.table.TableModel;
 import javax.xml.parsers.ParserConfigurationException;
 import org.kabeja.dxf.helpers.Point;
 import org.kabeja.parser.ParseException;
 import org.xml.sax.SAXException;
+import gcodeeditor.JProjectEditorListenerInterface;
 
 /**
  * The main frame of the application.
  * @author Clément
  */
-public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerListenerInterface, JConfigurationFrame.JConfigurationChangeListener {
+public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorListenerInterface, JConfigurationFrame.JConfigurationChangeListener {
 
-    public JBlocksViewer blocksviewer;
+    public JProjectEditor projectViewer;
     private File curDir = null;
-    private JConfigurationFrame confFrame;
+    
+    /** The frame to edit configurations. */
+    private JConfigurationFrame jConfFrame;
 
+    /** Used to know if we mush System.exit() at last closing window. */
     private static int numberOfWindowsOpenned=0;
-    private String savedFileName;
     
-    private static Window activeWindow; // the active window display GRBL receivedMessage
-    private final DialogManager dialogManager = new DialogManager(this);
+    /** The file name of the current openned document */
+    private String documentFileName;
     
+    /** The active window that will display GRBL receivedMessage */
+    private static Window activeWindow; 
+    
+    /** The manager of any user dialogs. */
+    private final DialogManager jDialogManager = new DialogManager(this);
+    
+    /** The GRBL controler used by any windows. */
     private static GRBLControler grbl;
-    private final GRBLControler.GRBLCommListennerInterface grblListenner;
-    private BackgroundPicturePanel backgroundPicturePanel;
-    private SphericalPocketInputPanel spherePocketEditor;
     
+    /** The listener of GRBL Controler for this window. (only the active must realy do something).  */
+    private final GRBLControler.GRBLCommListennerInterface grblListenner;    
+    
+    /** The GRBL Log window frame. */
     private JLogFrame jLogFrame;
-    private JJoGFrame jogWindow;
     
+    /** The GRBL Jog window frame. */
+    private JJoGFrame jJogWindow;
+    
+    /** Used to send 'G1F10' to GRBL when it is IDLE to thow the laserPosition (in laserMode). */
     private boolean showLaserPosition;
     
+    /** The EngravingProperties of the currently edited GElement (info received by projectViewer) */
     private EngravingProperties curentEditedProperties;
     
+    /** The last import directory used. */
     public static File lastImportDir = null;
     
     /**
@@ -134,32 +154,39 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
      * @param addHeaderFooter
      * @param newEmptyDoc   create document without header/footer blocks
      */
-    public JEditorFrame( boolean addHeaderFooter, boolean newEmptyDoc) {
-        if ( grbl == null) grbl = new GRBLControler();
-        blocksviewer = new JBlocksViewer(newEmptyDoc);
-        numberOfWindowsOpenned++;
-        confFrame = new JConfigurationFrame(blocksviewer.getConfiguration(), this);
-
-        initComponents();
-        if ( blocksviewer.getConfiguration().editorSettings.equals("")) {
-            blocksviewer.setSnapToGrid( jCheckBoxMenuItemSnapGrid.isSelected());
-            blocksviewer.setSnapToPoints(jCheckBoxMenuItemSnapPoints.isSelected());
-            blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_GRID, jCheckBoxMenuItemShowGrid.isSelected()?1:0, null);
-        }       
+    public JEditorFrame( boolean addHeaderFooter, boolean newEmptyDoc) {                
+        projectViewer = new JProjectEditor(newEmptyDoc);
+        
+        jConfFrame = new JConfigurationFrame(projectViewer.getConfiguration(), this);
+        if ( grbl == null) grbl = new GRBLControler();        
+                       
+        initComponents();     
         remove(jPanelEditor);
-        JSplitPane p = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, blocksviewer, jPanelEditor);
+        JSplitPane p = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, projectViewer, jPanelEditor);
         p.setDividerSize(2);
         add(p, java.awt.BorderLayout.CENTER);
-        //add(blocksviewer, java.awt.BorderLayout.CENTER);
         pack();
         p.setDividerLocation(0.85);
         p.setResizeWeight(1);
         
-        blocksviewer.setListener(this);
-        blocksviewer.setListEditor(jListGCode, jPanelEditor);
+        // keep activeWindow uptodate
+        addWindowFocusListener(new WindowFocusListener() {
+            @Override
+            public void windowGainedFocus(WindowEvent e) {
+                if ( e.getWindow() instanceof JEditorFrame) 
+                    activeWindow = e.getWindow();
+            }
+            @Override
+            public void windowLostFocus(WindowEvent e) { }
+        });
+        
+        addWindowListener( new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) { closeWindows(); }   
+        });        
         
         jListGCode.setPrototypeCellValue("                    ");
-        jListGCode.setCellRenderer( new DefaultListCellRenderer() { 
+        jListGCode.setCellRenderer(new DefaultListCellRenderer() { 
             @Override
             public Component getListCellRendererComponent(JList list, 
                                               Object value, 
@@ -171,28 +198,28 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     if( value instanceof GGroup)  
                         setFont(getFont().deriveFont(Font.BOLD | (((GGroup)value).containsDisabledElement() ? Font.ITALIC : 0)));
                             
-                    if ( ! blocksviewer.isGElementEnabled(((GElement)value)))
+                    if ( ! projectViewer.isGElementEnabled(((GElement)value)))
                             setForeground(Color.lightGray);
                     else if ( ((GElement)value).hasCustomProperties(false))
                             setForeground(Color.blue);
                          else
-                            setForeground(Color.black);
-
+                            setForeground((Color)UIManager.get("text"));
                 }
                 return this;  
             }
         });
         
+        // Configure some actions and keys relative to the GCode list editor.
         ListAction la = new ListAction(jListGCode);   
-        la.setAction(ListAction.ENTER, new EditListAction(blocksviewer));
+        la.setAction(ListAction.ENTER, new EditListAction(projectViewer));
         la.setAction(ListAction.INSERT, new AbstractAction() { // called when INSERT key on the jList
             @Override
             public void actionPerformed(ActionEvent e) {
-                if ( (blocksviewer.getState() & JBlocksViewer.STATE_EDIT_MODE_FLAG) == 0) return;
+                if ( (projectViewer.getState() & JProjectEditor.STATE_EDIT_MODE_FLAG) == 0) return;
                 if ( jListGCode.getMinSelectionIndex() != -1 ) {
                     int pos = jListGCode.getMinSelectionIndex();
                     if ( pos == -1) pos = 0;
-                    blocksviewer.doAction(JBlocksViewer.ACTION_INSERT, 0, null);
+                    projectViewer.doAction(JProjectEditor.ACTION_INSERT, 0, null);
                     Action action = jListGCode.getActionMap().get(ListAction.ENTER);
                     if (action != null)
                     {
@@ -210,72 +237,65 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         la.setAction(ListAction.ESCAPE, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.editParentOrClearSelection();
+                projectViewer.editParentOrClearSelection();
             }
         });
         la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_CUT, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_CUT, 0, null);
             }
         });
         la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_PASTE, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_PASTE, 0, null);
             }
         });
         la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_COPY, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_COPY, 0, null);
             }
         });
         la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_ADD, 0), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_DOWN, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_MOVE_DOWN, 0, null);
             }
         });
         la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, 0), new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_UP, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_MOVE_UP, 0, null);
             }
         });
         la.setAction(ListAction.DELETE1, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_DELETE, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_DELETE, 0, null);
             }
         });
         la.setAction(ListAction.DELETE2, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                blocksviewer.doAction(JBlocksViewer.ACTION_DELETE, 0, null);
+                projectViewer.doAction(JProjectEditor.ACTION_DELETE, 0, null);
             }
         });
         la.setAction(ListAction.F2, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {               
-                String name = JOptionPane.showInputDialog(blocksviewer, "New name", blocksviewer.getSelectedBlockName());
-                if ( name != null) blocksviewer.renameSelection(name);
+                String name = JOptionPane.showInputDialog(projectViewer, "New name", projectViewer.getSelectedElementName());
+                if ( name != null) projectViewer.renameSelection(name);
             }
-        });
-        if ( addHeaderFooter) {
-            blocksviewer.addDefaultGCodeHeaderFooter();
-        }
-        
-        addWindowListener( new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) { closeWindows(); }   
-        });
+        });    
         
         final Window thisFrame = this;
+        // The GRBLControler listenner : to update GUI according to GRBL state.
         grbl.addListenner(grblListenner = new GRBLControler.GRBLCommListennerInterface() {
             @Override
             public void wPosChanged() { 
-                blocksviewer.setGRBLMachinePosition( grbl.getWPos());
+                projectViewer.setGRBLMachinePosition( grbl.getWPos());
             }
             @Override
             public void stateChanged() {
@@ -291,6 +311,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                         break;
                     case GRBLControler.GRBL_STATE_IDLE:
                         jLabelGRBLState.setForeground(new Color(24, 157, 30));
+                        updateLaserPosition();
                         break;
                     case GRBLControler.GRBL_STATE_DISCONNECTED:
                         updateTitle();                       
@@ -302,7 +323,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             @Override
             public void receivedError(int errorno, String line) {
                 stopShowBoundariesThread=true;
-                if ((activeWindow == thisFrame) && (! printDialog.isVisible()))
+                if ((activeWindow == thisFrame) && (! jPrintDialog.isVisible()))
                     showGRBLError(errorno, line);
             }
             @Override
@@ -330,7 +351,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
             @Override
             public void exceptionInGRBLComThread(Exception ex) {
-                SwingUtilities.invokeLater(() -> { 
+                if ( activeWindow != thisFrame) return;
+                
+                    SwingUtilities.invokeLater(() -> { 
                     JOptionPane.showMessageDialog(thisFrame, "Exception in sender, GRBL connexion closed : \n" + ex.toString(),
                             "Error", JOptionPane.ERROR_MESSAGE);
                 });
@@ -339,16 +362,19 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
             @Override
             public void settingsReady() {
-                if ( confFrame.getConfiguration(grbl.getVersion().split(":")[2])) {
-                    confFrame.updateGUI();
-                    blocksviewer.applyConfiguration();
+                if ( jConfFrame.getConfiguration(grbl.getVersion().split(":")[2])) {
+                    jConfFrame.updateGUI();
+                    configurationChanged();
                 } else {
                     EventQueue.invokeLater(() -> {
                         JOptionPane.showMessageDialog(thisFrame, "The configuration for GRBL \"" + grbl.getVersion().split(":")[2] + "\" is not found.", 
                                 "Configuration not found...", JOptionPane.INFORMATION_MESSAGE);
                     });
-                } 
-                updateTitle();
+                }                 
+                SwingUtilities.invokeLater(() -> {
+                    updateTitle();
+                    updateGUIAndStatus();
+                });
             }
             @Override
             public void accessoryStateChanged() { }
@@ -356,7 +382,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             public void feedSpindleChanged() { }
             @Override
             public void probFinished(String substring) { }
-
             @Override
             public void limitSwitchChanged() {
                 String lsv = grbl.getLimitSwitchValues();
@@ -366,27 +391,87 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     jLabelMessage.invalidate();                    
                 });
             }
-        });
-        addWindowFocusListener(new WindowFocusListener() {
-            @Override
-            public void windowGainedFocus(WindowEvent e) {
-                if ( e.getWindow() instanceof JEditorFrame) 
-                    activeWindow = e.getWindow();
+        });               
+                        
+        if ( grbl.getVersion() != null) {
+            if ( jConfFrame.getConfiguration(grbl.getVersion().split(":")[2])) {
+                jConfFrame.updateGUI();
             }
-
-            @Override
-            public void windowLostFocus(WindowEvent e) {
-                if ( e.getWindow() instanceof JEditorFrame) 
-                    activeWindow = e.getWindow();
-            }
+        }
+        
+        if ( projectViewer.getConfiguration().editorSettings.equals("")) {
+            projectViewer.setSnapToGrid( jCheckBoxMenuItemSnapGrid.isSelected());
+            projectViewer.setSnapToPoints(jCheckBoxMenuItemSnapPoints.isSelected());
+            projectViewer.doAction(JProjectEditor.ACTION_SHOW_GRID, jCheckBoxMenuItemShowGrid.isSelected()?1:0, null);
+        }  
+        projectViewer.setListener(this);
+        projectViewer.setListEditor(jListGCode, jPanelEditor);
+        if ( addHeaderFooter) {
+            projectViewer.addDefaultGCodeHeaderFooter();
+        } 
+        
+        configurationChanged();        
+        SwingUtilities.invokeLater(() -> {
+            updateRecentFilesMenu();
+            updateGUIAndStatus(); 
         });
-
-        configurationChanged();
-        updateRecentFilesMenu();
-        updateGUIAndStatus();
-        updateTitle();
+        numberOfWindowsOpenned++;
     }
     
+    /**
+     * Change the visual theme from dark to light.
+     */
+    public void applyTheme()
+    {   
+        try {
+            if ( jConfFrame.conf.guiTheme.equals("dark")) {
+                // Dark LAF
+                UIManager.setLookAndFeel(new NimbusLookAndFeel());
+                UIManager.put("control",
+                        new Color(64, 64, 64));
+                        //new Color(128, 128, 128));
+                UIManager.put("info", new Color(128, 128, 128));
+                UIManager.put("nimbusBase", 
+                        //  new Color(0,0,0)); 
+                        new Color(18, 30, 49));
+                UIManager.put("nimbusAlertYellow", new Color(248, 187, 0));
+                UIManager.put("nimbusDisabledText", new Color(128, 128, 128));
+                UIManager.put("nimbusFocus", new Color(115, 164, 209));
+                UIManager.put("nimbusGreen", new Color(176, 179, 50));
+                UIManager.put("nimbusInfoBlue", new Color(66, 139, 221));
+                UIManager.put("nimbusLightBackground",
+                        new Color(0,0,0)); 
+                        //new Color(18, 30, 49));
+                UIManager.put("nimbusOrange", new Color(191, 98, 4));
+                UIManager.put("nimbusRed", new Color(169, 46, 34));
+                UIManager.put("nimbusSelectedText", new Color(255, 255, 255));
+                UIManager.put("nimbusSelectionBackground", new Color(104, 93, 156));
+                UIManager.put("text", new Color(255, 255, 255));                   
+            } else {
+                try {
+                    // Set System L&F
+                    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                    
+                } catch (ClassNotFoundException ex) {
+                    Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (InstantiationException ex) {
+                    Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalAccessException ex) {
+                    Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        } catch (UnsupportedLookAndFeelException exc) {
+            System.err.println("Nimbus: Unsupported Look and feel!");
+        }
+        
+        SwingUtilities.updateComponentTreeUI(this);
+        SwingUtilities.updateComponentTreeUI(jConfFrame);
+        SwingUtilities.updateComponentTreeUI(jDialogManager);
+        if ( jFontChooser != null) SwingUtilities.updateComponentTreeUI(jFontChooser);
+        if ( jJogWindow != null) SwingUtilities.updateComponentTreeUI(jJogWindow);
+        if ( jLogFrame != null) SwingUtilities.updateComponentTreeUI(jLogFrame);
+        if ( jPrintDialog != null) SwingUtilities.updateComponentTreeUI(jPrintDialog);          
+    }
     
     /**
      * Creates new form NewJFrame
@@ -402,15 +487,15 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             curDir = new File(".");
         
         
-        blocksviewer.setContent(JBlocksViewer.importGCODE(gcodeFileName, blocksviewer.getBackgroundPictureParameters()), true);
-        savedFileName = gcodeFileName;
+        projectViewer.setContent(JProjectEditor.importGCODE(gcodeFileName, projectViewer.getBackgroundPictureParameters()), true);
+        documentFileName = gcodeFileName;
         updateTitle();
-        blocksviewer.doAction(JBlocksViewer.ACTION_FOCUS_VIEW, 1, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FOCUS_VIEW, 1, null);
     }
     
     private void closeWindows() { 
         
-        if ( ((blocksviewer.getState() & JBlocksViewer.STATE_DOCUMENT_MODIFIED) != 0)) {
+        if ( ((projectViewer.getState() & JProjectEditor.STATE_DOCUMENT_MODIFIED) != 0)) {
             switch ( JOptionPane.showConfirmDialog(this, "Save this document before closing ?", 
                     "Save document ?", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE)) {
                 case JOptionPane.YES_OPTION:
@@ -436,7 +521,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             System.exit(0);
             
         } else  java.awt.EventQueue.invokeLater(() -> {
-                    blocksviewer.dispose();
+                    projectViewer.dispose();
                     dispose();
                 });
         
@@ -451,7 +536,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jMenuItem3 = new javax.swing.JMenuItem();
         jPanelStatus = new javax.swing.JPanel();
         jLabelFormInfo = new javax.swing.JLabel();
         jLabelMousePosition = new javax.swing.JLabel();
@@ -477,14 +561,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jLabelContent = new javax.swing.JLabel();
         jPanel2 = new javax.swing.JPanel();
         jLabelEditType = new javax.swing.JLabel();
-        jTextFieldEditedBlock = new javax.swing.JTextField();
+        jTextFieldEditedElement = new javax.swing.JTextField();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jListGCode = new javax.swing.JList<Object>() {
             public String getToolTipText( MouseEvent e )
             {
                 int row = locationToIndex( e.getPoint() );
-                return blocksviewer.getListToolTipForRow(row);
+                return projectViewer.getListToolTipForRow(row);
             }
 
         }
@@ -535,14 +619,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemQuit = new javax.swing.JMenuItem();
         jMenuEdit = new javax.swing.JMenu();
         jMenuItemSelectAll = new javax.swing.JMenuItem();
-        jMenuItemInvertSelection = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JPopupMenu.Separator();
         jMenuItemUndo = new javax.swing.JMenuItem();
         jMenuItemRedo = new javax.swing.JMenuItem();
         jSeparator27 = new javax.swing.JPopupMenu.Separator();
         jMenuItemCut = new javax.swing.JMenuItem();
         jMenuItemCopy = new javax.swing.JMenuItem();
-        jMenuItemPaste = new javax.swing.JMenuItem();
+        jMenuItemPasteFirst = new javax.swing.JMenuItem();
+        jMenuItemPasteLast = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JPopupMenu.Separator();
         jMenuItemExtract = new javax.swing.JMenuItem();
         jMenuItemRemoveSelection = new javax.swing.JMenuItem();
@@ -573,7 +657,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jCheckBoxMenuItemShowWorkspace = new javax.swing.JCheckBoxMenuItem();
         jSeparator28 = new javax.swing.JPopupMenu.Separator();
         jMenuItemFocus = new javax.swing.JMenuItem();
-        jMenu1 = new javax.swing.JMenu();
+        jMenuSelection = new javax.swing.JMenu();
+        jMenuItemInverseSelection = new javax.swing.JMenuItem();
+        jSeparator9 = new javax.swing.JPopupMenu.Separator();
         jMenuAlign = new javax.swing.JMenu();
         jMenuItem1 = new javax.swing.JMenuItem();
         jMenuItemAlignHorizontaly = new javax.swing.JMenuItem();
@@ -589,7 +675,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemRotate2D = new javax.swing.JMenuItem();
         jMenuItemScaleCenter = new javax.swing.JMenuItem();
         jMenuItemScale2DC = new javax.swing.JMenuItem();
-        jMenuBlocks = new javax.swing.JMenu();
+        jMenuElements = new javax.swing.JMenu();
         jMenuAdds = new javax.swing.JMenu();
         jMenuItemAddMixedPath = new javax.swing.JMenuItem();
         jMenuItemAddCustom = new javax.swing.JMenuItem();
@@ -628,7 +714,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemRename = new javax.swing.JMenuItem();
         jMenuItemConvertToMixedPath = new javax.swing.JMenuItem();
         jMenuItemDuplicate = new javax.swing.JMenuItem();
-        jMenu4 = new javax.swing.JMenu();
+        jMenuFlip = new javax.swing.JMenu();
         jMenuItemFlipH = new javax.swing.JMenuItem();
         jMenuItemFlipV = new javax.swing.JMenuItem();
         jMenuItemReverse = new javax.swing.JMenuItem();
@@ -639,13 +725,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jSeparator10 = new javax.swing.JPopupMenu.Separator();
         jMenuGCODE = new javax.swing.JMenu();
         jMenuItemAddHeaderFooter = new javax.swing.JMenuItem();
-        jMenuItemSort = new javax.swing.JMenuItem();
+        jMenuItemOptimizeMoves = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
         jMenuItemSetAsHeader = new javax.swing.JMenuItem();
         jMenuItemSetAsFooter = new javax.swing.JMenuItem();
         jSeparator17 = new javax.swing.JPopupMenu.Separator();
         jMenuItemFilter = new javax.swing.JMenuItem();
-        jMenu3 = new javax.swing.JMenu();
+        jMenuOpenScad = new javax.swing.JMenu();
         jMenuItemCopyOpenScadPolygon = new javax.swing.JMenuItem();
         jMenuPoints = new javax.swing.JMenu();
         jMenuItemAddPoints = new javax.swing.JMenuItem();
@@ -684,8 +770,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuHelp = new javax.swing.JMenu();
         jMenuItemQuickHelp = new javax.swing.JMenuItem();
         jMenuItemAbout = new javax.swing.JMenuItem();
-
-        jMenuItem3.setText("jMenuItem3");
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("VGEditor");
@@ -867,20 +951,20 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jLabelEditType.setText("Name ");
         jPanel2.add(jLabelEditType, java.awt.BorderLayout.WEST);
 
-        jTextFieldEditedBlock.addFocusListener(new java.awt.event.FocusAdapter() {
+        jTextFieldEditedElement.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
-                jTextFieldEditedBlockFocusGained(evt);
+                jTextFieldEditedElementFocusGained(evt);
             }
             public void focusLost(java.awt.event.FocusEvent evt) {
-                jTextFieldEditedBlockFocusLost(evt);
+                jTextFieldEditedElementFocusLost(evt);
             }
         });
-        jTextFieldEditedBlock.addActionListener(new java.awt.event.ActionListener() {
+        jTextFieldEditedElement.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldEditedBlockActionPerformed(evt);
+                jTextFieldEditedElementActionPerformed(evt);
             }
         });
-        jPanel2.add(jTextFieldEditedBlock, java.awt.BorderLayout.CENTER);
+        jPanel2.add(jTextFieldEditedElement, java.awt.BorderLayout.CENTER);
 
         jPanelEditedInfo.add(jPanel2, java.awt.BorderLayout.NORTH);
 
@@ -1262,14 +1346,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         });
         jMenuEdit.add(jMenuItemSelectAll);
-
-        jMenuItemInvertSelection.setText("Invert selection");
-        jMenuItemInvertSelection.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemInvertSelectionActionPerformed(evt);
-            }
-        });
-        jMenuEdit.add(jMenuItemInvertSelection);
         jMenuEdit.add(jSeparator16);
 
         jMenuItemUndo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, java.awt.event.InputEvent.CTRL_DOWN_MASK));
@@ -1309,14 +1385,25 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuEdit.add(jMenuItemCopy);
 
-        jMenuItemPaste.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        jMenuItemPaste.setText("Paste");
-        jMenuItemPaste.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemPasteFirst.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jMenuItemPasteFirst.setText("Paste before");
+        jMenuItemPasteFirst.setToolTipText("past the clipboard first or before the selection");
+        jMenuItemPasteFirst.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemPasteActionPerformed(evt);
+                jMenuItemPasteFirstActionPerformed(evt);
             }
         });
-        jMenuEdit.add(jMenuItemPaste);
+        jMenuEdit.add(jMenuItemPasteFirst);
+
+        jMenuItemPasteLast.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jMenuItemPasteLast.setText("Paste after");
+        jMenuItemPasteLast.setToolTipText("past the clipboard last or after the selection");
+        jMenuItemPasteLast.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemPasteLastActionPerformed(evt);
+            }
+        });
+        jMenuEdit.add(jMenuItemPasteLast);
         jMenuEdit.add(jSeparator4);
 
         jMenuItemExtract.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_E, 0));
@@ -1539,7 +1626,17 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
         jMenuBar.add(jMenuView);
 
-        jMenu1.setText("Selection");
+        jMenuSelection.setText("Selection");
+
+        jMenuItemInverseSelection.setText("Inverse");
+        jMenuItemInverseSelection.setToolTipText("Inverse selection");
+        jMenuItemInverseSelection.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemInverseSelectionActionPerformed(evt);
+            }
+        });
+        jMenuSelection.add(jMenuItemInverseSelection);
+        jMenuSelection.add(jSeparator9);
 
         jMenuAlign.setText("Align");
 
@@ -1610,7 +1707,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuAlign.add(jMenuItemAlignTop);
 
-        jMenu1.add(jMenuAlign);
+        jMenuSelection.add(jMenuAlign);
 
         jMenuItemJoin.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_J, 0));
         jMenuItemJoin.setText("Join");
@@ -1620,7 +1717,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemJoinActionPerformed(evt);
             }
         });
-        jMenu1.add(jMenuItemJoin);
+        jMenuSelection.add(jMenuItemJoin);
 
         jMenuItemMoveWithMouse.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
         jMenuItemMoveWithMouse.setText("Move");
@@ -1629,16 +1726,17 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemMoveWithMouseActionPerformed(evt);
             }
         });
-        jMenu1.add(jMenuItemMoveWithMouse);
+        jMenuSelection.add(jMenuItemMoveWithMouse);
 
         jMenuItemRotateCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, 0));
         jMenuItemRotateCenter.setText("Rotate around center");
+        jMenuItemRotateCenter.setToolTipText("Use Shift key to use round values");
         jMenuItemRotateCenter.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemRotateCenterActionPerformed(evt);
             }
         });
-        jMenu1.add(jMenuItemRotateCenter);
+        jMenuSelection.add(jMenuItemRotateCenter);
 
         jMenuItemRotate2D.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jMenuItemRotate2D.setText("Rotate around 2D cursor");
@@ -1647,7 +1745,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemRotate2DActionPerformed(evt);
             }
         });
-        jMenu1.add(jMenuItemRotate2D);
+        jMenuSelection.add(jMenuItemRotate2D);
 
         jMenuItemScaleCenter.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
         jMenuItemScaleCenter.setText("Scale from center");
@@ -1656,7 +1754,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemScaleCenterActionPerformed(evt);
             }
         });
-        jMenu1.add(jMenuItemScaleCenter);
+        jMenuSelection.add(jMenuItemScaleCenter);
 
         jMenuItemScale2DC.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         jMenuItemScale2DC.setText("Scale from 2D cursor");
@@ -1665,11 +1763,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemScale2DCActionPerformed(evt);
             }
         });
-        jMenu1.add(jMenuItemScale2DC);
+        jMenuSelection.add(jMenuItemScale2DC);
 
-        jMenuBar.add(jMenu1);
+        jMenuBar.add(jMenuSelection);
 
-        jMenuBlocks.setText("Element");
+        jMenuElements.setText("Element");
 
         jMenuAdds.setText("Add");
 
@@ -1914,7 +2012,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
         jMenuAdds.add(jMenu5);
 
-        jMenuBlocks.add(jMenuAdds);
+        jMenuElements.add(jMenuAdds);
 
         jMenuItemImport.setText("Import...");
         jMenuItemImport.addActionListener(new java.awt.event.ActionListener() {
@@ -1922,8 +2020,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemImportActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemImport);
-        jMenuBlocks.add(jSeparator32);
+        jMenuElements.add(jMenuItemImport);
+        jMenuElements.add(jSeparator32);
 
         jMenuItemRename.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0));
         jMenuItemRename.setText("Rename");
@@ -1932,7 +2030,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemRenameActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemRename);
+        jMenuElements.add(jMenuItemRename);
 
         jMenuItemConvertToMixedPath.setText("Convert to Artistic path");
         jMenuItemConvertToMixedPath.addActionListener(new java.awt.event.ActionListener() {
@@ -1940,7 +2038,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemConvertToMixedPathActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemConvertToMixedPath);
+        jMenuElements.add(jMenuItemConvertToMixedPath);
 
         jMenuItemDuplicate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_D, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemDuplicate.setText("Duplicate ...");
@@ -1949,9 +2047,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemDuplicateActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemDuplicate);
+        jMenuElements.add(jMenuItemDuplicate);
 
-        jMenu4.setText("Flip");
+        jMenuFlip.setText("Flip");
 
         jMenuItemFlipH.setText("Flip horizontally");
         jMenuItemFlipH.addActionListener(new java.awt.event.ActionListener() {
@@ -1959,7 +2057,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemFlipHActionPerformed(evt);
             }
         });
-        jMenu4.add(jMenuItemFlipH);
+        jMenuFlip.add(jMenuItemFlipH);
 
         jMenuItemFlipV.setText("Flip vertically");
         jMenuItemFlipV.addActionListener(new java.awt.event.ActionListener() {
@@ -1967,9 +2065,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemFlipVActionPerformed(evt);
             }
         });
-        jMenu4.add(jMenuItemFlipV);
+        jMenuFlip.add(jMenuItemFlipV);
 
-        jMenuBlocks.add(jMenu4);
+        jMenuElements.add(jMenuFlip);
 
         jMenuItemReverse.setText("Inverse");
         jMenuItemReverse.addActionListener(new java.awt.event.ActionListener() {
@@ -1977,8 +2075,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemReverseActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemReverse);
-        jMenuBlocks.add(jSeparator2);
+        jMenuElements.add(jMenuItemReverse);
+        jMenuElements.add(jSeparator2);
 
         jMenuItemMove.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemMove.setText("Move ...");
@@ -1987,7 +2085,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemMoveActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemMove);
+        jMenuElements.add(jMenuItemMove);
 
         jMenuItemScale.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemScale.setText("Scale ...");
@@ -1996,7 +2094,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemScaleActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemScale);
+        jMenuElements.add(jMenuItemScale);
 
         jMenuItemRotate.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jMenuItemRotate.setText("Rotate ...");
@@ -2005,8 +2103,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemRotateActionPerformed(evt);
             }
         });
-        jMenuBlocks.add(jMenuItemRotate);
-        jMenuBlocks.add(jSeparator10);
+        jMenuElements.add(jMenuItemRotate);
+        jMenuElements.add(jSeparator10);
 
         jMenuGCODE.setText("GCODE");
 
@@ -2018,14 +2116,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuGCODE.add(jMenuItemAddHeaderFooter);
 
-        jMenuItemSort.setText("Optimize moves");
-        jMenuItemSort.setToolTipText("Reorder path to minimize machine  move, starting with first selected.");
-        jMenuItemSort.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemOptimizeMoves.setText("Optimize moves");
+        jMenuItemOptimizeMoves.setToolTipText("Reorder selected path to minimize machine moves, starting from 2DCursor position.");
+        jMenuItemOptimizeMoves.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemSortActionPerformed(evt);
+                jMenuItemOptimizeMovesActionPerformed(evt);
             }
         });
-        jMenuGCODE.add(jMenuItemSort);
+        jMenuGCODE.add(jMenuItemOptimizeMoves);
         jMenuGCODE.add(jSeparator3);
 
         jMenuItemSetAsHeader.setText("Set as G-Code Header");
@@ -2054,9 +2152,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         });
         jMenuGCODE.add(jMenuItemFilter);
 
-        jMenuBlocks.add(jMenuGCODE);
+        jMenuElements.add(jMenuGCODE);
 
-        jMenu3.setText("OpenScad");
+        jMenuOpenScad.setText("OpenScad");
 
         jMenuItemCopyOpenScadPolygon.setText("<html>Copy OpenScad polygon code to clipboard</html>");
         jMenuItemCopyOpenScadPolygon.addActionListener(new java.awt.event.ActionListener() {
@@ -2064,11 +2162,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 jMenuItemCopyOpenScadPolygonActionPerformed(evt);
             }
         });
-        jMenu3.add(jMenuItemCopyOpenScadPolygon);
+        jMenuOpenScad.add(jMenuItemCopyOpenScadPolygon);
 
-        jMenuBlocks.add(jMenu3);
+        jMenuElements.add(jMenuOpenScad);
 
-        jMenuBar.add(jMenuBlocks);
+        jMenuBar.add(jMenuElements);
 
         jMenuPoints.setText("Point");
 
@@ -2381,12 +2479,12 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 for ( File f : fc.getSelectedFiles()) { 
                     try {              
                     if ( f.getAbsolutePath().toLowerCase().endsWith(".svg")) 
-                            addGElement(blocksviewer.readSVGfile(f.getAbsolutePath()));
+                            addGElement(projectViewer.readSVGfile(f.getAbsolutePath()));
                     else 
                         if ( f.getAbsolutePath().toLowerCase().endsWith(".dxf"))
-                            blocksviewer.importDXF(f.getAbsolutePath());
+                            projectViewer.importDXF(f.getAbsolutePath());
                         else 
-                            addGElement(JBlocksViewer.importGCODE(f.getAbsolutePath(), null));                
+                            addGElement(JProjectEditor.importGCODE(f.getAbsolutePath(), null));                
                 } catch ( ParserConfigurationException | SAXException | IOException | ParseException ex) {
                     JOptionPane.showMessageDialog(this, "Error reading file : \n\n" + ex.toString(), "Import error", JOptionPane.ERROR_MESSAGE);           
                     ex.printStackTrace();
@@ -2407,36 +2505,38 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemJoinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemJoinActionPerformed
         try {
-            if (! blocksviewer.isInEditMode()) {
+            double tolerance = 0;
+            if (! projectViewer.isInEditMode()) {
                 // Not in Edit mode
-                double tolerance = Double.valueOf( JOptionPane.showInputDialog(this, "Maximal distance tolerance", "0.01"));
-                blocksviewer.doAction(JBlocksViewer.ACTION_JOIN, tolerance, null);
+                tolerance = Double.parseDouble( JOptionPane.showInputDialog(this, "Maximal distance tolerance", "0.01"));              
             }
+            projectViewer.doAction(JProjectEditor.ACTION_JOIN, tolerance, null);
+            
         } catch (NumberFormatException e) { 
             inform("wrong number");
         }
     }//GEN-LAST:event_jMenuItemJoinActionPerformed
 
     private void jMenuItemUndoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemUndoActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_UNDO, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_UNDO, 0, null);
     }//GEN-LAST:event_jMenuItemUndoActionPerformed
 
-    private void jMenuItemPasteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemPasteActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_PASTE, 0, null);
-    }//GEN-LAST:event_jMenuItemPasteActionPerformed
+    private void jMenuItemPasteFirstActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemPasteFirstActionPerformed
+        projectViewer.doAction(JProjectEditor.ACTION_PASTE, 0, null);
+    }//GEN-LAST:event_jMenuItemPasteFirstActionPerformed
 
     private void jMenuItemCopyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCopyActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_COPY, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_COPY, 0, null);
     }//GEN-LAST:event_jMenuItemCopyActionPerformed
 
     private void jMenuItemCutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCutActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_CUT, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_CUT, 0, null);
     }//GEN-LAST:event_jMenuItemCutActionPerformed
 
     private void jMenuItemSimplifyPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSimplifyPActionPerformed
         try {
             double d = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter the tolerance (0=no change)", "1.0"));
-            blocksviewer.doAction(JBlocksViewer.ACTION_SIMPLIFY, d, null);
+            projectViewer.doAction(JProjectEditor.ACTION_SIMPLIFY, d, null);
         } catch ( NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -2444,33 +2544,33 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemSimplifyPActionPerformed
 
     private void jMenuItemRotate2DActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotate2DActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ROTATE, 1, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ROTATE, 1, null);
     }//GEN-LAST:event_jMenuItemRotate2DActionPerformed
 
     private void jMenuItemRotateCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotateCenterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ROTATE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ROTATE, 0, null);
     }//GEN-LAST:event_jMenuItemRotateCenterActionPerformed
 
     private void jMenuItemScaleCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScaleCenterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SCALE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SCALE, 0, null);
     }//GEN-LAST:event_jMenuItemScaleCenterActionPerformed
 
     private void jMenuItemFlipHActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlipHActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FLIP_H, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FLIP_H, 0, null);
     }//GEN-LAST:event_jMenuItemFlipHActionPerformed
 
     private void jMenuItemFlipVActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlipVActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FLIP_V, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FLIP_V, 0, null);
     }//GEN-LAST:event_jMenuItemFlipVActionPerformed
 
     private void jMenuItemChStartPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemChStartPosActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_CHANGE_START_POINT, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_CHANGE_START_POINT, 0, null);
     }//GEN-LAST:event_jMenuItemChStartPosActionPerformed
 
     private void jMenuItemExportSVGActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportSVGActionPerformed
         int res = 1;
         
-        if ( blocksviewer.getSelectionBoundary(false) != null)
+        if ( projectViewer.getSelectionBoundary(false) != null)
             res = JOptionPane.showConfirmDialog(this, "Export ony selection ?", "Export to SVG...", 
                 JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
         
@@ -2488,7 +2588,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 if ( JOptionPane.showConfirmDialog(this, fname+"\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;    
             try {
-                blocksviewer.exportToSVG( fname, res == 0);
+                projectViewer.exportToSVG( fname, res == 0);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Error at export:\n"+ex.getLocalizedMessage(), "SVG Export error", JOptionPane.ERROR_MESSAGE);
             }
@@ -2496,25 +2596,25 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemExportSVGActionPerformed
 
     private void jMenuItemExtractActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExtractActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_EXTRACT, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_EXTRACT, 0, null);
     }//GEN-LAST:event_jMenuItemExtractActionPerformed
 
     private void jMenuItemConfActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemConfActionPerformed
-        if ( confFrame == null) confFrame = new JConfigurationFrame(blocksviewer.getConfiguration(), this);
-        confFrame.setLocationRelativeTo(this);
-        confFrame.setVisible(true);
+        if ( jConfFrame == null) jConfFrame = new JConfigurationFrame(projectViewer.getConfiguration(), this);
+        jConfFrame.setLocationRelativeTo(this);
+        jConfFrame.setVisible(true);
     }//GEN-LAST:event_jMenuItemConfActionPerformed
 
     private void jCheckBoxMenuItemShowGridActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowGridActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_GRID, jCheckBoxMenuItemShowGrid.isSelected()?1:0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SHOW_GRID, jCheckBoxMenuItemShowGrid.isSelected()?1:0, null);
     }//GEN-LAST:event_jCheckBoxMenuItemShowGridActionPerformed
 
     private void jCheckBoxMenuItemSnapGridActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemSnapGridActionPerformed
-        blocksviewer.setSnapToGrid( jCheckBoxMenuItemSnapGrid.isSelected());
+        projectViewer.setSnapToGrid( jCheckBoxMenuItemSnapGrid.isSelected());
     }//GEN-LAST:event_jCheckBoxMenuItemSnapGridActionPerformed
 
     private void jCheckBoxMenuItemSnapPointsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemSnapPointsActionPerformed
-        blocksviewer.setSnapToPoints( jCheckBoxMenuItemSnapPoints.isSelected());
+        projectViewer.setSnapToPoints( jCheckBoxMenuItemSnapPoints.isSelected());
     }//GEN-LAST:event_jCheckBoxMenuItemSnapPointsActionPerformed
 
     private void jMenuItemSimplifyByDistanceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSimplifyByDistanceActionPerformed
@@ -2525,21 +2625,21 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             JOptionPane.showMessageDialog(this, "Distance invalid.");
             return; 
         }
-        blocksviewer.doRemoveByDistance(d);
+        projectViewer.doRemoveByDistance(d);
     }//GEN-LAST:event_jMenuItemSimplifyByDistanceActionPerformed
 
     private void jMenuItemAboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAboutActionPerformed
         JOptionPane.showMessageDialog(this, "A Simple 2D G-Code Visual Editor and CAD\n\n"+
                 "For laser engraving and simple milling projects\nInclude a realtime GRBL 1.1 controler\n\nVersion: "+
-                JBlocksViewer.SVGE_RELEASE+" - 2023\nAuthor: Clément Gérardin\n\nUse external libs:\n\t- kabeja-0.4.jar\n"
+                JProjectEditor.SVGE_RELEASE+" - 2023\nAuthor: Clément Gérardin\n\nUse external libs:\n\t- kabeja-0.4.jar\n"
                         + "\t- exp4j-0.4.8.jar\n\nSource:\nhttps://github.com/clmwith/visualgcodeeditor\n\nTry it WITHOUT ANY GUARANTEE !!!",
                 "About this software", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_jMenuItemAboutActionPerformed
 
     private void jMenuItemSaveGCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveGCodeActionPerformed
-        if ( savedFileName == null) jMenuItemSaveAsActionPerformed(null);
+        if ( documentFileName == null) jMenuItemSaveAsActionPerformed(null);
         else try {
-            blocksviewer.saveDocument(savedFileName);
+            projectViewer.saveDocument(documentFileName);
             jLabelMessage.setText("Document saved");
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Error:\n"+ex.getLocalizedMessage(), "Saving...", JOptionPane.ERROR_MESSAGE);
@@ -2552,18 +2652,18 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemAddPolygonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddPolygonActionPerformed
       
-        JPolygonPanel polyPanel = (JPolygonPanel)dialogManager.showDialogFor( JPolygonPanel.class, null);                 
+        JPolygonPanel polyPanel = (JPolygonPanel)jDialogManager.showDialogFor( JPolygonPanel.class, null);                 
         if ( polyPanel != null) {
             
             G1Path p;
             if ( polyPanel.radius > 0)
-                p = G1Path.makeCircle(blocksviewer.get2DCursor(),
+                p = G1Path.makeCircle(projectViewer.get2DCursor(),
                          (polyPanel.nbEdge > 0) ? polyPanel.nbEdge : (int)(2 * Math.PI* polyPanel.radius), polyPanel.radius, polyPanel.clockwise, false);
             else {              
-                p = G1Path.makeCircle(blocksviewer.get2DCursor(),
+                p = G1Path.makeCircle(projectViewer.get2DCursor(),
                          polyPanel.nbEdge, Math.abs((double)polyPanel.edgeLen / (2. * Math.sin(180/polyPanel.nbEdge))), polyPanel.clockwise, false);
                 double d = 100. / p.getFirstPoint().distance( p.getPoint(1));
-                p.scale( blocksviewer.get2DCursor(), d, d);
+                p.scale(projectViewer.get2DCursor(), d, d);
             }
              
             p.name = "poly"+polyPanel.nbEdge+"-"+GElement.getUniqID();
@@ -2584,7 +2684,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 else
                     angle = 180 - r;
 
-                p.rotate( blocksviewer.get2DCursor(), Math.toRadians(angle));
+                p.rotate(projectViewer.get2DCursor(), Math.toRadians(angle));
             }           
             addGElement( p);
         }
@@ -2600,7 +2700,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             s.add( new Point(len, len, 0));
             s.add( new Point(0, len, 0));
             s.add( new Point(0, 0, 0));
-            s.translate(blocksviewer.get2DCursor());
+            s.translate(projectViewer.get2DCursor());
             addGElement( s);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
@@ -2609,9 +2709,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemAddCircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCircleActionPerformed
         try {    
-            double diameter = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter diameter", "10.0"));
-            int np = Integer.valueOf(JOptionPane.showInputDialog(this, "<html>Number of point in the circle ?<br><i>(Choose a multiple of 2,3,4,5,6,8,9 for best accuray)</i></html>", 12*(int)(2*Math.PI*diameter/6)));         
-            addGElement(G1Path.makeCircle(blocksviewer.get2DCursor(), np, diameter/2, true, false));
+            String d = JOptionPane.showInputDialog(this, "Enter diameter", "10.0");
+            if ( d == null) return;
+            double diameter = Double.parseDouble(d);
+            String nbpts = JOptionPane.showInputDialog(this, "<html>Number of point in the circle ?<br><i>(Choose a multiple of 2,3,4,5,6,8,9 for best accuray)</i></html>", 12*(int)(2*Math.PI*diameter/6));
+            if ( nbpts == null) return;
+            int np = Integer.parseInt(nbpts);         
+            addGElement(G1Path.makeCircle(projectViewer.get2DCursor(), np, diameter/2, true, false));
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -2619,9 +2723,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     
     private void jMenuItemAddRippleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddRippleActionPerformed
         try {
-            int p = Integer.valueOf(JOptionPane.showInputDialog(this, "Number of points by periode", "48"));
-            int nbR = Integer.valueOf(JOptionPane.showInputDialog(this, "Enter number of ripple", "10"));
-            double scaleFactor = Double.valueOf(JOptionPane.showInputDialog(this, "Scale factor", "10"));
+            String nbpt = JOptionPane.showInputDialog(this, "Number of points by periode", "48");
+            if ( nbpt == null) return;            
+            int p = Integer.parseInt(nbpt);
+            String nr = JOptionPane.showInputDialog(this, "Enter number of ripple", "10");
+            if ( nr == null) return;    
+            int nbR = Integer.parseInt(nr);
+            double scaleFactor = Double.parseDouble(JOptionPane.showInputDialog(this, "Scale factor", "10"));
             double angle=0, a = Math.PI * 2 /p, stepX = (double)2/p, x= 0;
             G1Path s = new G1Path("ripple"+GElement.getUniqID());
             for ( int ripple = 0; ripple < nbR; ripple++)
@@ -2632,42 +2740,42 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     angle +=a;
                     x += stepX;
                 }
-            for ( GCode pt : s) pt.translate(blocksviewer.get2DCursor());
+            for ( GCode pt : s) pt.translate(projectViewer.get2DCursor());
             addGElement( s);
         } catch (NumberFormatException e) { }
     }//GEN-LAST:event_jMenuItemAddRippleActionPerformed
 
-    private void jTextFieldEditedBlockActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldEditedBlockActionPerformed
-        jTextFieldEditedBlock.setEnabled(false);
-        blocksviewer.setEditedBlockName(jTextFieldEditedBlock.getText());  
-    }//GEN-LAST:event_jTextFieldEditedBlockActionPerformed
+    private void jTextFieldEditedElementActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldEditedElementActionPerformed
+        jTextFieldEditedElement.setEnabled(false);
+        projectViewer.setEditedElementName(jTextFieldEditedElement.getText());  
+    }//GEN-LAST:event_jTextFieldEditedElementActionPerformed
 
     private void jMenuItemSetAsHeaderActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSetAsHeaderActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SET_AS_HEADER, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SET_AS_HEADER, 0, null);
     }//GEN-LAST:event_jMenuItemSetAsHeaderActionPerformed
 
     private void jMenuItemMoveUpActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveUpActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_UP, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_MOVE_UP, 0, null);
     }//GEN-LAST:event_jMenuItemMoveUpActionPerformed
 
     private void jMenuItemMoveDownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveDownActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_DOWN, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_MOVE_DOWN, 0, null);
     }//GEN-LAST:event_jMenuItemMoveDownActionPerformed
 
     private void jMenuItemSetAsFooterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSetAsFooterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SET_AS_FOOTER, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SET_AS_FOOTER, 0, null);
     }//GEN-LAST:event_jMenuItemSetAsFooterActionPerformed
 
     private void jMenuItemFilterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFilterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FILTER, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FILTER, 0, null);
     }//GEN-LAST:event_jMenuItemFilterActionPerformed
 
     private void jCheckBoxMenuItemShowObjectSurfaceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowObjectSurfaceActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_OBJECT_SURFACE, jCheckBoxMenuItemShowObjectSurface.isSelected()?1:0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SHOW_OBJECT_SURFACE, jCheckBoxMenuItemShowObjectSurface.isSelected()?1:0, null);
     }//GEN-LAST:event_jCheckBoxMenuItemShowObjectSurfaceActionPerformed
 
     private void jCheckBoxMenuItemShowMovesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowMovesActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_MOVES, jCheckBoxMenuItemShowMoves.isSelected()?1:0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SHOW_MOVES, jCheckBoxMenuItemShowMoves.isSelected()?1:0, null);
     }//GEN-LAST:event_jCheckBoxMenuItemShowMovesActionPerformed
 
     private void jMenuItemAddStarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddStarActionPerformed
@@ -2699,7 +2807,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             if ( Math.abs(y) < 0.000000001) y = 0;
             s.add( new Point( br * x, br * y, 0));
             angle +=a/2;
-            for ( GCode pt : s) pt.translate(blocksviewer.get2DCursor());
+            for ( GCode pt : s) pt.translate(projectViewer.get2DCursor());
             addGElement( s);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
@@ -2707,15 +2815,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemAddStarActionPerformed
 
     private void jMenuItemScale2DCActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScale2DCActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SCALE, 1, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SCALE, 1, null);
     }//GEN-LAST:event_jMenuItemScale2DCActionPerformed
 
     private void jMenuItemScaleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScaleActionPerformed
-        JScalePanel scalePanel = (JScalePanel)dialogManager.showDialogFor(
-                JScalePanel.class, blocksviewer.getSelectionBoundary(false));
+        JScalePanel scalePanel = (JScalePanel)jDialogManager.showDialogFor(JScalePanel.class, projectViewer.getSelectionBoundary(false));
                      
         if (scalePanel != null) {
-                blocksviewer.scaleSelection( scalePanel.xScale, scalePanel.yScale, scalePanel.copies,
+                projectViewer.scaleSelection( scalePanel.xScale, scalePanel.yScale, scalePanel.copies,
                                              scalePanel.fromCenter, scalePanel.keepOriginal);
         }           
         
@@ -2725,8 +2832,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         JFileChooser f = new JFileChooser();
         f.setFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode)", "ngc", "nc", "tap","gcode"));
         if ( lastImportDir == null) {
-            if ( blocksviewer.getName() != null) {
-                lastImportDir = new File(blocksviewer.getName()).getParentFile();
+            if ( projectViewer.getName() != null) {
+                lastImportDir = new File(projectViewer.getName()).getParentFile();
             } else {
                 lastImportDir = new File(".");
             }
@@ -2744,9 +2851,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                         return;
             
             try {
-                blocksviewer.saveDocument(fname);
-                savedFileName = fname;
-                addToRecentFile(savedFileName);
+                projectViewer.saveDocument(fname);
+                documentFileName = fname;
+                addToRecentFile(documentFileName);
                 updateTitle();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Error:\n"+ex.getLocalizedMessage(), "Saving...", JOptionPane.ERROR_MESSAGE);
@@ -2756,39 +2863,39 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemSaveAsActionPerformed
 
     private void jMenuItemAddPointsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddPointsActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_LINES, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_LINES, 0, null);
     }//GEN-LAST:event_jMenuItemAddPointsActionPerformed
 
     private void jMenuItemRotateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRotateActionPerformed
-        JRotationPanel rotatePanel = (JRotationPanel)dialogManager.showDialogFor(JRotationPanel.class, null);
+        JRotationPanel rotatePanel = (JRotationPanel)jDialogManager.showDialogFor(JRotationPanel.class, null);
      
         if ( rotatePanel != null) {
-            blocksviewer.multiRotateSelection( Math.toRadians(rotatePanel.angle), 
+            projectViewer.multiRotateSelection( Math.toRadians(rotatePanel.angle), 
                     rotatePanel.copies, rotatePanel.fromCenter, rotatePanel.keepOriginal, rotatePanel.keepOrientation);
         }       
     }//GEN-LAST:event_jMenuItemRotateActionPerformed
 
     private void jMenuItemSelectAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSelectAllActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SELECT_ALL, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SELECT_ALL, 0, null);
     }//GEN-LAST:event_jMenuItemSelectAllActionPerformed
 
     private void jMenuItemSetCursorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSetCursorActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SET_2D_CURSOR, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SET_2D_CURSOR, 0, null);
     }//GEN-LAST:event_jMenuItemSetCursorActionPerformed
 
     private void jCheckBoxMenuItemShowWorkspaceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowWorkspaceActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_WORKSPACE, jCheckBoxMenuItemShowWorkspace.isSelected()?1:0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SHOW_WORKSPACE, jCheckBoxMenuItemShowWorkspace.isSelected()?1:0, null);
     }//GEN-LAST:event_jCheckBoxMenuItemShowWorkspaceActionPerformed
 
     private void jMenuItemCursorAtCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCursorAtCenterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_CURSOR_AT_CENTER, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_CURSOR_AT_CENTER, 0, null);
     }//GEN-LAST:event_jMenuItemCursorAtCenterActionPerformed
 
     private void jMenuItemAddSpiralActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddSpiralActionPerformed
         try {          
             double radius = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter start radius", "5.0"));
-            int np = Integer.valueOf(JOptionPane.showInputDialog(this, "Number of points per turn", 24));
-            int nt = Integer.valueOf(JOptionPane.showInputDialog(this, "Number of turns", 10));
+            int np = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of points per turn", 24));
+            int nt = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of turns", 10));
             double gd = Double.parseDouble(JOptionPane.showInputDialog(this, "Distance between each turns", "5"));
             gd /= np;
             
@@ -2802,12 +2909,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 s.add( new Point(radius * x, radius * y, 0));
                 
                 radius += gd;
-                System.out.println(radius);
                 
                 angle +=a;
             }
             s.add( new Point(radius * Math.cos(0), radius * Math.sin(0),0));
-            for ( GCode pt : s) pt.translate(blocksviewer.get2DCursor());
+            for ( GCode pt : s) pt.translate(projectViewer.get2DCursor());
             addGElement( s);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
@@ -2815,11 +2921,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemAddSpiralActionPerformed
 
     private void jMenuItemRenameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRenameActionPerformed
-        blocksviewer.renameSelection( JOptionPane.showInputDialog(this, "New name ?", blocksviewer.getSelectedBlockName()));
+        projectViewer.renameSelection(JOptionPane.showInputDialog(this, "New name ?", projectViewer.getSelectedElementName()));
     }//GEN-LAST:event_jMenuItemRenameActionPerformed
 
     private void jMenuItemAddCustomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCustomActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_LINES, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_LINES, 0, null);
     }//GEN-LAST:event_jMenuItemAddCustomActionPerformed
 
     private void jMenuItemAddRectangleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddRectangleActionPerformed
@@ -2833,25 +2939,25 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             s.add( new Point(w, h, 0));
             s.add( new Point(0, h, 0));
             s.add( new Point(0, 0, 0));
-            for ( GCode pt : s) pt.translate(blocksviewer.get2DCursor());
+            for ( GCode pt : s) pt.translate(projectViewer.get2DCursor());
             addGElement( s);
-            blocksviewer.setEditedElement(s);
+            projectViewer.setEditedElement(s);
         } catch (Exception e) {
             //JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_jMenuItemAddRectangleActionPerformed
 
     private void jMenuItemDuplicateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemDuplicateActionPerformed
-        JDuplicatePanel moveDialog = (JDuplicatePanel)dialogManager.showDialogFor( JDuplicatePanel.class, null);
+        JDuplicatePanel moveDialog = (JDuplicatePanel)jDialogManager.showDialogFor( JDuplicatePanel.class, null);
         if ( moveDialog != null) {
-            blocksviewer.moveCopySelection(Double.isNaN(moveDialog.deltaX) ? 0 : moveDialog.deltaX,
+            projectViewer.moveCopySelection(Double.isNaN(moveDialog.deltaX) ? 0 : moveDialog.deltaX,
                                            Double.isNaN(moveDialog.deltaY) ? 0 : moveDialog.deltaY,
                                            moveDialog.nbCopies, moveDialog.packed, moveDialog.grouped, true);
         }        
     }//GEN-LAST:event_jMenuItemDuplicateActionPerformed
 
     private void jCheckBoxMenuItemShowHeadPositionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowHeadPositionActionPerformed
-        blocksviewer.setShowGRBLHead( jCheckBoxMenuItemShowHeadPosition.isSelected());       
+        projectViewer.setShowGRBLHead( jCheckBoxMenuItemShowHeadPosition.isSelected());       
     }//GEN-LAST:event_jCheckBoxMenuItemShowHeadPositionActionPerformed
 
     private void jMenuItemGRBLConnectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLConnectActionPerformed
@@ -2925,7 +3031,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             @Override
             public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
                 try {
-                    double val = ( aValue instanceof JTextField) ? Double.valueOf(((JTextField) aValue).getText()) : (Double)aValue;
+                    double val = ( aValue instanceof JTextField) ? Double.parseDouble(((JTextField) aValue).getText()) : (Double)aValue;
                     settings.put(Integer.valueOf(GRBLControler.GRBL_SETTING_STR[rowIndex*2]), val);
                     if (aValue instanceof JTextField) 
                         ((JTextField)aValue).setBackground(Color.white);
@@ -3021,21 +3127,21 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemGRBLSettingsActionPerformed
 
     private void jMenuItemExecuteAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExecuteAllActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FOCUS_VIEW, 1, null);
-        executeGCODE(blocksviewer.getDocumentToExecute(false, false));
+        projectViewer.doAction(JProjectEditor.ACTION_FOCUS_VIEW, 1, null);
+        executeGCODE(projectViewer.getDocumentToExecute(false, false));
         updateLaserPosition();
     }//GEN-LAST:event_jMenuItemExecuteAllActionPerformed
 
     private void jMenuItemExecuteSelectedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExecuteSelectedActionPerformed
         int r;
-        blocksviewer.doAction(JBlocksViewer.ACTION_FOCUS_VIEW, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FOCUS_VIEW, 0, null);
         
-        if ( blocksviewer.hasHeaderFooter())
+        if ( projectViewer.hasHeaderFooter())
             r = JOptionPane.showConfirmDialog(this, "Use Header/Footer with selected blocks?", "Execute selection", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
         else r = 1;
         
         if ( r != 2) {      
-            executeGCODE(blocksviewer.getDocumentToExecute(true,(r==0)));
+            executeGCODE(projectViewer.getDocumentToExecute(true,(r==0)));
         }
         updateLaserPosition();
     }//GEN-LAST:event_jMenuItemExecuteSelectedActionPerformed
@@ -3050,7 +3156,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jMenuItemGRBLMoveHeadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLMoveHeadActionPerformed
         if ( grbl.isIdle())
-            blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_GRBL_HEAD, showLaserPosition?1:0, null);
+            projectViewer.doAction(JProjectEditor.ACTION_MOVE_GRBL_HEAD, showLaserPosition?1:0, null);
     }//GEN-LAST:event_jMenuItemGRBLMoveHeadActionPerformed
 
     private void jMenuItemGRBLHomeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLHomeActionPerformed
@@ -3058,18 +3164,18 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemGRBLHomeActionPerformed
 
     private void jMenuItemGRBLJogWindowActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLJogWindowActionPerformed
-        if ( jogWindow == null) jogWindow = new JJoGFrame(grbl);
-        if ( ! jogWindow.isVisible()) jogWindow.setLocationRelativeTo(this);
-        jogWindow.setVisible(true);
+        if ( jJogWindow == null) jJogWindow = new JJoGFrame(grbl);
+        if ( ! jJogWindow.isVisible()) jJogWindow.setLocationRelativeTo(this);
+        jJogWindow.setVisible(true);
     }//GEN-LAST:event_jMenuItemGRBLJogWindowActionPerformed
 
     private void jCheckBoxMenuItemShowEditorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowEditorActionPerformed
         jPanelEditor.setVisible(jCheckBoxMenuItemShowEditor.isSelected());
     }//GEN-LAST:event_jCheckBoxMenuItemShowEditorActionPerformed
 
-    private void jTextFieldEditedBlockFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTextFieldEditedBlockFocusGained
-        blocksviewer.setKeyFocus(false);
-    }//GEN-LAST:event_jTextFieldEditedBlockFocusGained
+    private void jTextFieldEditedElementFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTextFieldEditedElementFocusGained
+        projectViewer.setKeyFocus(false);
+    }//GEN-LAST:event_jTextFieldEditedElementFocusGained
 
     private void jMenuItemGRBLWPosAsMPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLWPosAsMPosActionPerformed
         grbl.pushCmd("G10L20P1X0Y0Z0");
@@ -3078,14 +3184,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     boolean threadFinished, stopShowBoundariesThread = false;
     @SuppressWarnings("SleepWhileInLoop")
     private void jMenuItemGRBLShowBoundariesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLShowBoundariesActionPerformed
-        Rectangle2D bounds = blocksviewer.getSelectionBoundary(false);
+        Rectangle2D bounds = projectViewer.getSelectionBoundary(false);
         if ( bounds != null) {
             double height = Double.POSITIVE_INFINITY;
             if ( ! grbl.isLaserMode()) {
                 try {
-                    String zh = JOptionPane.showInputDialog(this, "Z height ?", confFrame.conf.safeZHeightForMoving);
+                    String zh = JOptionPane.showInputDialog(this, "Z height ?", jConfFrame.conf.safeZHeightForMoving);
                     if ( zh == null) return;
-                    else height = Double.valueOf(zh);
+                    else height = Double.parseDouble(zh);
                 } catch ( NumberFormatException e) {
                     JOptionPane.showMessageDialog(this, "Invalide height", "Show boundaries", JOptionPane.ERROR_MESSAGE);
                     return;
@@ -3095,7 +3201,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             String res;
             int speed;
             try {
-                res = JOptionPane.showInputDialog(this, "Speed ?", confFrame.conf.jogSpeed);
+                res = JOptionPane.showInputDialog(this, "Speed ?", jConfFrame.conf.jogSpeed);
                 if ( res == null) return;
                 speed = Integer.parseInt(res);
             } catch ( NumberFormatException e) { 
@@ -3116,8 +3222,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 @SuppressWarnings("SleepWhileInLoop")
                 public void run() {           
                     if ( height != Double.POSITIVE_INFINITY) grbl.pushCmd("G0Z"+height);
-                    grbl.moveHeadTo(new Point2D.Double(bounds.getX(), bounds.getY()),false, confFrame.conf.jogSpeed);
-                    grbl.pushCmd("G1F"+speed+"M3S"+confFrame.conf.showLaserPowerValue);
+                    grbl.moveHeadTo(new Point2D.Double(bounds.getX(), bounds.getY()),false, jConfFrame.conf.jogSpeed);
+                    grbl.pushCmd("G1F"+speed+"M3S"+jConfFrame.conf.showLaserPowerValue);
                     while( ! stopShowBoundariesThread ) { 
                         switch ( grbl.getState() ){
                             case GRBLControler.GRBL_STATE_IDLE:
@@ -3153,7 +3259,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             while( ! threadFinished)
                 try { Thread.sleep(1000); } catch (InterruptedException ex) { }
             
-            System.out.println("Boundary Thread finished.");
+            //System.out.println("Boundary Thread finished.");
             if ( showLaserPosition) grbl.pushCmd("G1F100M3S1");
         } else
             JOptionPane.showMessageDialog(this, "Select a path first.", "Show boundaries", JOptionPane.INFORMATION_MESSAGE);
@@ -3174,53 +3280,53 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jCheckBoxMenuItemGRBLShowLaserPositionActionPerformed
 
     private void jMenuItemCursorAtHeadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCursorAtHeadActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_CURSOR_AT_HEAD, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_CURSOR_AT_HEAD, 0, null);
     }//GEN-LAST:event_jMenuItemCursorAtHeadActionPerformed
 
     private void jMenuItemAddHeaderFooterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddHeaderFooterActionPerformed
-        blocksviewer.addDefaultGCodeHeaderFooter();
+        projectViewer.addDefaultGCodeHeaderFooter();
     }//GEN-LAST:event_jMenuItemAddHeaderFooterActionPerformed
 
-    private void jMenuItemSortActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSortActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SORT_STARTS, 0, null);
-    }//GEN-LAST:event_jMenuItemSortActionPerformed
+    private void jMenuItemOptimizeMovesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemOptimizeMovesActionPerformed
+        projectViewer.doAction(JProjectEditor.ACTION_OPTIMIZE_MOVES, 0, null);
+    }//GEN-LAST:event_jMenuItemOptimizeMovesActionPerformed
 
     private void jMenuItemReverseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemReverseActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_REVERSE_SELECTION, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_REVERSE, 0, null);
     }//GEN-LAST:event_jMenuItemReverseActionPerformed
 
     private void jMenuItemAlignLeftActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAlignLeftActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_LEFT, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_LEFT, null);
     }//GEN-LAST:event_jMenuItemAlignLeftActionPerformed
 
     private void jCheckBoxMenuItemShowStartActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemShowStartActionPerformed
-        blocksviewer.setShowStartPoints( jCheckBoxMenuItemShowStart.isSelected());
+        projectViewer.setShowStartPoints( jCheckBoxMenuItemShowStart.isSelected());
     }//GEN-LAST:event_jCheckBoxMenuItemShowStartActionPerformed
 
     private void jMenuItemAlignRightActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAlignRightActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_RIGHT, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_RIGHT, null);
     }//GEN-LAST:event_jMenuItemAlignRightActionPerformed
 
     private void jMenuItemAlignBottomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAlignBottomActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_TOP, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_TOP, null);
     }//GEN-LAST:event_jMenuItemAlignBottomActionPerformed
 
     private void jMenuItemAlignTopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAlignTopActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_BOTTOM, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_BOTTOM, null);
     }//GEN-LAST:event_jMenuItemAlignTopActionPerformed
 
     private void jMenuItemGRBLSetMPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLSetMPosActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_MOVE_MPOS, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_MOVE_MPOS, 0, null);
     }//GEN-LAST:event_jMenuItemGRBLSetMPosActionPerformed
 
     private void jMenuItemAddPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddPocketActionPerformed
-        String l = JOptionPane.showInputDialog(this, "Offset distance (near tool diameter) ?", blocksviewer.getConfiguration().toolDiameter/2);
+        String l = JOptionPane.showInputDialog(this, "Offset distance (near tool diameter) ?", projectViewer.getConfiguration().toolDiameter/2);
         if ( l != null)
-            blocksviewer.doAction(JBlocksViewer.ACTION_MAKE_POCKET, Double.valueOf(l), null);
+            projectViewer.doAction(JProjectEditor.ACTION_MAKE_POCKET, Double.parseDouble(l), null);
     }//GEN-LAST:event_jMenuItemAddPocketActionPerformed
 
     private void jMenuItemSimplifyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSimplifyActionPerformed
-        String l = JOptionPane.showInputDialog(this, "Distance min between points ?", blocksviewer.getConfiguration().toolDiameter/2);
+        String l = JOptionPane.showInputDialog(this, "Distance min between points ?", projectViewer.getConfiguration().toolDiameter/2);
         double value;
         if ( l != null) {
             try {
@@ -3229,12 +3335,12 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 JOptionPane.showMessageDialog(this, "Must be >= to 0.1");
                 return;
             }
-            blocksviewer.doAction(JBlocksViewer.ACTION_SIMPLIFY_ANGLE, value, null);
+            projectViewer.doAction(JProjectEditor.ACTION_SIMPLIFY_ANGLE, value, null);
         }
     }//GEN-LAST:event_jMenuItemSimplifyActionPerformed
 
     private void jMenuItemMakeCutPathIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMakeCutPathIActionPerformed
-        String l = JOptionPane.showInputDialog(this, "Offset distance (normaly half of tool diameter) ?", blocksviewer.getConfiguration().toolDiameter/2);
+        String l = JOptionPane.showInputDialog(this, "Offset distance (normaly half of tool diameter) ?", projectViewer.getConfiguration().toolDiameter/2);
         double value;
         if ( l != null) {
             try {
@@ -3243,20 +3349,20 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 JOptionPane.showMessageDialog(this, "Must be >= to 0.1");
                 return;
             }
-            blocksviewer.doAction(JBlocksViewer.ACTION_MAKE_OFFSET_CUT, -value, null);
+            projectViewer.doAction(JProjectEditor.ACTION_MAKE_OFFSET_CUT, -value, null);
         }
     }//GEN-LAST:event_jMenuItemMakeCutPathIActionPerformed
 
     private void jMenuItemMoveWithMouseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveWithMouseActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_MOVE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_MOVE, 0, null);
     }//GEN-LAST:event_jMenuItemMoveWithMouseActionPerformed
 
     private void jMenuItemDistanceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemDistanceActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_DISTANCE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_DISTANCE, 0, null);
     }//GEN-LAST:event_jMenuItemDistanceActionPerformed
 
     private void jMenuItemMakeCutPathOActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMakeCutPathOActionPerformed
-        String l = JOptionPane.showInputDialog(this, "Offset distance (normaly half of tool diameter) ?", blocksviewer.getConfiguration().toolDiameter/2);
+        String l = JOptionPane.showInputDialog(this, "Offset distance (normaly half of tool diameter) ?", projectViewer.getConfiguration().toolDiameter/2);
         double value;
         if ( l != null) {
             try {
@@ -3265,25 +3371,25 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 JOptionPane.showMessageDialog(this, "Must be >= to 0.1");
                 return;
             }
-            blocksviewer.doAction(JBlocksViewer.ACTION_MAKE_OFFSET_CUT, value, null);
+            projectViewer.doAction(JProjectEditor.ACTION_MAKE_OFFSET_CUT, value, null);
         }
     }//GEN-LAST:event_jMenuItemMakeCutPathOActionPerformed
 
     private void jMenuItemGroupActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGroupActionPerformed
         String name = JOptionPane.showInputDialog(this, "Group name ?", "group");
         if ( name != null)
-            blocksviewer.doAction(JBlocksViewer.ACTION_GROUP_UNGROUP, 1, name);
+            projectViewer.doAction(JProjectEditor.ACTION_GROUP_UNGROUP, 1, name);
     }//GEN-LAST:event_jMenuItemGroupActionPerformed
 
     private void jMenuItemUngroupActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemUngroupActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_GROUP_UNGROUP, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_GROUP_UNGROUP, 0, null);
     }//GEN-LAST:event_jMenuItemUngroupActionPerformed
     
     private void goNextField(JTextField tf) {
-        blocksviewer.update(false);
+        projectViewer.update(false);
         updatePropertiesPanel();
         tf.requestFocusInWindow();
-        tf.setForeground(Color.BLACK);
+        tf.setForeground( (Color)UIManager.get("text"));  //  Color.BLACK);
         tf.setSelectionStart(0);
         tf.setSelectionEnd(100);
     }
@@ -3325,7 +3431,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
     private void jCheckBoxDisabledActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxDisabledActionPerformed
         curentEditedProperties.setEnabled(  ! jCheckBoxDisabled.isSelected());
-        blocksviewer.update(true);
+        projectViewer.update(true);
         updatePropertiesPanel();
     }//GEN-LAST:event_jCheckBoxDisabledActionPerformed
 
@@ -3350,11 +3456,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jButtonCopyActionPerformed
 
     private void jButtonPasteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonPasteActionPerformed
-        jMenuItemPasteActionPerformed(evt);
+        jMenuItemPasteLastActionPerformed(evt);
     }//GEN-LAST:event_jButtonPasteActionPerformed
 
     private void jButtonDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonDeleteActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_DELETE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_DELETE, 0, null);
     }//GEN-LAST:event_jButtonDeleteActionPerformed
 
     private void jButtonStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonStopActionPerformed
@@ -3405,43 +3511,43 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jToggleButtonShowDistanceActionPerformed
 
     private void jToggleButtonAddRectsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonAddRectsActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_RECTANGLES, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_RECTANGLES, 0, null);
     }//GEN-LAST:event_jToggleButtonAddRectsActionPerformed
 
     private void jToggleButtonAddCirclesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonAddCirclesActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_OVAL, 0, null);                                           
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_OVAL, 0, null);                                           
     }//GEN-LAST:event_jToggleButtonAddCirclesActionPerformed
 
     private void jToggleButtonAddLinesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonAddLinesActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_LINES, 0, null);  
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_LINES, 0, null);  
     }//GEN-LAST:event_jToggleButtonAddLinesActionPerformed
 
     private void jMenuItemAddRoubndRectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddRoubndRectActionPerformed
         try {
-            double w = Double.valueOf(JOptionPane.showInputDialog(this, "Width ?", ""));
-            double h = Double.valueOf(JOptionPane.showInputDialog(this, "Height ?", ""));
-            double r = Double.valueOf(JOptionPane.showInputDialog(this, "Corner radius ?", Math.min(w,h)/10));
+            double w = Double.parseDouble(JOptionPane.showInputDialog(this, "Width ?", ""));
+            double h = Double.parseDouble(JOptionPane.showInputDialog(this, "Height ?", ""));
+            double r = Double.parseDouble(JOptionPane.showInputDialog(this, "Corner radius ?", Math.min(w,h)/10));
             G1Path p = G1Path.makeRounRect(w,h,r);
-            p.translate(blocksviewer.get2DCursor());
+            p.translate(projectViewer.get2DCursor());
             addGElement(p);
         } catch ( Exception e) { }
     }//GEN-LAST:event_jMenuItemAddRoubndRectActionPerformed
 
     private void jMenuItemAddArcActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddArcActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_G2G3_CIRCLE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_G2G3_CIRCLE, 0, null);
     }//GEN-LAST:event_jMenuItemAddArcActionPerformed
 
     private void jMenuItemMakeFlattenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMakeFlattenActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_MAKE_FLATTEN, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_MAKE_FLATTEN, 0, null);
     }//GEN-LAST:event_jMenuItemMakeFlattenActionPerformed
 
     private void jMenuItemFocusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFocusActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FOCUS_VIEW, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FOCUS_VIEW, 0, null);
     }//GEN-LAST:event_jMenuItemFocusActionPerformed
 
     private void jMenuItemExportDXFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportDXFActionPerformed
         int res = -1;
-        if ( blocksviewer.getSelectionBoundary(false) != null)
+        if ( projectViewer.getSelectionBoundary(false) != null)
             res = JOptionPane.showConfirmDialog(this, "Export ony selection ?", "Export to DXF...", 
                 JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
         if ( res == 2) return;
@@ -3449,8 +3555,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         JFileChooser f = new JFileChooser();
         f.setFileFilter(new FileNameExtensionFilter("AutoCAD Drawing Exchange Format (*.dxf)", "dxf"));
         if ( lastImportDir == null) {
-            if ( blocksviewer.getName() != null) {
-                lastImportDir = new File(blocksviewer.getName()).getParentFile();
+            if ( projectViewer.getName() != null) {
+                lastImportDir = new File(projectViewer.getName()).getParentFile();
             } else {
                 lastImportDir = new File(".");
             }
@@ -3466,7 +3572,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 if ( JOptionPane.showConfirmDialog(this, fname + " \nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;           
             try {
-                blocksviewer.exportToDXF(fname, res == 0, 
+                projectViewer.exportToDXF(fname, res == 0, 
                         JOptionPane.showConfirmDialog(this, "Use SPLine ?", "DXF Export...", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Error:\n"+ex.getLocalizedMessage(), "DXF Export error", JOptionPane.ERROR_MESSAGE);
@@ -3482,50 +3588,50 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         curentEditedProperties.setAllAtOnce(jCheckBoxAllAtOnce.isSelected());
     }//GEN-LAST:event_jCheckBoxAllAtOnceActionPerformed
 
-    private void jTextFieldEditedBlockFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTextFieldEditedBlockFocusLost
-        jTextFieldEditedBlockActionPerformed(null);
-    }//GEN-LAST:event_jTextFieldEditedBlockFocusLost
+    private void jTextFieldEditedElementFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTextFieldEditedElementFocusLost
+        jTextFieldEditedElementActionPerformed(null);
+    }//GEN-LAST:event_jTextFieldEditedElementFocusLost
 
     private void jMenuItemAddCylindricalPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCylindricalPocketActionPerformed
-        GCylindricalPocket cp = new GCylindricalPocket("cylinder-"+ GElement.getUniqID(), blocksviewer.get2DCursor(), 10, 5, 100, 30);
+        GCylindricalPocket cp = new GCylindricalPocket("cylinder-"+ GElement.getUniqID(), projectViewer.get2DCursor(), 10, 5, 100, 30);
         
-        if ( dialogManager.showDialogFor( CylindricalPocketInputPanel.class, cp) != null) {
+        if ( jDialogManager.showDialogFor( CylindricalPocketInputPanel.class, cp) != null) {
             addGElement( cp);
         }
     }//GEN-LAST:event_jMenuItemAddCylindricalPocketActionPerformed
 
     private void jMenuItemAddDrillActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddDrillActionPerformed
-        if ( ((blocksviewer.getState() & (JBlocksViewer.STATE_SHAPE_SELECTED_FLAG|JBlocksViewer.STATE_SHAPES_SELECTED_FLAG)) != 0) &&
+        if ( ((projectViewer.getState() & (JProjectEditor.STATE_SHAPE_SELECTED_FLAG|JProjectEditor.STATE_SHAPES_SELECTED_FLAG)) != 0) &&
              (JOptionPane.showConfirmDialog(this, "Drill on center of each element selected ?", 
                      "New drill", JOptionPane.YES_NO_OPTION)== JOptionPane.OK_OPTION))
-                blocksviewer.doAction(JBlocksViewer.ACTION_ADD_AT_CENTER, 0 , new GDrillPoint("drill", (Point2D)null));
+                projectViewer.doAction(JProjectEditor.ACTION_ADD_AT_CENTER, 0 , new GDrillPoint("drill", (Point2D)null));
         else {
-            addGElement( new GDrillPoint("drill", blocksviewer.get2DCursor()));
+            addGElement(new GDrillPoint("drill", projectViewer.get2DCursor()));
         }
     }//GEN-LAST:event_jMenuItemAddDrillActionPerformed
 
     private void jMenuItemAddCrossActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCrossActionPerformed
         try {
-            double len = Double.valueOf(JOptionPane.showInputDialog(this, "Diameter ?", "10"));
-            if ( ((blocksviewer.getState() & (JBlocksViewer.STATE_SHAPE_SELECTED_FLAG|JBlocksViewer.STATE_SHAPES_SELECTED_FLAG)) != 0) &&
+            double len = Double.parseDouble(JOptionPane.showInputDialog(this, "Diameter ?", "10"));
+            if ( ((projectViewer.getState() & (JProjectEditor.STATE_SHAPE_SELECTED_FLAG|JProjectEditor.STATE_SHAPES_SELECTED_FLAG)) != 0) &&
              (JOptionPane.showConfirmDialog(this, "Put a cross on center of each element selected ?", 
                      "New cross", JOptionPane.YES_NO_OPTION)== JOptionPane.OK_OPTION))
-                blocksviewer.doAction(JBlocksViewer.ACTION_ADD_AT_CENTER, 0 , 
+                projectViewer.doAction(JProjectEditor.ACTION_ADD_AT_CENTER, 0 , 
                         G1Path.makeCross(null, len));
             else {
-                addGElement(G1Path.makeCross(blocksviewer.get2DCursor(), len));
+                addGElement(G1Path.makeCross(projectViewer.get2DCursor(), len));
             }
             
         } catch (Exception e) { }
     }//GEN-LAST:event_jMenuItemAddCrossActionPerformed
 
     private void jMenuItemAddcurveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddcurveActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_CURVE, 0 , null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_CURVE, 0 , null);
     }//GEN-LAST:event_jMenuItemAddcurveActionPerformed
 
     private void jMenuItemAddCurvesCircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCurvesCircleActionPerformed
         try {
-            double len = Double.valueOf(JOptionPane.showInputDialog(this, "Diameter ?", "10"));
+            double len = Double.parseDouble(JOptionPane.showInputDialog(this, "Diameter ?", "10"));
             Point2D center = new Point2D.Double();
         
             final double delta = 0.552284749831; // (4/3)*tan(pi/8) = 4*(sqrt(2)-1)/3 = 0.552284749831
@@ -3555,55 +3661,59 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 g.add(new GSpline("curve", p1, cp1, cp2, p2));              
             }
             g.scale(center, len/2, len/2);
-            g.translate(blocksviewer.get2DCursor());
+            g.translate(projectViewer.get2DCursor());
             addGElement(g);
         } catch (Exception e) { }
     }//GEN-LAST:event_jMenuItemAddCurvesCircleActionPerformed
 
     private void jToggleButtonShowAngleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonShowAngleActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_SHOW_ANGLE, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_SHOW_ANGLE, 0, null);
     }//GEN-LAST:event_jToggleButtonShowAngleActionPerformed
 
     private void jMenuItemAddGearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddGearActionPerformed
         try {
-            int nbTeeth = Integer.valueOf(JOptionPane.showInputDialog(this, "Number of teeth ?", 12));
-            double pressureA = Double.valueOf(JOptionPane.showInputDialog(this, "Pressure angle (> 0) ?", 14));
-            double circularPitch = Double.valueOf(JOptionPane.showInputDialog(this, "Circular pitch ?", 10));
+            int nbTeeth = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of teeth ?", 12));
+            double pressureA = Double.parseDouble(JOptionPane.showInputDialog(this, "Pressure angle (> 0) ?", 14));
+            double circularPitch = Double.parseDouble(JOptionPane.showInputDialog(this, "Circular pitch ?", 10));
             GGroup g = GearHelper.makeGear(nbTeeth, pressureA, circularPitch);
-            g.translate(blocksviewer.get2DCursor());
+            g.translate(projectViewer.get2DCursor());
             addGElement( g);
         } catch ( Exception e) { }
     }//GEN-LAST:event_jMenuItemAddGearActionPerformed
 
     private void jMenuItemAlignHorizontalyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAlignHorizontalyActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_HORIZONTALY, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_HORIZONTALY, null);
     }//GEN-LAST:event_jMenuItemAlignHorizontalyActionPerformed
 
     private void jMenuItemAlignVerticalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAlignVerticalActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_VERTICALY, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_VERTICALY, null);
     }//GEN-LAST:event_jMenuItemAlignVerticalActionPerformed
 
     private void jMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem1ActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ALIGN, JBlocksViewer.ALIGN_CENTER, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ALIGN, JProjectEditor.ALIGN_CENTER, null);
     }//GEN-LAST:event_jMenuItem1ActionPerformed
 
     private void jCheckBoxMenuItenItemShowPictureActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItenItemShowPictureActionPerformed
-        if ( backgroundPicturePanel == null ) {
-            backgroundPicturePanel = new BackgroundPicturePanel(this, blocksviewer.getBackgroundPictureParameters(), "Background picture");
-        }
-        backgroundPicturePanel.showDialog(this);
-        jCheckBoxMenuItenItemShowPicture.setSelected(backgroundPicturePanel.isImageVisible());
+        BackgroundPictureParameters params = projectViewer.getBackgroundPictureParameters();
+        BackgroundPicturePanel background = (BackgroundPicturePanel)jDialogManager.showDialogFor( BackgroundPicturePanel.class, params);
+        if ( background != null ) {
+            try {            
+                params.setAll(background.params);
+            } catch (IOException ex) {
+                Logger.getLogger(JEditorFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }                
     }//GEN-LAST:event_jCheckBoxMenuItenItemShowPictureActionPerformed
 
     private void jMenuItemCopyOpenScadPolygonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemCopyOpenScadPolygonActionPerformed
-        /*String code = blocksviewer.copyOpenScadCodeOfSelectedShapeToClipboard();
+        /*String code = projectViewer.copyOpenScadCodeOfSelectedShapeToClipboard();
         if ( code != null) {
             JFrame f = new JFrame();
             f.getContentPane().addGElement( new JTextArea(code));
             f.pack();
             f.setVisible(true);
         }*/
-        blocksviewer.copyOpenScadCodeOfSelectedShapeToClipboard();
+        projectViewer.copyOpenScadCodeOfSelectedShapeToClipboard();
     }//GEN-LAST:event_jMenuItemCopyOpenScadPolygonActionPerformed
 
     private SetCursorToPanel setCursorPositionPanel;
@@ -3620,15 +3730,15 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         double y = setCursorPositionPanel.y;
         switch ( res) {
             case CURSOR: 
-                x += blocksviewer.get2DCursor().getX();
-                y += blocksviewer.get2DCursor().getY();
+                x += projectViewer.get2DCursor().getX();
+                y += projectViewer.get2DCursor().getY();
             case ORIGIN:  
-                blocksviewer.set2DCursorTo(x, y);
+                projectViewer.set2DCursorTo(x, y);
             case CANCEL: 
                 return;
                 
             default:
-                Rectangle2D bounds = blocksviewer.getSelectionBoundary(false);
+                Rectangle2D bounds = projectViewer.getSelectionBoundary(false);
                 if ( bounds == null) break;
                 switch ( res) {
                     case SEL_UL:
@@ -3658,42 +3768,42 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     default:
                         y = bounds.getCenterY();
                 }
-                blocksviewer.set2DCursorTo(x, y);
+                projectViewer.set2DCursorTo(x, y);
         }
     }//GEN-LAST:event_jMenuItemSetCursorToActionPerformed
 
     private void jMenuItemAddOvalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddOvalActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_CIRCLES, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_CIRCLES, 0, null);
     }//GEN-LAST:event_jMenuItemAddOvalActionPerformed
 
     private void jMenuItemAddHullActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddHullActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_HULL, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_HULL, 0, null);
     }//GEN-LAST:event_jMenuItemAddHullActionPerformed
 
     private void jMenuItemRedoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRedoActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_REDO, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_REDO, 0, null);
     }//GEN-LAST:event_jMenuItemRedoActionPerformed
 
     private void jMenuItemAddBoundsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddBoundsActionPerformed
         
-        Rectangle2D bounds = blocksviewer.getSelectionBoundary(false);
+        Rectangle2D bounds = projectViewer.getSelectionBoundary(false);
         String m = JOptionPane.showInputDialog(this, "Marge", "0");
         try {
-            double marge = Double.valueOf(m);
+            double marge = Double.parseDouble(m);
             addGElement(G1Path.newRectangle(new GCode(bounds.getX()-marge, bounds.getY()-marge), 
                     new GCode(bounds.getX()+bounds.getWidth()+marge, bounds.getY()+bounds.getHeight()+marge)));
         } catch ( NumberFormatException e) { }
     }//GEN-LAST:event_jMenuItemAddBoundsActionPerformed
 
-    JFontChooserPanel hFontChooser;
+    JFontChooserPanel jFontChooser;
     private void jMenuItemAddTextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddTextActionPerformed
-        if ( hFontChooser == null)
-            hFontChooser = new JFontChooserPanel();
+        if ( jFontChooser == null)
+            jFontChooser = new JFontChooserPanel();
         
-        GGroup g = hFontChooser.showFontChooserWindow();
+        GGroup g = jFontChooser.showFontChooserWindow();
         if ( g != null) {
             
-            g.translate( blocksviewer.get2DCursor());
+            g.translate(projectViewer.get2DCursor());
             addGElement(g);
         }
     }//GEN-LAST:event_jMenuItemAddTextActionPerformed
@@ -3704,36 +3814,36 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jToggleButtonHoldActionPerformed
 
     private void jMenuItemAddLinkedPathActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddLinkedPathActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_LINKED_PATHS, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_LINKED_PATHS, 0, null);
     }//GEN-LAST:event_jMenuItemAddLinkedPathActionPerformed
 
     private void jMenuItemAddSphericalPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddSphericalPocketActionPerformed
-        final Point2D p = blocksviewer.get2DCursor();
+        final Point2D p = projectViewer.get2DCursor();
         GSphericalPocket sp = new GSphericalPocket("sp-"+GElement.getUniqID(), p.getX(), p.getY(), 20, 10);
         
-        spherePocketEditor = (SphericalPocketInputPanel)dialogManager.showDialogFor( SphericalPocketInputPanel.class, sp);
+        SphericalPocketInputPanel spherePocketEditor = (SphericalPocketInputPanel)jDialogManager.showDialogFor( SphericalPocketInputPanel.class, sp);
         if ( spherePocketEditor != null) addGElement(sp);
     }//GEN-LAST:event_jMenuItemAddSphericalPocketActionPerformed
 
     private void jMenuItemAddIntersectionPointsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddIntersectionPointsActionPerformed
-        if ( ! blocksviewer.doAction(JBlocksViewer.ACTION_ADD_INTERSECTION_POINTS, 0, null)) {
+        if ( ! projectViewer.doAction(JProjectEditor.ACTION_ADD_INTERSECTION_POINTS, 0, null)) {
             JOptionPane.showMessageDialog(this, "Select only two flat shapes.");
         }
     }//GEN-LAST:event_jMenuItemAddIntersectionPointsActionPerformed
 
     private void jToggleButtonZoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonZoomActionPerformed
-        if ( blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_FOCUS) blocksviewer.clearMouseMode();
+        if ( projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_FOCUS) projectViewer.clearMouseMode();
         else jMenuItemFocusActionPerformed(evt);
     }//GEN-LAST:event_jToggleButtonZoomActionPerformed
 
     private void jMenuItemAddTextOnPathActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddTextOnPathActionPerformed
-        Class c = blocksviewer.getFirtsSelectedElementClass();
+        Class c = projectViewer.getFirtsSelectedElementClass();
         if ( (c != null) && (c != GGroup.class)) {
-            if ( hFontChooser == null) hFontChooser = new JFontChooserPanel();
-            GGroup g = hFontChooser.showFontChooserWindow();
+            if ( jFontChooser == null) jFontChooser = new JFontChooserPanel();
+            GGroup g = jFontChooser.showFontChooserWindow();
             if ( g != null) 
-                blocksviewer.doAction(JBlocksViewer.ACTION_MAP_TEXT_TO_PATH, 0, 
-                        new GTextOnPath(g.getName(), hFontChooser.getChoosedFont(), hFontChooser.getChoosedSize(), hFontChooser.getChoosedText(), g));
+                projectViewer.doAction(JProjectEditor.ACTION_MAP_TEXT_TO_PATH, 0, 
+                        new GTextOnPath(g.getName(), jFontChooser.getChoosedFont(), jFontChooser.getChoosedSize(), jFontChooser.getChoosedText(), g));
         }
     }//GEN-LAST:event_jMenuItemAddTextOnPathActionPerformed
 
@@ -3741,38 +3851,34 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         if ( gElement instanceof GTextOnPath) {
             GTextOnPath e = ((GTextOnPath)gElement);
             
-            if ( hFontChooser == null)
-            hFontChooser = new JFontChooserPanel();
+            if ( jFontChooser == null)
+            jFontChooser = new JFontChooserPanel();
         
-            hFontChooser.setText( e.getText());
-            hFontChooser.setFont(e.getFont(), e.getFontSize());
+            jFontChooser.setText( e.getText());
+            jFontChooser.setFont(e.getFont(), e.getFontSize());
             
-            if ( hFontChooser.showFontChooserWindow() != null) {
-                e.setText( hFontChooser.getChoosedText());
-                e.changeFont( hFontChooser.getChoosedFont(), hFontChooser.getChoosedSize());
+            if ( jFontChooser.showFontChooserWindow() != null) {
+                e.setText(jFontChooser.getChoosedText());
+                e.changeFont(jFontChooser.getChoosedFont(), jFontChooser.getChoosedSize());
             }
         }
     }
     
     private void jMenuItemAddMixedPathActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddMixedPathActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_MIXED_PATH, 0, null);               
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_MIXED_PATH, 0, null);               
     }//GEN-LAST:event_jMenuItemAddMixedPathActionPerformed
 
-    private void jMenuItemInvertSelectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemInvertSelectionActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_INVERT_SELECTION, 0, null);   
-    }//GEN-LAST:event_jMenuItemInvertSelectionActionPerformed
-
     private void jMenuItemMoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemMoveActionPerformed
-        JMovePanel p = (JMovePanel)dialogManager.showDialogFor( JMovePanel.class, null);
+        JMovePanel p = (JMovePanel)jDialogManager.showDialogFor( JMovePanel.class, null);
         if ( p != null) {
-            blocksviewer.moveCopySelection(Double.isNaN(p.deltaX) ? 0 : p.deltaX,
-                                           Double.isNaN(p.deltaY) ? 0 : p.deltaY,
+            projectViewer.moveCopySelection(Double.isNaN(p.deltaX) || p.deltaX == Double.NEGATIVE_INFINITY ? 0 : p.deltaX,
+                                            Double.isNaN(p.deltaY) || p.deltaY == Double.NEGATIVE_INFINITY ? 0 : p.deltaY,
                                            0, false, false, false);
         }
     }//GEN-LAST:event_jMenuItemMoveActionPerformed
 
     private void jMenuItemAddAtCenterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddAtCenterActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_ADD_POINTS_AT_HALF, 0, null);
+        projectViewer.doAction(JProjectEditor.ACTION_ADD_POINTS_AT_HALF, 0, null);
     }//GEN-LAST:event_jMenuItemAddAtCenterActionPerformed
 
     private void jMenuItemConvertToMixedPathActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemConvertToMixedPathActionPerformed
@@ -3782,7 +3888,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             case JOptionPane.CANCEL_OPTION: return;
             case JOptionPane.YES_OPTION: keepOriginal=1;
         }
-        blocksviewer.doAction( JBlocksViewer.ACTION_CONVERT_TO_MIXEDPATH, keepOriginal, null);
+        projectViewer.doAction(JProjectEditor.ACTION_CONVERT_TO_MIXEDPATH, keepOriginal, null);
     }//GEN-LAST:event_jMenuItemConvertToMixedPathActionPerformed
 
     private void jMenuItemAddG23CircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddG23CircleActionPerformed
@@ -3793,16 +3899,16 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 if ( Double.isNaN(arcLen) || Double.isNaN(startAngle) || Double.isNaN(radius)) return;              
                 if ( (arcLen % 360) == 0) arcLen = 360;
                 else arcLen %= 360;
-                addGElement( new GArc("arc", blocksviewer.get2DCursor(), radius, startAngle, arcLen));
+                addGElement(new GArc("arc", projectViewer.get2DCursor(), radius, startAngle, arcLen));
         } catch ( Exception e) { }
     }//GEN-LAST:event_jMenuItemAddG23CircleActionPerformed
 
     private void jPropFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jPropFieldFocusGained
-        blocksviewer.setKeyFocus(false);
+        projectViewer.setKeyFocus(false);
         Component cpn = evt.getComponent();
 
         if ( cpn instanceof JTextField) {
-            cpn.setForeground(Color.BLACK);
+            cpn.setForeground( (Color)UIManager.get("text"));
             ((JTextField)cpn).setSelectionStart(0);
             ((JTextField)cpn).setSelectionEnd( ((JTextField)cpn).getText().length());
         }
@@ -3817,21 +3923,31 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     }//GEN-LAST:event_jMenuItemRemoveSelectionActionPerformed
 
     private void jMenuItemFlipG1G5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlipG1G5ActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FLIP_G1GX, 5, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FLIP_G1GX, 5, null);
     }//GEN-LAST:event_jMenuItemFlipG1G5ActionPerformed
 
     private void jMenuItemFlipG1G2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlipG1G2ActionPerformed
-        blocksviewer.doAction(JBlocksViewer.ACTION_FLIP_G1GX, 2, null);
+        projectViewer.doAction(JProjectEditor.ACTION_FLIP_G1GX, 2, null);
     }//GEN-LAST:event_jMenuItemFlipG1G2ActionPerformed
 
     private void jMenuItemQuickHelpActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemQuickHelpActionPerformed
-        JOptionPane.showMessageDialog(this, "<html>Edition:<p><br>"
+        JOptionPane.showMessageDialog(this, "<html>Edition:<br>"
                 + "- Use Right button to select/move or edit element<br>"
                 + "- Use Center Button to drag view<br>"
-                + "- Use Right button to add point (eventualy with [Ctrl])"
-                + "<br>"
-                + "Double click on GCode lines to edit them.", "Quick help", JOptionPane.INFORMATION_MESSAGE);
+                + "- Use Right button to add point (eventualy with [Ctrl] key)"
+                + "<p>GCode Edition:<br>"
+                + "Double click on GCode lines to edit them.<p><br>"
+                + "Other help:<br>- inlines popups on menus, butons and fields,<br>"
+                + "- messages operations on bottom right status bar.", "Quick help", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_jMenuItemQuickHelpActionPerformed
+
+    private void jMenuItemInverseSelectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemInverseSelectionActionPerformed
+        projectViewer.doAction(JProjectEditor.ACTION_INVERSE_SEL, 0, null);
+    }//GEN-LAST:event_jMenuItemInverseSelectionActionPerformed
+
+    private void jMenuItemPasteLastActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemPasteLastActionPerformed
+        projectViewer.doAction(JProjectEditor.ACTION_PASTE, 0, null);
+    }//GEN-LAST:event_jMenuItemPasteLastActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -3852,11 +3968,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     @Override
     public void updatePropertiesPanel() {
         
-        if ( (curentEditedProperties = blocksviewer.getSelectionProperties()) != null) {
-            EngravingProperties herited = blocksviewer.getParentHeritedPropertiesOfSelection();
+        if ( (curentEditedProperties = projectViewer.getSelectionProperties()) != null) {
+            EngravingProperties herited = projectViewer.getParentHeritedPropertiesOfSelection();
             if ( herited == null) herited = new EngravingProperties();
             
-            if ( blocksviewer.isEditedRootGroup()) {
+            if ( projectViewer.isEditedRootGroup()) {
                 jCheckBoxDisabled.setSelected(false);
                 jCheckBoxDisabled.setEnabled(false);
             } else {
@@ -3881,19 +3997,19 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 } else {
                     jCheckBoxAllAtOnce.setEnabled( true);
                     jCheckBoxAllAtOnce.setSelected( curentEditedProperties.isAllAtOnce()); 
-                    jLabelFeed.setForeground(Color.BLACK);
-                    jLabelPower.setForeground(Color.BLACK);
-                    jLabelPass.setForeground(Color.BLACK);
-                    jLabelStart.setForeground(Color.BLACK);
-                    jLabelEnd.setForeground(Color.BLACK);
-                    jLabelDepth.setForeground(Color.BLACK);
+                    jLabelFeed.setForeground((Color)UIManager.get("text"));
+                    jLabelPower.setForeground((Color)UIManager.get("text"));
+                    jLabelPass.setForeground((Color)UIManager.get("text"));
+                    jLabelStart.setForeground((Color)UIManager.get("text"));
+                    jLabelEnd.setForeground((Color)UIManager.get("text"));
+                    jLabelDepth.setForeground((Color)UIManager.get("text"));
                 }
                 
                 if ( Double.isNaN(curentEditedProperties.getFeed())) {
                     jTextFieldFeed.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldFeed.setText( Double.isNaN(herited.getFeed()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(herited.getFeed()));
                 } else {
-                    jTextFieldFeed.setForeground(Color.BLACK); 
+                    jTextFieldFeed.setForeground((Color)UIManager.get("text")); 
                     jTextFieldFeed.setText( GWord.GCODE_NUMBER_FORMAT.format( curentEditedProperties.getFeed()));            
                 }
                 
@@ -3901,7 +4017,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     jTextFieldPower.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldPower.setText( (herited.getPower()== -1) ? "" : GWord.GCODE_NUMBER_FORMAT.format(herited.getPower()));
                 } else {
-                    jTextFieldPower.setForeground(Color.BLACK); 
+                    jTextFieldPower.setForeground((Color)UIManager.get("text")); 
                     jTextFieldPower.setText( GWord.GCODE_NUMBER_FORMAT.format( curentEditedProperties.getPower()));            
                 }
                 
@@ -3910,7 +4026,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     jTextFieldPassCount.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldPassCount.setText( (ep.getPassCount() ==  -1) ? "" : GWord.GCODE_NUMBER_FORMAT.format(ep.getPassCount()));
                 } else {
-                    jTextFieldPassCount.setForeground(Color.BLACK); 
+                    jTextFieldPassCount.setForeground((Color)UIManager.get("text")); 
                     jTextFieldPassCount.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getPassCount()));            
                 }
                 
@@ -3922,7 +4038,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                         if ( curentEditedProperties.getZEnd() > ep.getZStart()) curentEditedProperties.setZEnd(ep.getZStart());
                     }
                 } else {
-                    jTextFieldZStart.setForeground(Color.BLACK);   
+                    jTextFieldZStart.setForeground((Color)UIManager.get("text"));   
                     jTextFieldZStart.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getZStart()));            
                 }
                 
@@ -3930,60 +4046,30 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                     jTextFieldPassDepht.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldPassDepht.setText( Double.isNaN(ep.getPassDepth()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(ep.getPassDepth()));
                 } else {
-                    jTextFieldPassDepht.setForeground(Color.BLACK);   
+                    jTextFieldPassDepht.setForeground((Color)UIManager.get("text"));   
                     jTextFieldPassDepht.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getPassDepth()));            
                 }
             
                 if ( Double.isNaN(curentEditedProperties.getZEnd())) {
                     jTextFieldZEnd.setForeground(Color.LIGHT_GRAY);   
-                    if (Double.isNaN(ep.getZEnd())) jTextFieldZStart.setText( "" );
+                    if (Double.isNaN(ep.getZEnd())) jTextFieldZEnd.setText( "" );
                     else {
                         jTextFieldZEnd.setText( GWord.GCODE_NUMBER_FORMAT.format(ep.getZEnd()));
                         if ( curentEditedProperties.getZStart() < ep.getZEnd()) curentEditedProperties.setZStart(ep.getZEnd());
                     }
                 } else {
-                    jTextFieldZEnd.setForeground(Color.BLACK); 
+                    jTextFieldZEnd.setForeground((Color)UIManager.get("text")); 
                     jTextFieldZEnd.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getZEnd()));            
                 }
                 
                
-                jLabelFeed.setForeground(Double.isNaN(curentEditedProperties.getFeed()) ? Color.black : Color.blue);
-                jLabelPower.setForeground( curentEditedProperties.getPower() != -1 ? Color.blue : Color.black);
-                jLabelPass.setForeground(curentEditedProperties.getPassCount() == -1 ? Color.black : Color.blue);
-                jLabelStart.setForeground( Double.isNaN(curentEditedProperties.getZStart()) ? Color.black : Color.blue);
-                jLabelEnd.setForeground( Double.isNaN(curentEditedProperties.getZEnd()) ? Color.black : Color.blue);
-                jLabelDepth.setForeground( Double.isNaN(curentEditedProperties.getPassDepth()) ? Color.black : Color.blue );
+                jLabelFeed.setForeground(Double.isNaN(curentEditedProperties.getFeed()) ? (Color)UIManager.get("text") : Color.blue);
+                jLabelPower.setForeground( curentEditedProperties.getPower() != -1 ? Color.blue : (Color)UIManager.get("text"));
+                jLabelPass.setForeground(curentEditedProperties.getPassCount() == -1 ? (Color)UIManager.get("text") : Color.blue);
+                jLabelStart.setForeground( Double.isNaN(curentEditedProperties.getZStart()) ? (Color)UIManager.get("text") : Color.blue);
+                jLabelEnd.setForeground( Double.isNaN(curentEditedProperties.getZEnd()) ? (Color)UIManager.get("text") : Color.blue);
+                jLabelDepth.setForeground( Double.isNaN(curentEditedProperties.getPassDepth()) ? (Color)UIManager.get("text") : Color.blue );
                 
-                
-            /*
-                    jTextFieldPassCount.setForeground(Color.lightGray);
-                    jTextFieldZStart.setForeground(Color.lightGray);
-                    jTextFieldZEnd.setForeground(Color.lightGray);
-                    jTextFieldPassDepht.setForeground(Color.lightGray);
-                    jLabelPass.setFont( jLabelEnd.getFont().deriveFont(Font.ITALIC));
-                    jLabelStart.setFont( jLabelEnd.getFont().deriveFont(Font.ITALIC));
-                    jLabelEnd.setFont( jLabelEnd.getFont().deriveFont(Font.ITALIC));
-                    jLabelDepth.setFont( jLabelDepth.getFont().deriveFont(Font.ITALIC));
-                 
-                    if ((herited.getPassCount() < 2) && (curentEditedProperties.getPassCount() < 2)) {
-                        jLabelEnd.setFont( jLabelEnd.getFont().deriveFont(Font.ITALIC));
-                        jLabelDepth.setFont( jLabelDepth.getFont().deriveFont(Font.ITALIC));
-                   
-                        jLabelDepth.setFont( jLabelDepth.getFont().deriveFont(Font.PLAIN));
-                        jLabelEnd.setFont( jLabelEnd.getFont().deriveFont(Font.PLAIN));
-                     
-                
-                
-                
-                    
-                jCheckBoxAllAtOnce.setSelected( herited.isAllAtOnce() | curentEditedProperties.isAllAtOnce());         
-                jTextFieldFeed.setText( Double.isNaN(curentEditedProperties.getFeed()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(curentEditedProperties.getFeed()));
-                jTextFieldPower.setText( curentEditedProperties.getPower() != -1 ? "" + curentEditedProperties.getPower() : "");              
-                jTextFieldPassCount.setText(curentEditedProperties.getPassCount() != -1 ? "" + curentEditedProperties.getPassCount() : "");
-                jTextFieldZStart.setText( Double.isNaN(curentEditedProperties.getZStart()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(curentEditedProperties.getZStart()));
-                jTextFieldPassDepht.setText( Double.isNaN(curentEditedProperties.getPassDepth()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(curentEditedProperties.getPassDepth()));
-                jTextFieldZEnd.setText( Double.isNaN(curentEditedProperties.getZEnd()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(curentEditedProperties.getZEnd()));
-            }*/
                 jPanelProperties.setVisible( curentEditedProperties != null);
             }
         }
@@ -4022,52 +4108,52 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     @Override
     public final void updateGUIAndStatus() {                      
         
-        Class editedClass = blocksviewer.getSelectedElementClass();
+        Class editedClass = projectViewer.getSelectedElementClass();
         boolean isMix = editedClass == GMixedPath.class;
         
-        if (blocksviewer.isEditedRootGroup()) jLabelEditType.setText("Doc ");
+        if (projectViewer.isEditedRootGroup()) jLabelEditType.setText("Doc ");
         else {
             if ( editedClass == ArrayList.class ) {
                 jLabelEditType.setText("Selection");
-                jTextFieldEditedBlock.setEnabled(false);
+                jTextFieldEditedElement.setEnabled(false);
             } else {
-                jTextFieldEditedBlock.setEnabled(true);            
+                jTextFieldEditedElement.setEnabled(true);            
                 if ( editedClass == GGroup.class) jLabelEditType.setText("Group ");
                 else jLabelEditType.setText("Elem ");
             }
         }
         
-        jLabelFormInfo.setText(blocksviewer.getSelectedBlocksInfo());
+        jLabelFormInfo.setText(projectViewer.getSelectedElementsInfo());
         //jLabelFormInfo.invalidate();
         //jLabelFormInfo.repaint();
 
-        boolean noEdition = ((getFocusOwner() == null) || ! (getFocusOwner() instanceof JTextField) || (blocksviewer.hasFocus())) ;
+        boolean noEdition = ((getFocusOwner() == null) || ! (getFocusOwner() instanceof JTextField) || (projectViewer.hasFocus())) ;
 
         if (noEdition) updatePropertiesPanel();
         
-        if ( ! jTextFieldEditedBlock.isFocusOwner())  {
-            jTextFieldEditedBlock.setText( blocksviewer.getSelectedBlockName());
-            jTextFieldEditedBlock.setEnabled(true);
+        if ( ! jTextFieldEditedElement.isFocusOwner())  {
+            jTextFieldEditedElement.setText(projectViewer.getSelectedElementName());
+            jTextFieldEditedElement.setEnabled(true);
         }
         
-        int s = blocksviewer.getState();
-        boolean empty = blocksviewer.isEmpty();
-        boolean edit = (s & JBlocksViewer.STATE_EDIT_MODE_FLAG) != 0;
-        boolean point = (s & JBlocksViewer.STATE_POINT_SELECTED_FLAG) != 0;
-        boolean points = (s & JBlocksViewer.STATE_POINTS_SELECTED_FLAG) != 0;
-        boolean block = (s & JBlocksViewer.STATE_SHAPE_SELECTED_FLAG) != 0;
-        boolean blocks = (s & JBlocksViewer.STATE_SHAPES_SELECTED_FLAG) != 0;
-        boolean CBempyt = (s & JBlocksViewer.STATE_CLIPBOARD_EMPTY_FLAG) != 0;
-        boolean canUndo = (s & JBlocksViewer.STATE_CAN_UNDO_FLAG) != 0;
-        boolean canRedo = (s & JBlocksViewer.STATE_CAN_REDO_FLAG) != 0;
-        //boolean noEdition = (s & JBlocksViewer.STATE_EDIT_LINE) == 0;
-        boolean lines = (s & JBlocksViewer.STATE_LINE_SELECTED) != 0;
-        boolean modified = (s & JBlocksViewer.STATE_DOCUMENT_MODIFIED) != 0;
+        int s = projectViewer.getState();
+        boolean empty = projectViewer.isEmpty();
+        boolean edit = (s & JProjectEditor.STATE_EDIT_MODE_FLAG) != 0;
+        boolean point = (s & JProjectEditor.STATE_POINT_SELECTED_FLAG) != 0;
+        boolean points = (s & JProjectEditor.STATE_POINTS_SELECTED_FLAG) != 0;
+        boolean block = (s & JProjectEditor.STATE_SHAPE_SELECTED_FLAG) != 0;
+        boolean blocks = (s & JProjectEditor.STATE_SHAPES_SELECTED_FLAG) != 0;
+        boolean CBempyt = (s & JProjectEditor.STATE_CLIPBOARD_EMPTY_FLAG) != 0;
+        boolean canUndo = (s & JProjectEditor.STATE_CAN_UNDO_FLAG) != 0;
+        boolean canRedo = (s & JProjectEditor.STATE_CAN_REDO_FLAG) != 0;
+        //boolean noEdition = (s & JProjectEditor.STATE_EDIT_LINE) == 0;
+        boolean lines = (s & JProjectEditor.STATE_LINE_SELECTED) != 0;
+        boolean modified = (s & JProjectEditor.STATE_DOCUMENT_MODIFIED) != 0;
         boolean grbl_ok = grbl.isConnected();
         boolean grbl_open = grbl.isComOpen();
         boolean grbl_idle = grbl_ok && grbl.getState() == GRBLControler.GRBL_STATE_IDLE;
         boolean grbl_laser = grbl_ok && grbl.isSettingsReady() && grbl.isLaserMode();
-        Configuration conf = blocksviewer.getConfiguration();
+        Configuration conf = projectViewer.getConfiguration();
         jButtonCopy.setEnabled((lines|point|points|block|blocks));
         jButtonCut.setEnabled((lines|point|points|block|blocks));
         jButtonDelete.setEnabled((lines|point|points|block|blocks));
@@ -4081,17 +4167,18 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jButtonUndo.setEnabled( canUndo);
         jCheckBoxMenuItemGRBLShowLaserPosition.setEnabled( grbl_idle & grbl_laser);
         jCheckBoxMenuItemShowGrid.setEnabled(noEdition);
-        jCheckBoxMenuItemShowGrid.setSelected(noEdition && ((s & JBlocksViewer.STATE_GRID_FLAG) != 0));
+        jCheckBoxMenuItemShowGrid.setSelected(noEdition && ((s & JProjectEditor.STATE_GRID_FLAG) != 0));
         jCheckBoxMenuItemShowHeadPosition.setEnabled(grbl_ok);
+        jCheckBoxMenuItenItemShowPicture.setSelected(projectViewer.getBackgroundPictureParameters().isImageVisible());
         jCheckBoxMenuItemShowMoves.setEnabled(noEdition);  
-        jCheckBoxMenuItemShowMoves.setSelected(((s & JBlocksViewer.STATE_SHOW_MOVES_FLAG) !=0));
+        jCheckBoxMenuItemShowMoves.setSelected(((s & JProjectEditor.STATE_SHOW_MOVES_FLAG) !=0));
         jCheckBoxMenuItemShowWorkspace.setEnabled( (conf.workspaceWidth != 0) &&(conf.workspaceHeight != 0));
         jCheckBoxMenuItemSnapGrid.setEnabled(noEdition);
-        jCheckBoxMenuItemSnapGrid.setSelected(noEdition && ((s & JBlocksViewer.STATE_SNAP_TO_GRID_FLAG) != 0));
+        jCheckBoxMenuItemSnapGrid.setSelected(noEdition && ((s & JProjectEditor.STATE_SNAP_TO_GRID_FLAG) != 0));
         jCheckBoxMenuItemSnapPoints.setEnabled(noEdition);
-        jCheckBoxMenuItemSnapPoints.setSelected(noEdition && ((s & JBlocksViewer.STATE_SNAP_TO_POINTS_FLAG) != 0));
+        jCheckBoxMenuItemSnapPoints.setSelected(noEdition && ((s & JProjectEditor.STATE_SNAP_TO_POINTS_FLAG) != 0));
         jMenuAdds.setEnabled(noEdition);
-        jMenuAlign.setEnabled( (block|blocks| (edit & lines))& noEdition);
+        jMenuAlign.setEnabled( (block|blocks| (edit & points)) & noEdition);
         jMenuItemAddArc.setEnabled( isMix && noEdition);
         jMenuItemAddAtCenter.setEnabled(edit & noEdition);
         jMenuItemAddBounds.setEnabled((block|blocks)&& noEdition);
@@ -4110,8 +4197,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemCursorAtCenter.setEnabled( noEdition);
         jMenuItemCursorAtHead.setEnabled(grbl_ok && noEdition);
         jMenuItemCut.setEnabled((lines|point|points|block|blocks)&& noEdition);
-        jMenuItemDuplicate.setEnabled((point|points|block|blocks)&& noEdition);
-        jMenuItemExecuteAll.setEnabled(  ! blocksviewer.isEmpty() & noEdition);
+        jMenuItemDuplicate.setEnabled((block|blocks)&& noEdition);
+        jMenuItemExecuteAll.setEnabled(! projectViewer.isEmpty() & noEdition);
         jMenuItemExecuteSelected.setEnabled(  (block| blocks) & noEdition);
         jMenuItemExtract.setEnabled((point|points|block|blocks) && noEdition);
         jMenuItemFilter.setEnabled((edit|block|blocks)&& noEdition);
@@ -4122,6 +4209,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemGRBLConnect.setEnabled(!grbl_open);
         jMenuItemGRBLDisconnect.setEnabled(grbl_open);
         jMenuItemGRBLHome.setEnabled( grbl_ok && grbl.canHome());
+        jMenuItemGRBLJogWindow.setEnabled( grbl_ok);
         jMenuItemGRBLKillAlarm.setEnabled(grbl.getState()==GRBLControler.GRBL_STATE_ALARM);
         jMenuItemGRBLMoveHead.setEnabled( grbl_idle);
         jMenuItemGRBLSetMPos.setEnabled(grbl_ok);
@@ -4131,44 +4219,46 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
         jMenuItemGRBLSoftReset.setEnabled( grbl_ok);
         jMenuItemGRBLWPosAsMPos.setEnabled(grbl_ok);
         jMenuItemGroup.setEnabled(blocks && noEdition);
+        jMenuItemInverseSelection.setEnabled( noEdition);        
         jMenuItemJoin.setEnabled((points|blocks|block)&& noEdition);
         jMenuItemMakeFlatten.setEnabled( (block|blocks)& noEdition);
         jMenuItemMoveDown.setEnabled((lines|point|points|block|blocks)&& noEdition);
         jMenuItemMove.setEnabled((point|points|block|blocks) && noEdition);
         jMenuItemMoveUp.setEnabled((lines|point|points|block|blocks)&& noEdition);
         jMenuItemMoveWithMouse.setEnabled((point|points|block|blocks)&& noEdition);
-        jMenuItemPaste.setEnabled(! CBempyt && noEdition);
+        jMenuItemPasteFirst.setEnabled(! CBempyt && noEdition);
+        jMenuItemPasteLast.setEnabled(! CBempyt && noEdition);
         jMenuItemRedo.setEnabled(canRedo && noEdition);
         jMenuItemRename.setEnabled((block|blocks)&& noEdition);
         jMenuItemReverse.setEnabled((block|blocks|edit)&& noEdition);
         jMenuItemRotate2D.setEnabled((point|points|block|blocks) && noEdition);
-        jMenuItemRotateCenter.setEnabled((point|points|block|blocks)&& noEdition);
+        jMenuItemRotateCenter.setEnabled((points|block|blocks)&& noEdition);
         jMenuItemRotate.setEnabled((block|blocks) && noEdition);
         jMenuItemScale2DC.setEnabled((point|points|block|blocks)&& noEdition);
-        jMenuItemScaleCenter.setEnabled((point|points|block|blocks)&& noEdition); 
+        jMenuItemScaleCenter.setEnabled((point|block|blocks)&& noEdition); 
         jMenuItemScale.setEnabled((block|blocks)&& noEdition);
         jMenuItemSetAsFooter.setEnabled(block&& noEdition);
         jMenuItemSetAsHeader.setEnabled(block&& noEdition);
         jMenuItemSetCursor.setEnabled(noEdition);
         jMenuItemSimplifyByDistance.setEnabled((points|block|blocks) && noEdition);
         jMenuItemSimplifyP.setEnabled(points&& noEdition);
-        jMenuItemSimplify.setEnabled( (point|points|block|blocks)& noEdition);
-        jMenuItemSort.setEnabled((block|blocks)&& noEdition);
+        jMenuItemSimplify.setEnabled( (point|points|block|blocks)& noEdition);        
+        jMenuItemOptimizeMoves.setEnabled((block|blocks)&& noEdition);
         jMenuItemUndo.setEnabled(canUndo && noEdition);
         jMenuItemUndo.setEnabled(canUndo&& noEdition);
         jMenuItemUngroup.setEnabled((block|blocks) && noEdition);
         jMenuMakeCutPath.setEnabled( (block|blocks)& noEdition);        
-        jToggleButtonAddCircles.setSelected(! edit && blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_OVAL); 
-        jToggleButtonAddLines.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_LINES);  
-        jToggleButtonAddRects.setSelected(! edit && (blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_ADD_RECTANGLES));
+        jToggleButtonAddCircles.setSelected(! edit && projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_ADD_OVAL); 
+        jToggleButtonAddLines.setSelected(projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_ADD_LINES);  
+        jToggleButtonAddRects.setSelected(! edit && (projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_ADD_RECTANGLES));
         jToggleButtonHold.setEnabled( grbl_ok);
         jToggleButtonHold.setSelected(grbl_ok && (grbl.getState() == GRBLControler.GRBL_STATE_HOLD));        
         jToggleButtonMoveHead.setEnabled( grbl_idle);
-        jToggleButtonMoveHead.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_MOVE_GANTRY);
-        jToggleButtonShowAngle.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_SHOW_ANGLE);
-        jToggleButtonShowDistance.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_SHOW_DISTANCE);
+        jToggleButtonMoveHead.setSelected(projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_MOVE_GANTRY);
+        jToggleButtonShowAngle.setSelected(projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_SHOW_ANGLE);
+        jToggleButtonShowDistance.setSelected(projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_SHOW_DISTANCE);
         jToggleButtonShowLaser.setEnabled(grbl_idle && grbl_laser);
-        jToggleButtonZoom.setSelected(blocksviewer.getMouseMode() == JBlocksViewer.MOUSE_MODE_FOCUS);
+        jToggleButtonZoom.setSelected(projectViewer.getMouseMode() == JProjectEditor.MOUSE_MODE_FOCUS);
     }
 
     @Override
@@ -4179,8 +4269,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     
     private void updateTitle() {
         final String title = "VGEditor - " + 
-                ((savedFileName != null) ? savedFileName : "<new>") +
-                (grbl.isSettingsReady() && confFrame.conf.exist(grbl.getVersion().split(":")[2])?" - (on " + grbl.getVersion().split(":")[2]+")":"");
+                ((documentFileName != null) ? documentFileName : "<new>") +
+                (grbl.isSettingsReady() && jConfFrame.conf.exist(grbl.getVersion().split(":")[2])?" - (on " + grbl.getVersion().split(":")[2]+")":"");
 
         if ( ! getTitle().equals(title)) setTitle(title);
     }
@@ -4190,20 +4280,23 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
      * @param e the document to add
      */
     public void addGElement(GElement e) {
-        blocksviewer.add(e);
-        blocksviewer.clearMouseMode();
+        projectViewer.add(e);
+        projectViewer.clearMouseMode();
     }
 
     @Override
     public final void configurationChanged() {
-        blocksviewer.applyConfiguration();
-        grbl.setBackLashEnabled( confFrame.conf.useBackLash);
-        grbl.setBackLashValues(confFrame.conf.backLashX, confFrame.conf.backLashY, confFrame.conf.backLashZ);
-        updateTitle();
+        projectViewer.applyConfiguration();
+        grbl.setBackLashEnabled( jConfFrame.conf.useBackLash);
+        grbl.setBackLashValues(jConfFrame.conf.backLashX, jConfFrame.conf.backLashY, jConfFrame.conf.backLashZ);
+        SwingUtilities.invokeLater(() -> { 
+            applyTheme();
+            updateTitle();
+        });
     }
 
     private void addToRecentFile(String file) {
-        String[] recents = confFrame.conf.recentFiles.split("µ");
+        String[] recents = jConfFrame.conf.recentFiles.split("µ");
         String newR = "";
         boolean first = true;
         int n = 0;
@@ -4213,14 +4306,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 first = false;
             }
         }
-        confFrame.conf.recentFiles = file + (first?"" : "µ" + newR);      
-        confFrame.conf.saveDefault();
+        jConfFrame.conf.recentFiles = file + (first?"" : "µ" + newR);      
+        jConfFrame.conf.saveDefault();
         updateRecentFilesMenu();
     }
 
     private void updateRecentFilesMenu() {
         jMenuRecent.removeAll();
-        for( String r : confFrame.conf.recentFiles.split(Configuration.RECENT_FILE_SEPARATOR)) {
+        for( String r : jConfFrame.conf.recentFiles.split(Configuration.RECENT_FILE_SEPARATOR)) {
             if (lastImportDir==null ) lastImportDir = new File(r).getParentFile();
             
             if( ! r.isEmpty()) {
@@ -4247,17 +4340,16 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
 
                 lastImportDir = f.getSelectedFile().getParentFile();
                 try {
-                    if ( blocksviewer.isEmpty()) {
-                        blocksviewer.setContent(JBlocksViewer.importGCODE(
-                                gcodeFileName, blocksviewer.getBackgroundPictureParameters()), true);
-                        savedFileName = gcodeFileName;
+                    if ( projectViewer.isEmpty()) {
+                        projectViewer.setContent(JProjectEditor.importGCODE(gcodeFileName, projectViewer.getBackgroundPictureParameters()), true);
+                        documentFileName = gcodeFileName;
                         updateTitle();
                     } else 
                         new JEditorFrame(f.getSelectedFile().getAbsolutePath()).setVisible(true);
                     addToRecentFile(f.getSelectedFile().getAbsolutePath());
                 } catch (IOException e) {
                     if ( e instanceof FileNotFoundException ) {
-                        confFrame.conf.removeRecentFile(gcodeFileName);
+                        jConfFrame.conf.removeRecentFile(gcodeFileName);
                         updateRecentFilesMenu();
                     }
                     JOptionPane.showMessageDialog(this, "Error reading file : \n\n" + e.toString(),
@@ -4267,10 +4359,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         } else {
             try {
-                if ( blocksviewer.isEmpty()) {
-                    blocksviewer.clearUndoRecords();
-                    blocksviewer.setContent(JBlocksViewer.importGCODE(fileName, blocksviewer.getBackgroundPictureParameters()), true);
-                    savedFileName = fileName;
+                if ( projectViewer.isEmpty()) {
+                    projectViewer.clearUndoRecords();
+                    projectViewer.setContent(JProjectEditor.importGCODE(fileName, projectViewer.getBackgroundPictureParameters()), true);
+                    documentFileName = fileName;
                     updateTitle();
                 } else 
                     new JEditorFrame(fileName).setVisible(true);
@@ -4279,7 +4371,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
                 lastImportDir = new File(fileName).getParentFile();
             } catch (IOException e) {
                 if ( e instanceof FileNotFoundException ) {
-                    confFrame.conf.removeRecentFile(fileName);
+                    jConfFrame.conf.removeRecentFile(fileName);
                     updateRecentFilesMenu();
                 }
                 JOptionPane.showMessageDialog(this, "Error reading file : \n\n" + e.toString(),
@@ -4288,8 +4380,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
             }
         }
         
-        BackgroundPictureParameters p = blocksviewer.getBackgroundPictureParameters();
-        if ( p.isVisible() && ! p.isLoaded() ) 
+        BackgroundPictureParameters p = projectViewer.getBackgroundPictureParameters();
+        if ( p.isImageVisible() && ! p.isLoaded() ) 
             try {
                 p.reloadImage();
             } catch (Exception e) {
@@ -4307,44 +4399,44 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
      */
     private void updateLaserPosition() {
         // to not touch to CNC while running !!!
-        if ((printDialog!=null) && printDialog.isVisible()) 
+        if ((jPrintDialog!=null) && jPrintDialog.isVisible()) 
             return;
         
         if (grbl.getState() != GRBLControler.GRBL_STATE_IDLE) return;
         if (showLaserPosition)
-            grbl.pushCmd("M3S"+confFrame.conf.showLaserPowerValue+"G1F100");
+            grbl.pushCmd("M3S"+jConfFrame.conf.showLaserPowerValue+"G1F100");
         else
             grbl.pushCmd("G0");
     }
     
     
-    static JDialog printDialog = null;
+    static JDialog jPrintDialog = null;
     static JRunningPanel senderPanel;
     public void executeGCODE(GGroup document) {
         if ( document.size()==0) return;
-        if ( printDialog == null) {
-            printDialog = new JDialog(this, "GCODE Sender to GRBL", true);
-            printDialog.setLayout(new BoxLayout(printDialog.getContentPane(), BoxLayout.Y_AXIS));           
-            printDialog.getContentPane().add(senderPanel = new JRunningPanel(printDialog, grbl, confFrame.conf));
-            printDialog.pack();
-            printDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
-            printDialog.addWindowListener(new WindowAdapter() {
+        if ( jPrintDialog == null) {
+            jPrintDialog = new JDialog(this, "GCODE Sender to GRBL", true);
+            jPrintDialog.setLayout(new BoxLayout(jPrintDialog.getContentPane(), BoxLayout.Y_AXIS));           
+            jPrintDialog.getContentPane().add(senderPanel = new JRunningPanel(jPrintDialog, grbl, jConfFrame.conf));
+            jPrintDialog.pack();
+            jPrintDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+            jPrintDialog.addWindowListener(new WindowAdapter() {
                                 @Override
                                 public void windowClosing(WindowEvent e) {
                                     if ( senderPanel.isPrinting()) {
-                                        if (JOptionPane.showConfirmDialog(printDialog, "Stop the job and close Window ?") 
+                                        if (JOptionPane.showConfirmDialog(jPrintDialog, "Stop the job and close Window ?") 
                                                                             != JOptionPane.OK_OPTION) 
                                             return;
                                         else 
                                             senderPanel.stopPrint();
                                     }
-                                    printDialog.setVisible(false);
+                                    jPrintDialog.setVisible(false);
                                 }   
                             });
         }
         senderPanel.setGroupToPrint(document);  
-        if ( ! printDialog.isVisible()) printDialog.setLocationRelativeTo(this);
-        printDialog.setVisible(true);
+        if ( ! jPrintDialog.isVisible()) jPrintDialog.setLocationRelativeTo(this);
+        jPrintDialog.setVisible(true);
     }
     
     private String askForFile(boolean forSaving, File currentDirectory, FileNameExtensionFilter filter) {
@@ -4418,23 +4510,20 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JLabel jLabelPower;
     private javax.swing.JLabel jLabelStart;
     private javax.swing.JList<Object> jListGCode;
-    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
-    private javax.swing.JMenu jMenu3;
-    private javax.swing.JMenu jMenu4;
     private javax.swing.JMenu jMenu5;
     private javax.swing.JMenu jMenuAdds;
     private javax.swing.JMenu jMenuAlign;
     private javax.swing.JMenuBar jMenuBar;
-    private javax.swing.JMenu jMenuBlocks;
     private javax.swing.JMenu jMenuEdit;
+    private javax.swing.JMenu jMenuElements;
     private javax.swing.JMenu jMenuFile;
+    private javax.swing.JMenu jMenuFlip;
     private javax.swing.JMenu jMenuGCODE;
     private javax.swing.JMenu jMenuGRBL;
     private javax.swing.JMenu jMenuHelp;
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItem2;
-    private javax.swing.JMenuItem jMenuItem3;
     private javax.swing.JMenuItem jMenuItemAbout;
     private javax.swing.JMenuItem jMenuItemAddArc;
     private javax.swing.JMenuItem jMenuItemAddAtCenter;
@@ -4507,7 +4596,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemGRBLWPosAsMPos;
     private javax.swing.JMenuItem jMenuItemGroup;
     private javax.swing.JMenuItem jMenuItemImport;
-    private javax.swing.JMenuItem jMenuItemInvertSelection;
+    private javax.swing.JMenuItem jMenuItemInverseSelection;
     private javax.swing.JMenuItem jMenuItemJoin;
     private javax.swing.JMenuItem jMenuItemMakeCutPathI;
     private javax.swing.JMenuItem jMenuItemMakeCutPathO;
@@ -4518,7 +4607,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemMoveWithMouse;
     private javax.swing.JMenuItem jMenuItemNew;
     private javax.swing.JMenuItem jMenuItemOpenGCode;
-    private javax.swing.JMenuItem jMenuItemPaste;
+    private javax.swing.JMenuItem jMenuItemOptimizeMoves;
+    private javax.swing.JMenuItem jMenuItemPasteFirst;
+    private javax.swing.JMenuItem jMenuItemPasteLast;
     private javax.swing.JMenuItem jMenuItemQuickHelp;
     private javax.swing.JMenuItem jMenuItemQuit;
     private javax.swing.JMenuItem jMenuItemRedo;
@@ -4541,12 +4632,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JMenuItem jMenuItemSimplify;
     private javax.swing.JMenuItem jMenuItemSimplifyByDistance;
     private javax.swing.JMenuItem jMenuItemSimplifyP;
-    private javax.swing.JMenuItem jMenuItemSort;
     private javax.swing.JMenuItem jMenuItemUndo;
     private javax.swing.JMenuItem jMenuItemUngroup;
     private javax.swing.JMenu jMenuMakeCutPath;
+    private javax.swing.JMenu jMenuOpenScad;
     private javax.swing.JMenu jMenuPoints;
     private javax.swing.JMenu jMenuRecent;
+    private javax.swing.JMenu jMenuSelection;
     private javax.swing.JMenu jMenuView;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
@@ -4586,7 +4678,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JBlockViewerList
     private javax.swing.JPopupMenu.Separator jSeparator6;
     private javax.swing.JPopupMenu.Separator jSeparator7;
     private javax.swing.JPopupMenu.Separator jSeparator8;
-    private javax.swing.JTextField jTextFieldEditedBlock;
+    private javax.swing.JPopupMenu.Separator jSeparator9;
+    private javax.swing.JTextField jTextFieldEditedElement;
     private javax.swing.JTextField jTextFieldFeed;
     private javax.swing.JTextField jTextFieldPassCount;
     private javax.swing.JTextField jTextFieldPassDepht;

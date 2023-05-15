@@ -171,8 +171,8 @@ public class BackgroundPictureParameters {
         if ( changed) informChanged();
     }
     
-    public boolean isVisible() {
-        return visible;
+    public boolean isImageVisible() {
+        return visible && (getViewRegion() != null);    
     }
     
     public void setVisible( boolean visible) {

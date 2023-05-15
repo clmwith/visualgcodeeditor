@@ -32,6 +32,7 @@ public class JFilterFrame extends javax.swing.JPanel {
     
     JDialog frame;
     boolean applyFilter = false;
+    
     /**
      * Creates new form jTest
      */

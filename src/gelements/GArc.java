@@ -18,7 +18,7 @@ package gelements;
 
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
-import gcodeeditor.JBlocksViewer;
+import gcodeeditor.JProjectEditor;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -497,7 +497,7 @@ public class GArc extends GElement {
             g.setColor(Color.DARK_GRAY);
             Segment2D t = new Segment2D(start, end).getTangentSegment();
             GCode pt = t.getClosestPointFrom( center);
-            JBlocksViewer.drawCross(g, new Point((int)(pt.getX()*zoomFactor),-(int)(pt.getY()*zoomFactor)),5);          
+            JProjectEditor.drawCross(g, new Point((int)(pt.getX()*zoomFactor),-(int)(pt.getY()*zoomFactor)),5);          
             int x = (int)(t.p1.getX()*zoomFactor);
             int y = (int)(t.p1.getY()*-zoomFactor);
             int x2 = (int)(t.p2.getX()*zoomFactor);
@@ -513,7 +513,7 @@ public class GArc extends GElement {
             if ( pc.paintReperes ) {
                 if ( ( pc.editedElement == this) || pc.showStartPoints) g.setColor(Color.red);     
                 else g.setColor(Color.lightGray);
-                JBlocksViewer.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),4);
+                JProjectEditor.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),4);
             }
         }
 
@@ -677,7 +677,7 @@ public class GArc extends GElement {
     public static GArc makeBulge(GCode startpoint, GCode endpoint, double bulge) {
         boolean reversed = (bulge<0.0);
         double alpha = Math.atan(bulge)*4.0;
-        GCode middle = startpoint.getMiddlePointTo(endpoint);
+        GCode middle = startpoint.getHalfPointTo(endpoint);
         double dist = startpoint.distance(endpoint)/2.0;
         double angle = GElement.getAngleInRadian(endpoint, startpoint) + ((bulge>0.0) ? -Math.PI : Math.PI)/2;
 	double radius = Math.abs(dist / Math.sin(alpha/2.0)); 

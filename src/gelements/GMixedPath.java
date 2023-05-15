@@ -61,9 +61,9 @@ public class GMixedPath extends GElement {
         GElement e = null;
         if ( gCode.isAnArc()) 
             e = new GArc(null, getLastPoint(), gCode);
-        if (gCode.isASpline()) 
+        else if (gCode.isASpline()) 
              e = new GSpline(null, getLastPoint(), gCode);
-        if ( gCode.getG()==0) 
+        else if ( gCode.getG()==0) 
             gCode.setG(gContent.isEmpty()?0:1);
             
         if ( (pos == 0) && (e!=null)) {
@@ -681,12 +681,13 @@ public class GMixedPath extends GElement {
         boolean moveNext = false, moved = false;
         GCode lastPoint = null;
         
-        for( int i = 0; i < points.size(); i++) {
-            GCode p = points.get(i);
-            boolean hasNextPoint = (i < points.size()-1);
-           
+        for( int i = 0; i < points.size(); i++) {                       
             for( Object o : gContent) {
                 assert( o != null);
+                
+                GCode p = points.get(i);
+                boolean hasNextPoint = (i < points.size()-1);
+                
                 if (o instanceof GCode) {
                     if ( p.isAMove()) {
                         lastPoint = p.clone();
@@ -1009,10 +1010,10 @@ public class GMixedPath extends GElement {
         if ( isClosed()) {
             int pos = getIndexOfPoint(p);
             for (int i = pos; i < gContent.size(); i++) {
-                newContent.add( gContent.remove(i));
+                newContent.add( gContent.remove(pos));
             }
             for (int i = 0;  i < pos; i++) {
-                newContent.add( gContent.remove(i));
+                newContent.add( gContent.remove(0));
             }
             revalidate();
             return true;
@@ -1105,7 +1106,7 @@ public class GMixedPath extends GElement {
                     if ( m == p) {
                         if (lastPoint == null) break; // don't change first point (G0)
                         else {     
-                            GElement e = (withG==2) ? new GArc("", false, lastPoint.clone(), p, lastPoint.getMiddlePointTo(p)) :
+                            GElement e = (withG==2) ? new GArc("", false, lastPoint.clone(), p, lastPoint.getHalfPointTo(p)) :
                                                       new GSpline("", (Point2D)lastPoint.clone(), new GCode(5, p.getX(), p.getY()));
                             gContent.set( gContent.indexOf(m), e);                                                                
                             p.set( e.getLastPoint());

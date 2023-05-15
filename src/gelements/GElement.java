@@ -272,6 +272,10 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
 
     abstract public CharSequence toSVG(Rectangle2D origin);
 
+    /**
+     * Return the first point (with X and Y words) of the Element.
+     * @return 
+     */
     abstract public GCode getFirstPoint();
 
     /**
@@ -301,6 +305,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     abstract double getLength();
 
     /**
+     * Used to select points by rectangle in ProjectEditor.
      * @return number of points (real or not)
      */
     abstract public int getNbPoints();

@@ -16,11 +16,7 @@
  */
 package gcodeeditor.gui.dialogs;
 
-import gcodeeditor.gui.dialogs.ManagedPanel;
 import gelements.GCylindricalPocket;
-import java.awt.Frame;
-import javax.swing.JDialog;
-import javax.swing.JOptionPane;
 
 /**
  *
@@ -41,7 +37,7 @@ public class CylindricalPocketInputPanel extends ManagedPanel {
     @Override
     void setParam(Object param) {
         assert( param instanceof GCylindricalPocket);
-        cp = (GCylindricalPocket)param;
+        cp = (GCylindricalPocket)param;        
     }
     
     @Override
@@ -116,6 +112,7 @@ public class CylindricalPocketInputPanel extends ManagedPanel {
         gridBagConstraints.insets = new java.awt.Insets(6, 12, 0, 0);
         add(jLabel4, gridBagConstraints);
 
+        jTextFieldRadius.setText("50");
         jTextFieldRadius.setFocusCycleRoot(true);
         jTextFieldRadius.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -131,6 +128,7 @@ public class CylindricalPocketInputPanel extends ManagedPanel {
         gridBagConstraints.insets = new java.awt.Insets(3, 12, 0, 12);
         add(jTextFieldRadius, gridBagConstraints);
 
+        jTextFieldLength.setText("100");
         jTextFieldLength.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jTextFieldLengthActionPerformed(evt);
@@ -145,6 +143,7 @@ public class CylindricalPocketInputPanel extends ManagedPanel {
         gridBagConstraints.insets = new java.awt.Insets(4, 12, 0, 12);
         add(jTextFieldLength, gridBagConstraints);
 
+        jTextFieldInlay.setText("10");
         jTextFieldInlay.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jTextFieldInlayActionPerformed(evt);

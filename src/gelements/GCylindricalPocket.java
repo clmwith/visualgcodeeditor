@@ -19,7 +19,7 @@ package gelements;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
 import java.awt.Color;
-import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.BufferedReader;
@@ -40,7 +40,7 @@ public final class GCylindricalPocket extends GPocket3D {
     double radius;
     double inlayDepth;
     double len, rotationAngle;
-    private boolean skipInformChanges;
+    private boolean doInform;
    
     /**
      * Create a cylinder-shaped pocket.
@@ -57,31 +57,25 @@ public final class GCylindricalPocket extends GPocket3D {
         this.inlayDepth = inlayDepth;
         this.len = cylinderLen;
         this.rotationAngle = Math.toRadians(rotationAngle);
+        properties.setZEnd( Double.isNaN(properties.zStart) ? -inlayDepth : properties.zStart - inlayDepth); 
+                
         for( int i = 0; i < 10; i++) lines.add(new GCode((i==0)?0:1,0,0));
-        calculate( origin,false);
-    }
-
-    /**
-     * warning : do not compare Properties !
-     * @param obj
-     * @return
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if ( obj instanceof GCylindricalPocket) {
-            GCylindricalPocket t = (GCylindricalPocket)obj;
-            
-            return (t.radius == radius) && 
-                   (t.inlayDepth == inlayDepth) &&
-                   (t.len == len) &&
-                   (t.rotationAngle == rotationAngle) &&
-                   (t.lines.get( RECTANGLE_GCODE_LINE_NUMBER).isAtSamePosition(lines.get( RECTANGLE_GCODE_LINE_NUMBER)));
-        }  
-        return false;
+        properties.addChangeListener(new EngravingProperties.PropertieChangeListener() {
+            @Override
+            public void propertyChanged(int type) {
+                switch ( type) {
+                    case EngravingProperties.PropertieChangeListener.START:
+                        properties.setZEnd(properties.zStart - inlayDepth);
+                        break;
+                    case EngravingProperties.PropertieChangeListener.END:
+                        properties.setZStart(properties.zEnd + inlayDepth);
+                        break;
+                }
+            }
+        });
+        revalidate(origin,false);
     }
     
-    
-
     /**
      * Create a non initialised GCylindricalPocket.
      * @param name0 name of the new element.
@@ -112,14 +106,21 @@ public final class GCylindricalPocket extends GPocket3D {
         return false;
     }
       
-    public void calculate(Point2D origin, boolean angleToo) {
+    /**
+     * caluclate the bounds of the pocket
+     * @param newOrigin the center of the first edge of the cylinder (can be null if unchanged)
+     * @param angleToo  reclaculate rotation angle too
+     */
+    public void revalidate(Point2D newOrigin, boolean angleToo) {
         if ( lines.size() < 9 ) return; // not initialised
         if ( inlayDepth > radius ) inlayDepth = radius;        
- 
+        if (newOrigin == null) newOrigin = lines.get(RECTANGLE_GCODE_LINE_NUMBER); 
+        
+        // fill array of lines
         while( lines.size()<10 ) lines.add(new GCode(1,0,0));
 
-        double dx = origin.getX();
-        double dy = origin.getY();
+        double dx = newOrigin.getX();
+        double dy = newOrigin.getY();
         if (angleToo) {
             GCode p2; 
             rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER+1), p2=lines.get(RECTANGLE_GCODE_LINE_NUMBER+2));
@@ -139,41 +140,51 @@ public final class GCylindricalPocket extends GPocket3D {
         lines.get(8).setLocation(0, offset);
         lines.set(9, new GCode(1, 0, 0));
         super.rotate(lines.get(3), rotationAngle);
+        doInform = true;
         super.translate(dx, dy);
-        properties.zEnd = Double.isNaN(properties.zStart) ? -inlayDepth : properties.zStart - inlayDepth;        
-    }
+    } 
     
-    public void recalculate(Point2D origin, boolean angleToo) { 
-        skipInformChanges = true;
-        GCylindricalPocket old = (GCylindricalPocket) clone();
-        calculate(origin == null ? lines.get(RECTANGLE_GCODE_LINE_NUMBER) : origin, angleToo);
-        skipInformChanges = false;
-        if ( ! old.equals(this))
-            informAboutChange();
-    }
 
     @Override
     protected void informAboutChange() {
-        if ( ! skipInformChanges) super.informAboutChange();
+        if ( doInform) super.informAboutChange();
+        doInform = false;
+    }
+    
+    @Override
+    public GElement clone() {
+        return new GCylindricalPocket(name, lines.get(RECTANGLE_GCODE_LINE_NUMBER), radius, inlayDepth, len, Math.toDegrees(rotationAngle));
+    }
+    
+       /**
+     * warning : does not compare Properties !
+     * @param obj
+     * @return
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if ( obj instanceof GCylindricalPocket) {
+            GCylindricalPocket t = (GCylindricalPocket)obj;
+            
+            return (t.radius == radius) && 
+                   (t.inlayDepth == inlayDepth) &&
+                   (t.len == len) &&
+                   (t.rotationAngle == rotationAngle) &&
+                   (t.lines.get( RECTANGLE_GCODE_LINE_NUMBER).isAtSamePosition(lines.get( RECTANGLE_GCODE_LINE_NUMBER)));
+        }  
+        return false;
     }
     
     @Override
     public String getSummary() {
         return "<html>Cylindrical pocket<br><i>Z end</i> is ignored in favor of <i>InlayDepth</i></html>";
     }
-    
-    @Override
-    public GCode saveToStream(FileWriter fw, GCode lastPoint) throws IOException {
-        fw.append(HEADER_STRING + name + ")\n");
-        fw.append(properties.toString()+"\n");
-        for( GCode l : lines) 
-            fw.append(l.toString()+"\n");
-        return getLastPoint();
-    }
 
     @Override
     public boolean movePoints(ArrayList<GCode> selectedPoints, double dx, double dy) {        
         boolean res = super.movePoints(selectedPoints, dx, dy);
+        if ( ! res) return false;
+        
         if ((selectedPoints.size()==1)) {
             int i = lines.indexOf(selectedPoints.get(0));
             if ( i == (RECTANGLE_GCODE_LINE_NUMBER+1))
@@ -189,23 +200,14 @@ public final class GCylindricalPocket extends GPocket3D {
             } else if (i == (RECTANGLE_GCODE_LINE_NUMBER+4)) {
                 len = lines.get(RECTANGLE_GCODE_LINE_NUMBER+4).distance(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5));
                 rotationAngle=getAngleInRadian(lines.get(RECTANGLE_GCODE_LINE_NUMBER+5), lines.get(RECTANGLE_GCODE_LINE_NUMBER+4));
+            } else {
+                revalidate(null, true);
+                return true;
             }
-            recalculate(null, false);
-        } else
-            recalculate(null, true);
+        }  
         
-        return res;
-    }
-
-    @Override
-    public void translate(double dx, double dy) {
-        super.translate(dx, dy); //To change body of generated methods, choose Tools | Templates.
-        recalculate(null, false);
-    }
-
-    @Override
-    public GElement clone() {
-        return new GCylindricalPocket(name, lines.get(RECTANGLE_GCODE_LINE_NUMBER), radius, inlayDepth, len, Math.toDegrees(rotationAngle));
+        revalidate(null, false);           
+        return true;
     }
     
     @Override
@@ -227,8 +229,7 @@ public final class GCylindricalPocket extends GPocket3D {
                     if ( v < 0) v = 0;
                     if ( len != v) {
                         len = v;                                        
-                        recalculate(null, false);
-                        informAboutChange();
+                        revalidate(null, false);
                     }
                     break;
                 case 2: 
@@ -236,38 +237,47 @@ public final class GCylindricalPocket extends GPocket3D {
                     
                     if ( v != inlayDepth) {
                         inlayDepth = v;
-                        recalculate(p, false);
-                        informAboutChange();
+                        revalidate(p, false);
                     }
                     break;
                 case RECTANGLE_GCODE_LINE_NUMBER:
-                    if (p.isAPoint()) recalculate(p, true);
+                    if (p.isAPoint()) revalidate(p, true);
                     break;
                 case (RECTANGLE_GCODE_LINE_NUMBER+2):         
                     if (p.isAPoint()) {
                         lines.set(5, p);
-                        recalculate(p, true);  
+                        revalidate(p, true);  
                     }
             }
         } catch ( NumberFormatException e) { }
+    }  
+       
+    /**
+     * Ued by PropertyPanel
+     * @param radius
+     * @param len
+     * @param inlay
+     * @param rotation 
+     */
+    public void setValues(double radius, double len, double inlay, double rotation) {
+        this.radius = radius;
+        this.len = len;
+        inlayDepth = inlay;
+        revalidate(null, true);
+        rotationAngle = Math.toRadians(rotation);
+        revalidate(null, false);
     }
-
 
     @Override
     public CharSequence toSVG(Rectangle2D origin) { 
         return "<!-- GCylindricalPocket to SVG is not implemented.-->\n"; 
     }
-
-    @Override
-    public GCode remove(int i) { 
-        return null;
-    }
     
     @Override
-    public void removeAll(ArrayList<GCode> lines) { }
-
-    @Override
-    public void removeByDistance(ArrayList<GCode> points, double distance) { }
+    public void translate(double dx, double dy) {
+        super.translate(dx, dy); //To change body of generated methods, choose Tools | Templates.
+        revalidate(null, false);
+    }
 
     @Override
     public void reverse() { }
@@ -275,7 +285,7 @@ public final class GCylindricalPocket extends GPocket3D {
     @Override
     public void rotate(Point2D transformationOrigin, double d) {
         super.rotate(transformationOrigin, d);
-        recalculate(null, true);
+        revalidate(null, true);
     }
 
     @Override
@@ -286,13 +296,9 @@ public final class GCylindricalPocket extends GPocket3D {
     @Override
     public void scale(Point2D transformationOrigin, double dx, double unused) {
         super.scale(transformationOrigin, dx, dx);
-        recalculate(null, true);
+        revalidate(null, true);
     }
-
-    @Override
-    public void simplify(double angleMin, double distanceMax) { }
-
-    
+  
     @Override
     public G1Path flatten() {
         G1Path res = new G1Path("flatten-"+name);
@@ -301,63 +307,6 @@ public final class GCylindricalPocket extends GPocket3D {
         if ( properties != null) res.properties = properties.clone();
         return res;
     }   
-
-    @Override
-    public boolean concat(GElement get, double d) {
-        throw new UnsupportedOperationException("Can't concat this element (GCylindricalPocket)");
-    }
-
-
-    public void setValues(double r, double l, double inlay, double rotation) {
-        radius = r;
-        len = l;
-        inlayDepth = inlay;
-        recalculate(null, true);
-        rotationAngle = Math.toRadians(rotation);
-        recalculate(null, false);
-    }
-
-    @Override
-    public void paint(PaintContext pc) {
-        recalculate(null, true);
-
-        double inD = inlayDepth;
-        double pd = properties.getPassDepth();
-        if ( ! Double.isNaN(pd)) {
-            for(; inlayDepth>=0; inlayDepth -= pd ) {
-                recalculate(null, false);
-                paintPass(pc, inlayDepth==inD);
-            }
-        } else
-            paintPass(pc, true);
-        
-        inlayDepth = inD;
-        recalculate(null, false);
-        super.paint(pc);
-    }
-
-    private void paintPass(PaintContext pc, boolean withCylinderBorder) {
-        final double zoomFactor = pc.zoomFactor;
-        final Graphics g = pc.g; 
-        if ( withCylinderBorder) {
-            Point2D center, p0 = lines.get(RECTANGLE_GCODE_LINE_NUMBER+1);
-            double inlayAngle = Math.acos((radius-inlayDepth)/radius) - rotationAngle;
-
-            center = new Point2D.Double( p0.getX() - Math.cos(inlayAngle)*radius, -p0.getY() - Math.sin(inlayAngle)*radius);
-            g.setColor(Color.darkGray);
-            g.drawOval((int)((center.getX()-radius)*zoomFactor), 
-                       (int)((center.getY()-radius)*zoomFactor), 
-                       (int)(2*radius*zoomFactor), (int)(2*radius*zoomFactor));
-
-            p0 = lines.get(RECTANGLE_GCODE_LINE_NUMBER+4);
-            center = new Point2D.Double( p0.getX() - Math.cos(inlayAngle+Math.PI)*radius, -p0.getY() - Math.sin(inlayAngle+Math.PI)*radius);        
-            g.drawOval((int)((center.getX()-radius)*zoomFactor), 
-                       (int)((center.getY()-radius)*zoomFactor), 
-                       (int)(2*radius*zoomFactor), (int)(2*radius*zoomFactor));
-        } else
-            super.paint(pc);
-    }
-
     
     /**
      * Return the bounds of the poket at this depth.
@@ -375,11 +324,6 @@ public final class GCylindricalPocket extends GPocket3D {
         return inlayDepth;
     }
 
-    @Override
-    public boolean joinPoints(ArrayList<GCode> selectedPoints) {
-        return false;
-    }
-
     /**
      * @return If initialised return 1 for the First and Last point of the pocket offset, or return 0.
      */
@@ -387,11 +331,58 @@ public final class GCylindricalPocket extends GPocket3D {
     public int getNbPoints() {
         return (lines.size() == 10 ) ? 1 : 0;
     }
-
+    
     @Override
-    public String toString() {
-        return name + " (cylinder)";
+    public void paint(PaintContext pc) {
+
+        Graphics2D g = pc.g;
+        g.setColor(Color.darkGray);
+        
+        Point2D p0 = null, p1 = null;
+        double pd = properties.getPassDepth();
+
+        if ( ! Double.isNaN(pd) ) {
+            for(double inD = inlayDepth; inD >= 0; inD -= pd ) {
+                
+                if ( inlayDepth==inD ) {
+                    double inlayAngle = Math.acos((radius-inlayDepth)/radius) - rotationAngle;
+                    p0 = lines.get(RECTANGLE_GCODE_LINE_NUMBER+1);
+                    p1 = lines.get(RECTANGLE_GCODE_LINE_NUMBER+4);
+                    Point2D center = new Point2D.Double( p0.getX() - Math.cos(inlayAngle)*radius, -p0.getY() - Math.sin(inlayAngle)*radius);
+
+                    g.drawOval((int)((center.getX()-radius)*pc.zoomFactor), 
+                               (int)((center.getY()-radius)*pc.zoomFactor), 
+                               (int)(2*radius*pc.zoomFactor), (int)(2*radius*pc.zoomFactor));
+
+                    center = new Point2D.Double( p1.getX() - Math.cos(inlayAngle+Math.PI)*radius, -p1.getY() - Math.sin(inlayAngle+Math.PI)*radius);        
+                    g.drawOval((int)((center.getX()-radius)*pc.zoomFactor), 
+                               (int)((center.getY()-radius)*pc.zoomFactor), 
+                               (int)(2*radius*pc.zoomFactor), (int)(2*radius*pc.zoomFactor));
+                    
+                    p0 = lines.get(RECTANGLE_GCODE_LINE_NUMBER);
+                    p1 = lines.get(RECTANGLE_GCODE_LINE_NUMBER+3);
+                }            
+
+                double h = (radius-inD);
+                double offset = Math.sqrt( radius * radius - h*h);  
+                double x1 = pc.zoomFactor*(p0.getX()-Math.cos(rotationAngle-Math.PI/2)*offset);
+                double y1 = -pc.zoomFactor*(p0.getY()-Math.sin(rotationAngle-Math.PI/2)*offset);  
+                double x2 = pc.zoomFactor*(p1.getX()+Math.cos(rotationAngle+Math.PI/2)*offset);
+                double y2 = -pc.zoomFactor*(p1.getY()+Math.sin(rotationAngle+Math.PI/2)*offset);  
+                g.drawLine( (int)x1, (int)y1, (int)x2, (int)y2);
+                
+                
+                 x1 = pc.zoomFactor*(p0.getX()+Math.cos(rotationAngle-Math.PI/2)*offset);
+                 y1 = -pc.zoomFactor*(p0.getY()+Math.sin(rotationAngle-Math.PI/2)*offset);  
+                 x2 = pc.zoomFactor*(p1.getX()-Math.cos(rotationAngle+Math.PI/2)*offset);
+                 y2 = -pc.zoomFactor*(p1.getY()-Math.sin(rotationAngle+Math.PI/2)*offset);
+                 g.drawLine( (int)x1, (int)y1, (int)x2, (int)y2);
+            }
+        }
+        super.paint(pc); 
     }
+        
+    
 
     @Override
     public String loadFromStream(BufferedReader stream, GCode lastGState) throws IOException {
@@ -399,8 +390,21 @@ public final class GCylindricalPocket extends GPocket3D {
         radius = parseParameterDouble( lines.get(0));
         len = parseParameterDouble( lines.get(1));
         inlayDepth = parseParameterDouble( lines.get(2));
-        calculate(lines.get(RECTANGLE_GCODE_LINE_NUMBER), true);
+        revalidate(lines.get(RECTANGLE_GCODE_LINE_NUMBER), true);
         return line;
     }
     
+    @Override
+    public GCode saveToStream(FileWriter fw, GCode lastPoint) throws IOException {
+        fw.append(HEADER_STRING + name + ")\n");
+        fw.append(properties.toString()+"\n");
+        for( GCode l : lines) 
+            fw.append(l.toString()+"\n");
+        return getLastPoint();
+    }
+    
+    @Override
+    public String toString() {
+        return name + " (cylinder)";
+    }
 }

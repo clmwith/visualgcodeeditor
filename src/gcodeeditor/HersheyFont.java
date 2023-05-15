@@ -69,7 +69,7 @@ public class HersheyFont extends GFont {
     ArrayList<HersheyGlyph> glyphs;
     
     public HersheyFont( Class<?> me, int fontNumber) throws IOException {
-        this(me.getResourceAsStream("/hershey-fonts/" + FONTS[fontNumber] + ".jhf"));
+        this(me.getResourceAsStream("/fonts/hershey/" + FONTS[fontNumber] + ".jhf"));
         name = "Hershey;" + FONTS[fontNumber];
     }
     

@@ -121,9 +121,8 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
     }
     
     private void updateGUI() {
-        if ( ! grbl.isConnected()) {
-            jCheckBoxSaveToFile.setSelected(true);
-            jButtonStartSave.setText("Save");
+        if ( ! grbl.isConnected() || jCheckBoxSaveToFile.isSelected()) {
+            jButtonStartSave.setText("Save");           
         } else { 
             jButtonStartSave.setText("Start");
         }
@@ -229,7 +228,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
     public void executionFinished() {
         sender = null;
         System.out.println("Execution finished.");
-        if ( ! grbl.isConnected()) {
+        if ( ! grbl.isConnected() || jCheckBoxSaveToFile.isSelected()) {
             JOptionPane.showMessageDialog(parent, "Job saved.");
             parent.setVisible(false);
         }    
@@ -912,66 +911,34 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
     private void jButtonStartSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonStartSaveActionPerformed
         if ( sender == null) {       
             if ( jCheckBoxSaveToFile.isSelected() && jTextFieldOutputToFile.getText().equals("")) 
-                jButtonChooseOutputFileActionPerformed(null);           
+                // choose output file
+                jButtonChooseOutputFileActionPerformed(null);    
+            
             if ( ! grbl.isConnected() && jTextFieldOutputToFile.getText().equals("")) return;
             
             final boolean saveToFile = jCheckBoxSaveToFile.isSelected();
-            final boolean laserMode = grbl.isConnected()?grbl.isLaserMode():
+            final boolean laserMode = (! saveToFile && grbl.isConnected()) ? grbl.isLaserMode():
                          JOptionPane.showConfirmDialog(parent, "<html>Use Laser mode ?<br><i>(without failsafe Z height moves before each GO)</i></html>",
                             "Which mode...", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
                             new javax.swing.ImageIcon(getClass().getResource("/icons/Laser.png"))) == JOptionPane.YES_OPTION;
-                        
-            final boolean zStart = ! Double.isNaN(elements.properties.getZStart());
-            final boolean zEnd   = ! Double.isNaN(elements.properties.getZEnd());
-            final boolean zDepth = ! Double.isNaN(elements.properties.getPassDepth());
-            final boolean pCount = elements.properties.getPassCount()!=-1;
-            if ( ! laserMode && 
-                 ! (zStart & ((zEnd & (pCount | zDepth)) | (pCount & zDepth) | (elements.properties.getPassCount()==1)))) {
-                JOptionPane.showMessageDialog(parent, "Cannot start :\nEngraving levels are not set.\n(Zstart, PassDepth, Zend)", "Error", JOptionPane.ERROR_MESSAGE);
-                sender = null;
+                            
+            try { 
+                
+                boolean canSaveToFile = (saveToFile && (jTextFieldOutputToFile.getText().length() != 0));
+                                
+                if ( ! canSaveToFile && ! grbl.isConnected()) return; // can't save to file nor send GCode.
+                
+                gcodeRunner.setParam( laserMode, canSaveToFile ? jTextFieldOutputToFile.getText() : null );                                
+                
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(parent, "Error openning file:\n"+ ex.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-                            
-            if (saveToFile && (jTextFieldOutputToFile.getText().length() != 0) ) {
-                if ( grbl.isConnected()) {
-                    try { 
-                        grbl.startFileLogger( jTextFieldOutputToFile.getText());
-                        gcodeRunner.setParam( laserMode, null);
-                    } catch (IOException ex) {
-                        JOptionPane.showMessageDialog(parent, "Error openning file:\n"+ ex.getLocalizedMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                }
-                else
-                    gcodeRunner.setParam( laserMode, jTextFieldOutputToFile.getText());
-            } else
-                gcodeRunner.setParam( laserMode, null);
                 
             jButtonStartSave.setEnabled(false);
             sender = new Thread( gcodeRunner, "GCodeRunnerThread");
             sender.start();
-        }
-           
-            /* 
-            if ( jCheckBoxUseFixedProps.isSelected())
-                try {        
-                    overridenProperties = new EngravingProperties();
-                    if ( jCheckBoxCutDepth.isSelected()) {
-                        overridenProperties.setZStart( Double.valueOf(jTextFieldZSart.getText()));
-                        overridenProperties.setZEnd( Double.valueOf(jTextFieldZEnd.getText()));
-                        overridenProperties.SetPassDepth( Double.valueOf(jTextFieldPassDepth.getText()));
-                    }
-                    overridenProperties.passCount = Integer.valueOf(jTextFieldPassCount.getText()));
-                    overridenProperties.feed = Double.valueOf(jTextFieldFeed.getText()));
-                    overridenProperties.power = Integer.valueOf(jTextFieldPower.getText()));    
-                } catch ( NumberFormatException e) {
-                    JOptionPane.showMessageDialog(parent, "Wrong Overriden value detected", "Abort execution ...", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-            else 
-                overridenProperties = new EngravingProperties(); 
-*/
-        
+        }                    
     }//GEN-LAST:event_jButtonStartSaveActionPerformed
 
     public boolean isPrinting() {
@@ -994,9 +961,9 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
 
     private void jTextFieldPassCountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldPassCountActionPerformed
         try {
-            int nbPass  = Integer.valueOf(jTextFieldPassCount.getText());
-            double zStart = jCheckBoxCutDepth.isSelected() ? Double.valueOf(jTextFieldZSart.getText()) : 0;
-            double passDepth = Double.valueOf(jTextFieldPassDepth.getText());
+            int nbPass  = Integer.parseInt(jTextFieldPassCount.getText());
+            double zStart = jCheckBoxCutDepth.isSelected() ? Double.parseDouble(jTextFieldZSart.getText()) : 0;
+            double passDepth = Double.parseDouble(jTextFieldPassDepth.getText());
             if ( jCheckBoxCutDepth.isSelected())
                 jTextFieldZEnd.setText( String.format(Locale.ROOT, "%.2f", zStart - passDepth*(nbPass-1)));    
             updateGUI();
@@ -1022,9 +989,9 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
             return;
         
         try {
-            double zStart = jCheckBoxCutDepth.isSelected() ? Double.valueOf(jTextFieldZSart.getText()) : 0;
-            double zEnd = Double.valueOf(jTextFieldZEnd.getText());
-            double passDepth = Double.valueOf(jTextFieldPassDepth.getText());
+            double zStart = jCheckBoxCutDepth.isSelected() ? Double.parseDouble(jTextFieldZSart.getText()) : 0;
+            double zEnd = Double.parseDouble(jTextFieldZEnd.getText());
+            double passDepth = Double.parseDouble(jTextFieldPassDepth.getText());
             double passCount = (zStart - zEnd) / passDepth;
             jTextFieldPassCount.setText( Integer.toString(1 + (int)Math.ceil( passCount)));
             updateGUI();
@@ -1067,6 +1034,13 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
     }//GEN-LAST:event_jButtonChooseOutputFileActionPerformed
 
     private void jTextFieldOutputToFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldOutputToFileActionPerformed
+        String t = jTextFieldOutputToFile.getText();
+        if ( ! t.isBlank()) {
+            if ( t.endsWith(".gcode")) jTextFieldOutputToFile.setText(t+".gcode");
+            jCheckBoxSaveToFile.setSelected(true);
+        } else {
+            jCheckBoxSaveToFile.setSelected(false);
+        }        
         updateGUI();
     }//GEN-LAST:event_jTextFieldOutputToFileActionPerformed
 

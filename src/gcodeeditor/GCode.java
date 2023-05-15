@@ -59,21 +59,23 @@ public class GCode extends Point2D implements Iterable<GWord> {
         set(l);
     }
     
-    /** Create a G-Code Line from a string(add Gx if not present, according to lastGState)
+    /** 
+     * Create a G-Code Line from a string (add G,X,Y words if not present, according to lastGState)
+     * 
      * @param line the line to decode
      * @param defaultValues */
     public GCode( String line, GCode defaultValues) {
         words = new ArrayList<>();
         set(line);
-        if ((getG() == -1) && ((x!=null)||(y!=null)))
+        if ( ! isSet('G') && ((x!=null)||(y!=null)||isSet('Z')) && defaultValues.isSet('G'))
             words.add(0, new GWord('G', defaultValues.getG()));
         
         if ( isAMove() && ((x==null)^(y==null)))
         {
-            assert(((x==null) || (y==null)) && (defaultValues == null));               
+            assert(((x==null) || (y==null)) && (defaultValues != null));               
             
-            if ((x == null)&&(defaultValues!=null)) setX( defaultValues.getX());
-            if ((y == null)&&(defaultValues!=null)) setY( defaultValues.getY());
+            if (! isSet('X')) setX( defaultValues.getX());
+            if (! isSet('Y')) setY( defaultValues.getY());
         }
     }
     
@@ -84,13 +86,17 @@ public class GCode extends Point2D implements Iterable<GWord> {
         set(line);
     }
 
+    
     public GCode(java.awt.geom.Point2D p) {
         this( p.getX(), p.getY());
     }
     
-    /** Create an new G-Code G1 with 2D position.
+    /** 
+     * Create an new G-Code <b>G1 (one)</b> with 2D position.
+     * 
      * @param x
-     * @param y */
+     * @param y
+     */
     public GCode( double x, double y) {
         this(1, x ,y);
     }
@@ -110,8 +116,8 @@ public class GCode extends Point2D implements Iterable<GWord> {
         words = new ArrayList<>(3);
         words.add( new GWord('G', gNumber));
         if ( ! java.lang.Double.isNaN(p.x)) words.add( this.x = new GWord('X', p.x));
-        if ( ! java.lang.Double.isNaN(p.x)) words.add( this.y = new GWord('Y', p.y));
-        if ( ! java.lang.Double.isNaN(p.x)) words.add( this.y = new GWord('Z', p.z));
+        if ( ! java.lang.Double.isNaN(p.y)) words.add( this.y = new GWord('Y', p.y));
+        if ( ! java.lang.Double.isNaN(p.z)) words.add( new GWord('Z', p.z));
     }
 
     @Override
@@ -121,10 +127,18 @@ public class GCode extends Point2D implements Iterable<GWord> {
         return val;
     }
     
-    public void add( GWord w) {
-        if ( w.letter == 'X') x = w;
-        else if ( w.letter == 'Y') y = w;
-        words.add(w);
+    /**
+     * Add or remplace GWord 'nw'
+     * @param nw 
+     */
+    public void add( GWord nw) {        
+        final GWord w = get(nw.letter);
+        if ( w != null) w.set(nw);
+        else {
+            if ( nw.letter == 'X') x = nw;
+            else if ( nw.letter == 'Y') y = nw;
+            words.add(nw);
+        }
     }
     
     @SuppressWarnings("CloneDoesntCallSuperClone")
@@ -179,6 +193,13 @@ public class GCode extends Point2D implements Iterable<GWord> {
             if ( w.letter == letter) return w.value;
         }
         return java.lang.Double.NaN;
+    }
+    
+    public boolean contains(char letter) {
+        for( GWord w : words) {
+            if ( w.letter == letter) return true;
+        }
+        return false;
     }
     
     /**
@@ -361,7 +382,8 @@ public class GCode extends Point2D implements Iterable<GWord> {
     }
     
     public void setG( int gValue) {
-        if ( getG() != -1) GCode.this.get('G').value = gValue;
+        GWord g = get('G');
+        if ( g != null) g.value = gValue;
         else words.add(0, new GWord('G', gValue));
     }
     
@@ -389,25 +411,22 @@ public class GCode extends Point2D implements Iterable<GWord> {
      * @param gcode a g-code line */
     public void set( String gcode) {
         clear();
-        while( (gcode != null) && (gcode.length()>0)) {
+        while( ! gcode.isBlank()) {
             GWord word = new GWord();
-            gcode = word.extractGWord( gcode);
+            gcode = word.grabGWord( gcode);
+            //GWord word = GWord.grabGWord( gcode);
             switch( word.letter) {
                 case '\n':
-                case GWord.UNDEF:        break;
+                case GWord.UNDEF:
+                    break;
                 default:
-                    if ( word.letter == 'X') x = word;
-                    else if ( word.letter == 'Y') y = word;
-                    words.add(word);
+                    add(word);
             }
         }
     }
-    
-    
+        
     public void set(char c, double value) {
-        GWord w = get(c);
-        if ( w == null) words.add( new GWord(c, value));
-        else w.value = value;
+        add( new GWord(c, value));
     }
     
     /**
@@ -547,14 +566,6 @@ public class GCode extends Point2D implements Iterable<GWord> {
         y.value = (origin.getY() + Math.sin(a)*d*ratioY);
     }
 
-    public boolean containsOnlyXorYCoordinate() {
-        int nbCoord = 0;
-        if ( x != null) nbCoord++;
-        if ( y != null) nbCoord++;
-        if ( GCode.this.get('Z') != null) nbCoord++;
-        return (size()>0) && (size() == nbCoord);
-    }
-
     /**
      * Return (I,J) or throw an Error !!
      */
@@ -578,15 +589,15 @@ public class GCode extends Point2D implements Iterable<GWord> {
         // TODO use ParserContext to handle relative moves, etc...
         if ( ! java.lang.Double.isNaN(newState.getX())) setX(newState.getX());
         if ( ! java.lang.Double.isNaN(newState.getY())) setY(newState.getY());
-        if ( newState.isAMove() || newState.isAGFeedWork()) setG(newState.getG());
+        if ( newState.isSet('G')) setG(newState.getG());
     }
 
     /**
-     * Return the getMiddlePointTo point between this point and <i>pt</i>
+     * Return the getHalfPointTo point between this point and <i>pt</i>
      * @param pt
      * @return 
      */
-    public GCode getMiddlePointTo(GCode pt) {
+    public GCode getHalfPointTo(GCode pt) {
         return new GCode((getX()+pt.getX())/2.,(getY()+pt.getY())/2.);
     }
     
@@ -629,6 +640,27 @@ public class GCode extends Point2D implements Iterable<GWord> {
      */
     GCode getMirrorPoint(GCode pt) {
         return new GCode( getG(), pt.getX() - getX() * 2, pt.getY() - getY() * 2);
+    }
+
+    /**
+     * Verify tha a Word exist and is defined with 'non nul' value. 
+     * @param letter the word to search
+     * @return true if GCode 'letter' exist and is not NaN, or if it is a comment.
+     */
+    boolean isSet(char letter) {
+        GWord w = get(letter); 
+        
+        if ( w != null) {
+            if ( w.isComment()) return w.text != null;
+            switch ( letter) {
+                case 'M':
+                case 'G':
+                    return w.getIntValue() != -1;
+                default:
+                    return ! java.lang.Double.isNaN(w.value);
+            }
+        }
+        return false;        
     }
 
 }

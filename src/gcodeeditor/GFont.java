@@ -48,7 +48,7 @@ public abstract class GFont {
     public static GFont decode(String encodedFontName) throws IOException {
         String f[] = encodedFontName.split(";");
         if ( f[0].equals("Hershey")) return HersheyFont.getFont(GFont.class, HersheyFont.getFontIndex(f[1]));
-        if ( f[0].equals("LCAD")) return LibreCadFont.getFont(f[1]);
+        if ( f[0].equals("LCAD")) return LibreCadFont.getFont(GFont.class, f[1]);
         if ( f[0].equals("System")) return new SystemFont(f[1]);
         return null;
     }

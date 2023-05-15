@@ -16,15 +16,20 @@
  */
 package gcodeeditor.gui;
 
-import gcodeeditor.GRBLControler;
+import java.io.File;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollBar;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
+import gcodeeditor.GRBLControler;
 
 /**
  * A frame to show GRBL messages and send commands.
@@ -40,14 +45,15 @@ public class JLogFrame extends javax.swing.JFrame {
     private boolean showStatus;
     private final GRBLControler grbl;
     
+    private static File lastLogFileDir;
+    
     public JLogFrame( GRBLControler grbl) {
         this.grbl = grbl;
         initComponents();
         attr = new SimpleAttributeSet();
         //StyleConstants.setForeground(attrs, Color.red);
         //StyleConstants.setItalic(attrs, true);
-        //StyleConstants.setBold(attrs, true);
-    
+        //StyleConstants.setBold(attrs, true);    
     }
     
     @SuppressWarnings("CallToPrintStackTrace")
@@ -56,17 +62,12 @@ public class JLogFrame extends javax.swing.JFrame {
         StyleConstants.setBold(attr, bold);
         try {
             if ( text.startsWith("<") && ! bold && ! showStatus) return;
-            final JScrollBar sb = jScrollPane3.getVerticalScrollBar();
-            boolean scrollDown = sb.getMaximum() - sb.getValue() - sb.getVisibleAmount() < 20;            
+            
             doc.insertString(doc.getLength(), text + (text.endsWith("\n")?"":"\n"), attr);
             nbLines++;
-            SwingUtilities.invokeLater( ()->{ 
-                if (scrollDown) {
-                    //jTextPaneCmd.setCaretPosition(doc.getLength() );
-                    sb.setValue( sb.getMaximum());
-                }
-                    
-            });
+            
+            final JScrollBar sb = jScrollPane3.getVerticalScrollBar();
+            SwingUtilities.invokeLater( ()->{ sb.setValue( sb.getMaximum()); });
             
         } catch (BadLocationException ex) { ex.printStackTrace(); }
     }
@@ -88,10 +89,12 @@ public class JLogFrame extends javax.swing.JFrame {
         jButtonClose = new javax.swing.JButton();
         jButtonClear = new javax.swing.JButton();
         jCheckBox1 = new javax.swing.JCheckBox();
+        jTextFieldSaveFile = new javax.swing.JTextField();
+        jCheckBoxSave = new javax.swing.JCheckBox();
         jPanel3 = new javax.swing.JPanel();
         jPanel4 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
-        jTextField1 = new javax.swing.JTextField();
+        jTextFieldCmd = new javax.swing.JTextField();
 
         setTitle("GRBL Communication windows");
         setAlwaysOnTop(true);
@@ -146,6 +149,30 @@ public class JLogFrame extends javax.swing.JFrame {
         gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
         jPanel2.add(jCheckBox1, gridBagConstraints);
 
+        jTextFieldSaveFile.setToolTipText("write raw GRBL commands to file");
+        jTextFieldSaveFile.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextFieldSaveFileActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridwidth = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        jPanel2.add(jTextFieldSaveFile, gridBagConstraints);
+
+        jCheckBoxSave.setText("Save");
+        jCheckBoxSave.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jCheckBoxSaveActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        jPanel2.add(jCheckBoxSave, gridBagConstraints);
+
         getContentPane().add(jPanel2, java.awt.BorderLayout.SOUTH);
 
         jPanel3.setLayout(new java.awt.BorderLayout());
@@ -156,13 +183,13 @@ public class JLogFrame extends javax.swing.JFrame {
         jLabel1.setText("Send ");
         jPanel3.add(jLabel1, java.awt.BorderLayout.LINE_START);
 
-        jTextField1.setColumns(20);
-        jTextField1.addActionListener(new java.awt.event.ActionListener() {
+        jTextFieldCmd.setColumns(20);
+        jTextFieldCmd.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextField1ActionPerformed(evt);
+                jTextFieldCmdActionPerformed(evt);
             }
         });
-        jPanel3.add(jTextField1, java.awt.BorderLayout.CENTER);
+        jPanel3.add(jTextFieldCmd, java.awt.BorderLayout.CENTER);
 
         getContentPane().add(jPanel3, java.awt.BorderLayout.NORTH);
 
@@ -185,9 +212,48 @@ public class JLogFrame extends javax.swing.JFrame {
         showStatus = jCheckBox1.isSelected();
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
-    private void jTextField1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField1ActionPerformed
-        if ( grbl.isConnected()) grbl.pushCmd( jTextField1.getText());
-    }//GEN-LAST:event_jTextField1ActionPerformed
+    private void jTextFieldCmdActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldCmdActionPerformed
+        if ( grbl.isConnected()) grbl.pushCmd( jTextFieldCmd.getText());
+    }//GEN-LAST:event_jTextFieldCmdActionPerformed
+    
+    private void jCheckBoxSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxSaveActionPerformed
+        if ( jCheckBoxSave.isSelected()) {
+            if ( jTextFieldSaveFile.getText().isBlank()) {
+                JFileChooser f = new JFileChooser();
+                f.setFileFilter(new FileNameExtensionFilter("GCode or log file (*.txt,*.log,*.gcode)", "log", "txt", "gcode"));
+                if ( lastLogFileDir != null) f.setCurrentDirectory(lastLogFileDir);
+        
+                int rVal = f.showSaveDialog(this);
+                if ( rVal == JFileChooser.APPROVE_OPTION) {
+                    lastLogFileDir = f.getSelectedFile().getParentFile();
+                    
+                    String fname = f.getSelectedFile().getAbsolutePath();
+                    if ( fname.indexOf('.') == -1) 
+                        fname = fname.concat(".gcode");
+                    if (new File( fname).exists())
+                        if ( JOptionPane.showConfirmDialog(this, fname + "\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
+                                return;
+
+                    jTextFieldSaveFile.setText(fname);             
+                }
+            }
+            try {
+                grbl.startFileLogger(jTextFieldSaveFile.getText());                        
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, "Error:\n"+ex.getLocalizedMessage(), "Saving...", JOptionPane.ERROR_MESSAGE);
+                jCheckBoxSave.setSelected(false);
+            }  
+        }
+        else grbl.stopFileLogger();
+    }//GEN-LAST:event_jCheckBoxSaveActionPerformed
+
+    private void jTextFieldSaveFileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldSaveFileActionPerformed
+        if ( jCheckBoxSave.isSelected()) {
+            // change or trunk outputFile
+            grbl.stopFileLogger();
+            jCheckBoxSaveActionPerformed(null);
+        }
+    }//GEN-LAST:event_jTextFieldSaveFileActionPerformed
 
     /**
      * @param args the command line arguments
@@ -222,13 +288,15 @@ public class JLogFrame extends javax.swing.JFrame {
     private javax.swing.JButton jButtonClear;
     private javax.swing.JButton jButtonClose;
     private javax.swing.JCheckBox jCheckBox1;
+    private javax.swing.JCheckBox jCheckBoxSave;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane3;
-    private javax.swing.JTextField jTextField1;
+    private javax.swing.JTextField jTextFieldCmd;
+    private javax.swing.JTextField jTextFieldSaveFile;
     private javax.swing.JTextPane jTextPaneCmd;
     // End of variables declaration//GEN-END:variables
 }

@@ -17,7 +17,7 @@
 package gelements;
 
 import gcodeeditor.GCode;
-import gcodeeditor.JBlocksViewer;
+import gcodeeditor.JProjectEditor;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
@@ -33,7 +33,7 @@ import java.util.Iterator;
 
 
 /**
- * A group of GBlock
+ * A group of GElement
  * @author Clément
  */
 public class GGroup extends GElement implements Iterator<GElement> {
@@ -98,7 +98,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return elements;
     }
     
-    public GElement getBlockFromPoint(GCode pt, double dmin, ArrayList<GElement> intoThis) {
+    public GElement getElementFromPoint(GCode pt, double dmin, ArrayList<GElement> intoThis) {
         GElement res = null; 
         ArrayList<GElement> l = (((intoThis == null) || intoThis.isEmpty()) ? elements : intoThis);
         for( GElement s : l) {
@@ -257,7 +257,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     }
 
     /** Remove elements from this group recursively.<br>
-     *  After the call, <i>selectedBlock</i> contains all element that was not in this group.
+     *  After the call, <i>selectedElement</i> contains all element that was not in this group.
      * @param toRemove */
     public void removeAllElements(ArrayList<GElement> toRemove) {
         ArrayList<GElement> keeped = new ArrayList<>();
@@ -631,61 +631,65 @@ public class GGroup extends GElement implements Iterator<GElement> {
      * @param recursive to optimizeMoves GGroup recursively
      * @return last position of sorted paths
      */
-    public static GCode optimizeMoves(ArrayList<GElement> selection, GCode lastPosition, boolean recursive) {
-        GCode lastPoint;
-        GCode lastPointOfCloser = null;
-        if ( selection.isEmpty()) return lastPosition;
+    public static GCode optimizeMoves(ArrayList<GElement> selection, Point2D lastPosition, boolean recursive) {
+        //GCode lastPointOfCloser;
+        if ( selection.isEmpty()) return (lastPosition != null) ? new GCode(lastPosition) : null;
         
         // optimizeMoves childs first
+        /*
         if ( recursive)
             selection.stream().filter((e) -> 
                     ( e instanceof GGroup)).forEach((e) ->
                         { ((GGroup) e).sort(recursive); });
+        */
         
-        if ( (selection.size() == 1) ) {
+        /*if ( (selection.size() == 1) ) {
             lastPoint = selection.get(0).getLastPoint();
-            return lastPoint == null ? lastPosition : lastPoint;
-        }       
+            return lastPoint;
+        }   */    
         
         GElement closer;
         for( int i = 0; i < selection.size(); i++) {
             GElement e = selection.get(i);
+            
             //System.out.println(i + "=" + e);
-            if ( e.getFirstPoint() == null) continue;
-            if (lastPosition==null)  {
-                lastPoint = e.getLastPoint();
-                lastPosition = lastPoint;
-            }
+            if ( e.getFirstPoint() == null) continue;           
+            if (lastPosition==null) lastPosition = e.getFirstPoint();
             double dmin = Double.POSITIVE_INFINITY;
+            
             closer=null;
-            for( int j = i+1; j < selection.size(); j++) {
+            for( int j = i; j < selection.size(); j++) {
                 e = selection.get(j);
                 final GCode firstPoint = e.getFirstPoint();
                 if ( firstPoint == null) continue;
                 final double d=lastPosition.distance(e.getFirstPoint());
                 
-                // TODO in the betters closed next paths, choose the first that have endPoint near all others
-                if ( (d<dmin) && ((lastPointOfCloser==null) ||
-                        (e.getLastPoint().distance(lastPosition) < lastPointOfCloser.distance(lastPosition)))) {
+                // TODO in the betters closed next paths : try choosing the first that have endPoint near all others
+                if ( (d<dmin) /*&& ((lastPointOfCloser==null) ||
+                        (e.getLastPoint().distance(lastPosition) < lastPointOfCloser.distance(lastPosition)))*/) {
                     closer = e;
-                    lastPointOfCloser=closer.getLastPoint();
+                    //lastPointOfCloser=closer.getLastPoint();
                     dmin=d;
                 }
             }
-            if ( closer == null) return lastPosition; // no more elements to optimizeMoves        
+            if ( closer == null) 
+                break; // no more elements to optimizeMoves 
+            
             selection.remove(closer);
-            selection.add(i+1,closer); 
+            selection.add(i,closer); 
             moveLength += dmin;
+            if ( recursive && (closer instanceof GGroup)) ((GGroup)closer).sort( lastPosition, true);
             lastPosition=closer.getLastPoint();
         }
-        return lastPosition;
+        return selection.get(selection.size()-1).getLastPoint();
     } 
     
     /** Reorder elements of this group.
+     * @param lastPosition
      * @param recursive
      * @return the last point of the last element of this group. */
-    public GCode sort( boolean recursive) {
-        GCode c = optimizeMoves(elements, null, recursive);
+    public GCode sort( Point2D lastPosition, boolean recursive) {
+        GCode c = optimizeMoves(elements, lastPosition, recursive);
         informAboutChange();
         return c;
     }
@@ -693,7 +697,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public static void exportToDXF(String DXFfileName, GElement element, boolean flattenSpline) throws FileNotFoundException, IOException {
         OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(DXFfileName));       
 	// header
-        out.write("999\nDXF created by SimpleGCodeVisualEditor v"+JBlocksViewer.SVGE_RELEASE+"\n");
+        out.write("999\nDXF created by SimpleGCodeVisualEditor v"+JProjectEditor.SVGE_RELEASE+"\n");
         out.write("  0\nSECTION\n");
         out.write("  2\nHEADER\n");
         out.write("  9\n$ACADVER\n1\nAC1006\n");
@@ -993,7 +997,8 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public Point2D getCenter() {        
         Rectangle2D bounds = null;        
         for ( GElement e : elements) {
-                if ( bounds == null)  bounds = e.getBounds();
+            if ( e.getBounds() != null)
+                if ( bounds == null) bounds = e.getBounds();
                 else bounds.add(e.getBounds());
         }
         if ( bounds == null) return null;

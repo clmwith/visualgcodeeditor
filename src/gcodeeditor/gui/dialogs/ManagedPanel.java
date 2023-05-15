@@ -18,6 +18,7 @@ package gcodeeditor.gui.dialogs;
 
 import java.awt.Color;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
 import net.objecthunter.exp4j.ExpressionBuilder;
 
 /**
@@ -56,7 +57,7 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
 
         String val = field.getText();
         
-        field.setForeground(Color.black);
+        field.setForeground((Color)UIManager.get("text"));
         if ( val.isBlank()) {
             if ( optional ) return Double.NEGATIVE_INFINITY;
             else val ="err";
@@ -76,7 +77,7 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
      */
     public static int parseIntExpression( JTextField field, boolean optional) {
 
-        field.setForeground(Color.black);
+        field.setForeground( (Color)UIManager.get("text"));
         if ( optional && field.getText().isBlank()) return Integer.MIN_VALUE;
         
         double n = ManagedPanel.parseExpression( field.getText());

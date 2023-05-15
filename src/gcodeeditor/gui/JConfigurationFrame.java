@@ -124,6 +124,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jRadioButton4.setSelected(conf.axeAIs==3);        
     }
     
+    /**
+     * Update content of ConfFrame with current conf values.
+     */
     public final void updateGUI() {
         updateButtons();
         if ( conf.configurationFileName != null) setTitle("Configuration - " + conf.configurationFileName);
@@ -147,6 +150,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldBSZ.setText(df.format(conf.backLashZ));
         jTextFieldShowLaserPosition.setText("" + conf.showLaserPowerValue);
         jTextFieldMinG1Move.setText("" + conf.minG1move);
+        jCheckBoxDarkTheme.setSelected( conf.guiTheme.equals("dark"));
     }
 
     /**
@@ -235,6 +239,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jLabel24 = new javax.swing.JLabel();
         jTextFieldToolDiameter = new javax.swing.JTextField();
         jLabel12 = new javax.swing.JLabel();
+        jCheckBoxDarkTheme = new javax.swing.JCheckBox();
         jPanelNotes = new javax.swing.JPanel();
         jScrollPane3 = new javax.swing.JScrollPane();
         jTextArea3 = new javax.swing.JTextArea();
@@ -825,18 +830,27 @@ public class JConfigurationFrame extends javax.swing.JFrame {
 
         jLabel19.setText("Power of the \"ShowLaser position\" ");
         jLabel19.setToolTipText("The power/spindle value to show laser position from the CNC");
-        jPanelEditor.add(jLabel19, new java.awt.GridBagConstraints());
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        jPanelEditor.add(jLabel19, gridBagConstraints);
 
         jTextFieldShowLaserPosition.setColumns(10);
-        jPanelEditor.add(jTextFieldShowLaserPosition, new java.awt.GridBagConstraints());
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        jPanelEditor.add(jTextFieldShowLaserPosition, gridBagConstraints);
 
         jLabel20.setText(" <= 10 = 1%");
-        jPanelEditor.add(jLabel20, new java.awt.GridBagConstraints());
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 3;
+        jPanelEditor.add(jLabel20, gridBagConstraints);
 
         jLabel23.setText("Paths precision");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         jPanelEditor.add(jLabel23, gridBagConstraints);
 
@@ -844,14 +858,14 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldMinG1Move.setToolTipText("the minimum distance between two G1 points");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridy = 3;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         jPanelEditor.add(jTextFieldMinG1Move, gridBagConstraints);
 
         jLabel24.setText(" mm");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 2;
-        gridBagConstraints.gridy = 1;
+        gridBagConstraints.gridy = 2;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
         jPanelEditor.add(jLabel24, gridBagConstraints);
 
@@ -860,7 +874,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldToolDiameter.setToolTipText("for pocket path");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 9;
+        gridBagConstraints.gridy = 4;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(5, 0, 0, 0);
         jPanelEditor.add(jTextFieldToolDiameter, gridBagConstraints);
@@ -868,11 +882,19 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jLabel12.setText("Tool diameter");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 9;
+        gridBagConstraints.gridy = 4;
         gridBagConstraints.fill = java.awt.GridBagConstraints.VERTICAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(3, 0, 0, 0);
         jPanelEditor.add(jLabel12, gridBagConstraints);
+
+        jCheckBoxDarkTheme.setText("Dark theme");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+        gridBagConstraints.insets = new java.awt.Insets(10, 0, 0, 0);
+        jPanelEditor.add(jCheckBoxDarkTheme, gridBagConstraints);
 
         jTabbedPane1.addTab("Editor", jPanelEditor);
 
@@ -897,7 +919,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_jRadioButton1ActionPerformed
 
     private void jRadioButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton2ActionPerformed
-        conf.axeAIs=1; updateButtons();
+        conf.axeAIs=1; 
+        updateButtons();
     }//GEN-LAST:event_jRadioButton2ActionPerformed
 
     private void jButtonSaveConfActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonSaveConfActionPerformed
@@ -955,6 +978,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             conf.backLashZ = Double.parseDouble(jTextFieldBSZ.getText());
             
             conf.minG1move = Double.parseDouble( jTextFieldMinG1Move.getText());
+            
+            conf.guiTheme = jCheckBoxDarkTheme.isSelected() ? "dark" : "";
             
             int v = Integer.decode( jTextFieldShowLaserPosition.getText());
             if ( v > 10) {
@@ -1099,6 +1124,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JButton jButtonUpdate;
     private javax.swing.JCheckBox jCheckBoxAdaptativePower;
     private javax.swing.JCheckBox jCheckBoxBackLash;
+    private javax.swing.JCheckBox jCheckBoxDarkTheme;
     private javax.swing.JComboBox<String> jComboBoxConfiguration;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;

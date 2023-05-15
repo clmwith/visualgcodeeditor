@@ -243,7 +243,7 @@ public class GSpline extends GElement {
 
     @Override
     public GCode getLastPoint() {
-        return getElementAt(1);
+        return end; // too slow => getElementAt(1);
     }
 
     @Override
@@ -616,7 +616,7 @@ public class GSpline extends GElement {
     private G1Path getFlatten() {
         if ( flatten == null) {
             updateShape();
-            ArrayList<GElement> flat = G1Path.makeBlocksFromArea("flatten-spline", shape);
+            ArrayList<GElement> flat = G1Path.makeElementsFromArea("flatten-spline", shape);
             flatten = flat.isEmpty() ? 
                         new G1Path("flatten-spline", start, end)
                         : (G1Path)flat.get(0);

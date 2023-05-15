@@ -112,13 +112,8 @@ public class JFontChooserPanel extends javax.swing.JPanel {
             hersheyFontModel = new javax.swing.DefaultComboBoxModel<>(HersheyFont.FONTS);
         
         if ( libreCadFontModel == null)
-            try {
-                LibreCadFont.getFont( 0);
-                libreCadFontModel = new DefaultComboBoxModel<>(LibreCadFont.LIBRECAD_FONTS.toArray(new String[LibreCadFont.LIBRECAD_FONTS.size()]));        
-            } catch (IOException ex) {
-                libreCadFontModel = new DefaultComboBoxModel<>();
-            }
-        
+            libreCadFontModel = new DefaultComboBoxModel<>(LibreCadFont.LIBRECAD_FONTS);        
+           
         if ( systemFontModel == null)
             systemFontModel= new DefaultComboBoxModel<>(SYSTEM_FONTS);
         
@@ -157,8 +152,8 @@ public class JFontChooserPanel extends javax.swing.JPanel {
                 if ( jComboBoxNames.getModel() != libreCadFontModel) 
                         jComboBoxNames.setModel(libreCadFontModel);
                 
-                for( int i =0 ; i < LibreCadFont.LIBRECAD_FONTS.size(); i++) {
-                    if ( LibreCadFont.LIBRECAD_FONTS.get(i).equals( p[1])) {
+                for( int i =0 ; i < LibreCadFont.LIBRECAD_FONTS.length; i++) {
+                    if ( LibreCadFont.LIBRECAD_FONTS[i ].equals( p[1])) {
                         jComboBoxNames.setSelectedIndex(i);
                         break;
                     }
@@ -208,7 +203,7 @@ public class JFontChooserPanel extends javax.swing.JPanel {
                     if ( jComboBoxNames.getModel() != libreCadFontModel) {
                         jComboBoxNames.setModel( libreCadFontModel);
                     }
-                    preview.setFont( (GFont)LibreCadFont.getFont( jComboBoxNames.getSelectedIndex()));
+                    preview.setFont( (GFont)LibreCadFont.getFont( this.getClass(),jComboBoxNames.getSelectedIndex()));
                     break;
                     
                 case 2: // System

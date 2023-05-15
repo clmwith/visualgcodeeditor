@@ -322,7 +322,7 @@ public class JScalePanel extends ManagedPanel {
 
     private void jTextFieldCopiesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldCopiesActionPerformed
         try {
-            int n = Integer.valueOf( jTextFieldCopies.getText());
+            int n = Integer.parseInt( jTextFieldCopies.getText());
             if ( n >= 1) {
                 jCheckBoxKeepOrig.setSelected( n != 1);
                 return;

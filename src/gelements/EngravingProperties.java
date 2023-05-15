@@ -31,7 +31,10 @@ public class EngravingProperties {
     boolean allAtOnce;
     double feed;
     int passCount, power;
-    double zStart, zEnd, passDepth;
+    double zStart, zEnd;
+    
+    /** always positive */
+    double passDepth;
     
     PropertieChangeListener listener;
     
@@ -64,7 +67,7 @@ public class EngravingProperties {
         passCount = 1;
     }
     
-    public void setChangeListener( PropertieChangeListener listener) {
+    public void addChangeListener( PropertieChangeListener listener) {
         this.listener = listener;
     }
     
@@ -95,12 +98,12 @@ public class EngravingProperties {
             if ( p[i].length()!=0)
                 switch(i) {
                     case 0: ep.enabled = p[i].equals("1"); break;
-                    case 1: ep.power = Integer.valueOf(p[i]); break;
-                    case 2: ep.feed = Double.valueOf(p[i]); break;
-                    case 3: ep.passCount = Integer.valueOf(p[i]); break;
-                    case 4: ep.zStart =  Double.valueOf(p[i]); break;
-                    case 5: ep.passDepth =  Double.valueOf(p[i]); break;
-                    case 6: ep.zEnd =  Double.valueOf(p[i]); break;
+                    case 1: ep.power = Integer.parseInt(p[i]); break;
+                    case 2: ep.feed = Double.parseDouble(p[i]); break;
+                    case 3: ep.passCount = Integer.parseInt(p[i]); break;
+                    case 4: ep.zStart =  Double.parseDouble(p[i]); break;
+                    case 5: ep.passDepth =  Double.parseDouble(p[i]); break;
+                    case 6: ep.zEnd =  Double.parseDouble(p[i]); break;
                     case 7: ep.allAtOnce = p[i].equals("1"); break;
                 }
         }
@@ -212,7 +215,7 @@ public class EngravingProperties {
                 if ( fixed) {
                     assert (pC > 0);
                     pC--;
-                    return Double.NaN;
+                    return cZ;
                 } else {
                     assert( cZ > zE);
                     cZ -= pD;
@@ -265,10 +268,11 @@ public class EngravingProperties {
     
     /**
      * verify/update passCount too.
-     * @param passDepth 
+     * @param passDepth is always positive or will be converted.
      */
     public void setPassDepth(double passDepth) {   
         if ( (Double.isNaN(this.passDepth) ^ Double.isNaN(passDepth)) || (Math.abs(this.passDepth - passDepth) > 10e-6 )) {
+            if (passDepth < 0.00001) passDepth = 0; // security round
             this.passDepth = passDepth;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.DEPTH);
             validatePass(false);
@@ -307,11 +311,14 @@ public class EngravingProperties {
                 
         if ( (priority2TheCount && (passCount > 0)) || Double.isNaN(passDepth) || ((passDepth==0) && (zStart != zEnd))) {
             if ( passCount == 0) passCount = 1;
-            setPassDepth((zStart - zEnd) / passCount);     
+            setPassDepth( Math.abs(zStart - zEnd) / passCount);     
             
         } else {
-            if ( (zStart - zEnd) < 10e-6) setPassDepth(0);
-            else if ( passDepth > 0) {
+            if ((zStart - zEnd) < 10e-6) {
+                setPassDepth(0);
+                passCount = 1;
+                zEnd = zStart;
+            } else if ( passDepth > 0) {
                 int pc = (int)((zStart - zEnd) / passDepth);
                 if (Math.abs((zStart - (pc * passDepth)) - zEnd) > 0.001) pc++;
                 if ( passCount == 0) passCount = 1;

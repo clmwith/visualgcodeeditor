@@ -298,7 +298,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
             lines.forEach((p) -> {
                 if ( p.isAPoint()) {
                     if ( bounds == null) 
-                        bounds = new Rectangle2D.Double(p.getX(), p.getY(), 0.00001, 0.00001);
+                        bounds = new Rectangle2D.Double(p.getX(), p.getY(), 10e-6, 10e-6);
                     else bounds.add(p);
                 }
             });
@@ -623,7 +623,11 @@ public class G1Path extends GElement implements Iterable<GCode> {
 
                 }
             }
-            bounds = (Rectangle2D.Double)renderedShape.getBounds2D();
+            if ( bounds == null) {
+                bounds = (Rectangle2D.Double)renderedShape.getBounds2D();
+                if (bounds.width == 0) bounds.width = 10e-6;
+                if (bounds.height == 0) bounds.height = 10e-6;
+            }
         }      
         
         final double zoomFactor = pc.zoomFactor;
@@ -676,43 +680,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
                 pc.lastPoint = p;
             }
         }
-        /*
-        
-        for( int n = 0; n < size(); n++) {
-            GCode p = lines.get(n);
-            if ( p.isAPoint()) {
-                int x = (int)(p.getX()*zoomFactor);
-                int y = -(int)(p.getY()*zoomFactor);
 
-                if ( pc.editedElement == this) {
-                    if ( pc.highlitedPoint == p ) { g.setColor(Color.white); g.fillOval(x-3,y-3, 6, 6); }
-                    else 
-                        if ( pc.selectedPoints.contains(p)) {
-                            g.setColor(PaintContext.SEL_COLOR1); 
-                            g.fillOval(x-3,y-3, 6, 6);
-                        } else {
-                            g.setColor(PaintContext.EDIT_COLOR);
-                            g.drawOval(x-3,y-3, 6, 6);  
-                        }
-                }
-                else
-                    g.setColor(pc.color);
-
-                // draw segment
-                if ( oldx==Integer.MAX_VALUE) {
-                    oldx=x;
-                    oldy=y;
-                    // first point
-                    if ( (pc.color != Color.darkGray) && pc.showStartPoints) {
-                        g.setColor(Color.red); 
-                        g.drawRect(x-3, y-3, 6, 6);
-                    }
-                } 
-                else g.drawLine(oldx, oldy, oldx=x, oldy=y);
-                pc.lastPoint = p;
-            }
-        } */
-        
 /*        if (bounds != null) {
             g.setColor(Color.red);
             if ( bounds.getWidth() < 10)
@@ -1150,7 +1118,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
                 else area.add(a);   
             }
 
-            newBlocks = G1Path.makeBlocksFromArea( "pocket", area);
+            newBlocks = G1Path.makeElementsFromArea( "pocket", area);
             elements.clear();
             added = false;
             for ( GElement b : newBlocks) {
@@ -1263,7 +1231,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return a;
     }
         
-    public static ArrayList<GElement> makeBlocksFromArea( String name, Shape a) {
+    public static ArrayList<GElement> makeElementsFromArea( String name, Shape a) {
         //GGroup res = new GGroup(name);
         final ArrayList<GElement> res = new ArrayList<>();
         G1Path currentBlock = null;
@@ -1353,20 +1321,6 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return result;
     }
 
-    /**
-     * Calculate the average distance of the 2 shapes
-     * @param b
-     * @param deltaMax
-     * @return the average distance &lt; deltaMax
-     */
-    public boolean isSameTo(G1Path b, double deltaMax) {
-        if ( getNbPoints() != b.getNbPoints()) return false;
-        double res = 0;
-        for(int i = 0; i < getNbPoints(); i++) {
-            res += getPoint(i).distance( b.getPoint(i));
-        }
-        return (res / getNbPoints()) < deltaMax;
-    }
 
     @Override
     public boolean contains(GCode point) {

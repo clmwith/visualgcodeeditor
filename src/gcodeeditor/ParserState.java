@@ -278,7 +278,7 @@ public class ParserState {
 
     
     public void updateTLO(String newTLO) {
-        states[TOOL_LENGTH].value = Double.valueOf(newTLO);
+        states[TOOL_LENGTH].value = Double.parseDouble(newTLO);
     }
 
     /**

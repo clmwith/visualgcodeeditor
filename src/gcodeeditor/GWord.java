@@ -19,6 +19,7 @@ package gcodeeditor;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Locale;
+import javax.accessibility.AccessibleText;
 
 /**
  * A word [char][numeric_value] that compose a line of G-Code
@@ -26,6 +27,7 @@ import java.util.Locale;
  */
 public class GWord {
     public static final char UNDEF = (char)255;
+    
     /** Format used to send numerical values to GRBL. */
     public static final DecimalFormat GCODE_NUMBER_FORMAT;
     static {
@@ -46,10 +48,14 @@ public class GWord {
     /** the text associated to lettres ';' and '(' */
     String text = null;
 
-    public GWord() { }
+    /**
+     * Create an undefined GWord
+     */
+    public GWord() {
+    }
     
     public GWord(char c, double val) {
-        letter = c;
+        letter = Character.toUpperCase(c);
         value = val;
     }
 
@@ -58,9 +64,14 @@ public class GWord {
      * @param s must start with a letter.
      */
     public GWord(String s) {
-        extractGWord(s);
+        grabGWord(s);
     }
     
+    void set(GWord nw) {
+        letter = nw.letter;
+        value = nw.value;
+        text = nw.text;
+    }
     
     /**
      * Clear the value or the text associated to the 'letter'
@@ -77,7 +88,12 @@ public class GWord {
         return clone;
     }
     
-    public final String extractGWord(String line) {
+    /**
+     * Take new values from 'line' and return the rest of the line or null
+     * @param line
+     * @return 
+     */
+    public final String grabGWord(String line) {
         boolean readLetter = true;
         if ( line.length() > 0) do {
             switch ( line.charAt(0)) {
@@ -111,21 +127,27 @@ public class GWord {
                     }
                     else { // read value
                         int i;
-                        for( i = 0; (i < line.length()) && ((line.charAt(i)=='-')||(line.charAt(i)=='.')||(Character.isDigit(line.charAt(i)))); ) i++;
+                        for( i = 0; (i < line.length()) && ((line.charAt(i)=='+')||(line.charAt(i)=='-')||(line.charAt(i)=='.')||(Character.isDigit(line.charAt(i)))); ) i++;
                         try {
-                            value = Double.parseDouble(line.substring(0,i));
+                            int s = 0;
+                            // save delta info
+                            if ((line.charAt(0) == '+')) {
+                                text = "" + line.charAt(0);
+                                s++;
+                            }                
+                            value = Double.parseDouble(line.substring(s,i));
                         } catch (Exception e) {
                             value = Double.NEGATIVE_INFINITY; 
                             readLetter=true;
                             //letter=UNDEF; 
                         }
                         line = line.substring(i);
-                        return (line.length()>0)?line:null;
+                        return line;
                     }        
             }
         } while ( line.length() > 0);
         if ( ! readLetter) letter = UNDEF; // we have read a letter without any value
-        return null;
+        return line;
     }
     
     public boolean isComment() {
@@ -185,8 +207,8 @@ public class GWord {
                     double d = Math.pow(10, GCODE_NUMBER_FORMAT.getMaximumFractionDigits());
                     double v = (Math.round(round(value) * d))/d;
                     return "" + letter + 
-                        (isIntValue(value)?Integer.toString((int)round(value)):
-                            GCODE_NUMBER_FORMAT.format(v));
+                        (isIntValue(value)?""+(int)round(value):
+                                    GCODE_NUMBER_FORMAT.format(v));
                 }               
         }
     }
@@ -226,9 +248,9 @@ public class GWord {
     /**
      * @param d1
      * @param d2
-     * @return true if abs(d1,d2) &lt; 10e-9
+     * @return true if abs(d1,d2) &lt; 10e-9, or if any is NaN.
      */
     public static boolean equals( double d1, double d2) {
-        return (Math.abs(d2 - d1) < 0.0000001);
+        return (Double.isNaN(d1) && Double.isNaN(d2)) || (Math.abs(d2 - d1) < 0.0000001);
     }
 }

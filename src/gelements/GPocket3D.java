@@ -16,6 +16,9 @@
  */
 package gelements;
 
+import gcodeeditor.GCode;
+import java.util.ArrayList;
+
 /**
  *
  * @author Clément Gérardin @ Marseille.fr
@@ -34,4 +37,37 @@ public abstract class GPocket3D extends G1Path {
      * @return the pass path or null if none
      */
     abstract public G1Path getPassBoundsPath(double depth);
+    
+    //
+    // Disable some G1Path functions below
+    //
+    @Override
+    public boolean concat(GElement get, double d) {
+        // return false;
+        throw new UnsupportedOperationException("Can't concat GPocket3D");
+    }
+        
+    @Override
+    protected void insertLine(int i, GCode line) { }
+
+    @Override
+    public GCode insertPoint(GCode newPoint) { return null; } 
+    
+    @Override
+    public boolean joinPoints(ArrayList<GCode> selectedPoints) { return false; }
+   
+    @Override
+    public GCode remove(int i) { return null; }
+    
+    @Override
+    public void remove(GCode line) { }    
+    
+    @Override
+    public void removeAll(ArrayList<GCode> lines) { }
+
+    @Override
+    public void removeByDistance(ArrayList<GCode> points, double distance) { }
+    
+    @Override
+    public void simplify(double angleMin, double distanceMax) { }
 }

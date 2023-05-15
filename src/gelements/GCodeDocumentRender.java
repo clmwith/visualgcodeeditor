@@ -23,9 +23,13 @@ import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.ArrayList;
 import gcodeeditor.Configuration;
-import gcodeeditor.JBlocksViewer;
+import gcodeeditor.JProjectEditor;
 import gcodeeditor.GRBLControler;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Class used to render the document into GCode to send to GRBL and|or save it in a file.
@@ -47,7 +51,7 @@ public class GCodeDocumentRender implements Runnable {
     boolean laserMode;   
     double currentZ, currentZStart, currentZEnd, currentZPassDepth;
 
-    private String outputFileName;
+    private FileWriter outputFile;
     
     
     public GCodeDocumentRender(Configuration conf,  RenderListener l) {
@@ -69,7 +73,7 @@ public class GCodeDocumentRender implements Runnable {
         currentGLine=null;
         currentPass=0;
         currentZ=currentZStart=currentZEnd=Double.NaN;   
-        outputFileName = null;
+        outputFile = null;
         stopThread = false;
         updateGUI();
     }
@@ -77,10 +81,15 @@ public class GCodeDocumentRender implements Runnable {
     /**
      * @param laserMode Use laser (without Z moves) ?
      * @param fileName  Save the job into a file ? (or null)
+     * @throws java.io.FileNotFoundException
      */
-    public void setParam(boolean laserMode, String fileName) {
+    public void setParam(boolean laserMode, String fileName) throws FileNotFoundException, IOException {
         this.laserMode = laserMode;
-        outputFileName = fileName;
+        if ( fileName != null) outputFile = new FileWriter( new File(fileName));
+        else {
+            if ( outputFile != null) outputFile.close();
+            outputFile = null;
+        }
     }
 
     /** Stop as soon as possible the job. (stop sending en exit thread) */
@@ -94,14 +103,20 @@ public class GCodeDocumentRender implements Runnable {
     @Override
     @SuppressWarnings({"CallToPrintStackTrace", "SleepWhileInLoop"})
     public void run() {
-        try {        
+        try {     
+            long t1 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
             
-            if (outputFileName != null) grbl.startFileLogger( outputFileName);
-
-            state = grbl.getParserState();
+            if (outputFile == null) {        
+                // send to GRBL
+                state = grbl.getParserState();
+            } else
+                // save to file
+                state = new ParserState();
+            
+            //grbl.startFileLogger( outputFileName);
             
             currentZ = currentZStart = currentZEnd = currentZPassDepth = Double.NaN;
-            sendCmd("; Generated with SimpleGCodeVisualEditor " + JBlocksViewer.SVGE_RELEASE);
+            sendCmd("; Generated with SimpleGCodeVisualEditor " + JProjectEditor.SVGE_RELEASE);
 
             if ( laserMode) {
                 sendCmd(conf.adaptativePower ? "M4" : "M3");
@@ -119,37 +134,66 @@ public class GCodeDocumentRender implements Runnable {
             } else
                 sendCmd("G0M5S0"); 
 
-            updateGUI();
-            // try { Thread.sleep(1000); } catch ( InterruptedException e) { } // Small delay
-            while (grbl.isConnected() && ! stopThread && 
-                    ((grbl.getState() == GRBLControler.GRBL_STATE_RUN)||(grbl.getState() == GRBLControler.GRBL_STATE_HOLD)))
-                try { Thread.sleep(100); } catch ( InterruptedException e) { }
-
             sendCmd("M2");
             sendCmd(";End of Job");
+            long t2 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+            System.out.println("Rendering duration (s) = " + (t2-t1)/1000);
+                        
+            // try { Thread.sleep(1000); } catch ( InterruptedException e) { } // Small delay
+            while (grbl.isConnected() && ! stopThread && 
+                    ((grbl.getState() == GRBLControler.GRBL_STATE_RUN)||(grbl.getState() == GRBLControler.GRBL_STATE_HOLD))) {
+                updateGUI();
+                try { Thread.sleep(330); } catch ( InterruptedException e) { }            
+            }
+
             // Wait task finished
-            while( ! grbl.isControlerIdle()) try { Thread.sleep(100); } catch ( InterruptedException e) { }
-            grbl.stopFileLogger();            
+            while( ! grbl.isControlerIdle()) try { Thread.sleep(10); } catch ( InterruptedException e) { }
+            grbl.stopFileLogger();                            
         }
         catch ( Exception e) { 
             e.printStackTrace(); 
-            grbl.stopFileLogger();
-            grbl.softReset();  
+            
+            if (outputFile != null) {
+                try {
+                    outputFile.close();
+                } catch (IOException ex) {
+                    listener.error("IOError :\n"+ex.getLocalizedMessage());
+                }
+                outputFile = null;
+            } else {
+                //grbl.stopFileLogger();
+                grbl.softReset();  
+            }
             listener.error("Exception in GCode Execution Thread :\n"+e.getLocalizedMessage());
-        }  
+        }    
         listener.executionFinished();
     }
 
+    /**
+     * Used to send GCode to GRBL or into outputFile.
+     * @param cmd The gcode line to send
+     * @throws IOException 
+     */
     @SuppressWarnings("SleepWhileInLoop")
     private void sendCmd(String cmd) throws IOException {
         if ( stopThread) return;
         
-        while ( grbl.isConnected() && (grbl.getWaitingCommandQueueSize() > 3)) 
-            try { Thread.sleep(20); } catch ( InterruptedException e) { }
-        grbl.pushCmd( cmd);
+        if ( outputFile != null) outputFile.append(cmd);
+        else {    
+            while ( grbl.isConnected() && (grbl.getWaitingCommandQueueSize() > 3)) 
+                try { Thread.sleep(20); } catch ( InterruptedException e) { }
+            grbl.pushCmd( cmd);
+        }
         state.updateContextWith(new GCode(cmd)); // TODO: use grbl.parserState ?
     }
 
+    /**
+     * Send the GCode corresponding of this group (with sendCmd function)
+     * @param group
+     * @param currentProperties
+     * @param firstPass
+     * @throws IOException 
+     */
     private void sendGroup(GGroup group, EngravingProperties currentProperties, boolean firstPass) throws IOException {                                                                                                 
         if ( ! group.isEnabled()) return;
         currentGroup=group;
@@ -172,8 +216,7 @@ public class GCodeDocumentRender implements Runnable {
             }
             return;
         }
-        
-        
+            
         EngravingProperties.udateHeritedProps(currentProperties, groupProp);
         if ( groupProp.isAllAtOnce()) {
             // Execute all content as simple(s) flat paths at fixed Z
@@ -241,8 +284,13 @@ public class GCodeDocumentRender implements Runnable {
         if ( currProps.getPower() != -1) sendCmd("S" + GWord.GCODE_NUMBER_FORMAT.format(currentPower=currProps.getPower()));
 
         if ( onePass) {
-            // flat execution mode of the path
-            sendAllLines((G1Path)path.flatten());
+            // flat execution mode of the path wiout Z positioning
+            if ( (path instanceof GDrillPoint) && firstPass) {
+                // Special case for Drill point emulation
+                sendGDrillPoint((GDrillPoint) path, currProps);
+
+            } else
+                sendAllLines(path);
 
         } else {
             // MultiPass mode : remplace PassParameters and execute the content for each Pass
@@ -251,11 +299,7 @@ public class GCodeDocumentRender implements Runnable {
                 // Special case for Drill point emulation
                 sendGDrillPoint((GDrillPoint) path, currProps);
 
-            } else {
-                G1Path flatPath;
-                if ( path instanceof G1Path) flatPath = (G1Path) path;
-                else flatPath = (G1Path)path.flatten();
-                
+            } else {           
                 sendCmd(";START_PATH:"+path.getName());
                 sendCmd(";PASS_COUNT:"+currProps.getPassCount());
                 
@@ -277,8 +321,8 @@ public class GCodeDocumentRender implements Runnable {
                             sendGroup(G1Path.makePocket(l, conf.toolDiameter/2), ep, false);
                         }
                         
-                    } else {
-                        sendAllLines(flatPath);
+                    } else {                        
+                        sendAllLines(path);
                     }
                 }  
             }
@@ -293,8 +337,9 @@ public class GCodeDocumentRender implements Runnable {
      * @param path
      * @throws IOException 
      */
-    private void sendAllLines(G1Path path) throws IOException {
+    private void sendAllLines(GElement path) throws IOException {
         if (path==null) return;
+        assert( ! (path instanceof GGroup));
 
         if ( !(path instanceof G1Path))
             path = path.flatten();
@@ -305,8 +350,8 @@ public class GCodeDocumentRender implements Runnable {
             GCode l = (GCode) path.getLine(currentBlockLine).clone();
             if ( l.isComment()) continue;
           
-            if ((l.getG()==0) && l.isAPoint() && (l.distance(state.getGXYPositon()) > 0.00001))
-                safeMoveTo(l, currentZ, Double.NaN);             
+            if (l.getG()==0) 
+                safeMoveTo(l, currentZ, conf.safeZHeightForMoving);             
             else
                 sendCmd(currentGLine=l.toGRBLString());
         }    
@@ -339,7 +384,7 @@ public class GCodeDocumentRender implements Runnable {
         if ( currentPassCount < 1) currentPassCount = 1;
 
          // Go up if we must translate to destination
-        safeMoveTo(l, Double.NaN, safeZ);                     
+        safeMoveTo(l, safeZ, safeZ);                     
         
         if ( Double.isNaN(currentZPassDepth)) { 
             // one shot drill
@@ -366,34 +411,59 @@ public class GCodeDocumentRender implements Runnable {
     }
 
     /**
-     * Used to go safely to start position of a new path.
+     * Used to go safely to position (X,Y,zLevelDestination). 
      * 
-     * @param moveAtZheight start with a <i>G0 Zxx</i> to go to destination if needed
-     * @param destination   send a G0 <i>destination.getX()</i>  <i>destination.getY()</i> if needed
+     * - It goes to Z 'moveAtZheight' (if needed),
+     * - move to (X,Y), 
+     * - then go down to Z 'zLevelDestination' (if needed)
+     * 
+     * @param moveAtZSafeheight start with a <i>G0 Zxx</i> to go to destination if needed
+     * @param destinationXYPoint  the destination (X,Y) to move to
      * @param zLevelDestination after translate, if not NaN, do a G1 to this Z if needed
      * @throws IOException 
      */
-    private void safeMoveTo(GCode destination, double zLevelDestination, double moveAtZheight) throws IOException {
-        if (laserMode || Double.isNaN(currentZ)) return;
-        double d = destination.distance(state.getGXYPositon());
-        int g = (state.get(ParserState.MOTION).getIntValue() != 0) ? 1 : 0;
-
-        // Go UP ?
-        if (Double.isNaN(state.getZ()) || Double.isNaN(d) || (d>0.0001)) 
-                sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(moveAtZheight));
-        // translate to destination
-        if ( Double.isNaN(d) || (d>0.0001))
-                sendCmd(new GCode(0,destination.getX(), destination.getY()).toGRBLString());
-
-        // Z (engraving) translate to start level ?
-        if ( Double.isNaN(zLevelDestination)) return;
-        if( Double.isNaN(state.getZ()) || Math.abs(state.getZ() - zLevelDestination) > 0.00001)
-                sendCmd("G1"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
+    private void safeMoveTo(GCode destinationXYPoint, double zLevelDestination, double moveAtZSafeheight) throws IOException {
+        assert( destinationXYPoint.isAPoint());
         
+        if ( Double.isNaN(zLevelDestination) ) {
+            // nothing to do just go to destination
+            sendCmd(destinationXYPoint.toGRBLString());
+            return;
+        }        
+        
+        destinationXYPoint = destinationXYPoint.clone();
+        final GCode curPos = state.getGXYPositon();
+        final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;
+        
+        if ( ! curPos.isAPoint() || ! curPos.isAtSamePosition(destinationXYPoint)) {
+            // We have to move to (X,Y)                                              
+                
+            if ( laserMode) {
+                // go to destination with Z change at same time
+                destinationXYPoint.setG(0);
+                destinationXYPoint.set('Z', zLevelDestination);                
+
+            } else {
+                // goto Z moveAtZheight before moving
+                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(moveAtZSafeheight));
+                destinationXYPoint.setG(1);
+                sendCmd(destinationXYPoint.toGRBLString());                
+            }                
+        }
+        
+        // We are in place now, juste change Z if needed
+        if ( Double.isNaN(curZ) || (Math.abs(curZ - zLevelDestination) > 0.00001)) {  
+            if (laserMode) sendCmd( destinationXYPoint.toGRBLString());
+            else
+                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
+
+        }                
         updateGUI();
     }
     
-    
+    /**
+     * Update public variables and call updateGui of listeners.
+     */
     private void updateGUI() {
         ExecutionState s = new ExecutionState();
         if ( currentGroup != null) {
@@ -418,14 +488,11 @@ public class GCodeDocumentRender implements Runnable {
         s.currentZEnd= currentZEnd;
         s.currentZDepth = currentZPassDepth;
         EventQueue.invokeLater(() -> { listener.updateGUI( s); });
-    }
-
-    private Exception Error(String string) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
+    }   
     
-    
+    /**
+     * The actual state of content rending, to send to RenderListenners.
+     */
     public class ExecutionState {
         public String currentGroupName;
         public String currentElementName;

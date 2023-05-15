@@ -4,8 +4,6 @@
  * and open the template in the editor.
  */
 
-import gcodeeditor.GCode;
-import gcodeeditor.JBlocksViewer;
 import gcodeeditor.gui.JEditorFrame;
 import gelements.GArc;
 import gelements.GMixedPath;
@@ -14,7 +12,6 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
-
 
 
 /**
@@ -36,7 +33,7 @@ public class Main {
             
             // TODO code application logic here
             // java.awt.EventQueue.invokeLater(() -> {
-                   
+                               
             try {
             if ( System.getProperty("user.home").startsWith("/")) {
                 java.io.File prefRep = new java.io.File(System.getProperty("user.home")+"/.java/.userPrefs");
@@ -45,17 +42,17 @@ public class Main {
             
             
             try {                
-                if ( args.length > 1) {  
+                if ( args.length > 0) {  
                     for( String arg : args) {
                         if ( arg.endsWith(".svg")) {
                             JEditorFrame f1 = new JEditorFrame(false, true);
-                            f1.addGElement(f1.blocksviewer.readSVGfile(arg)); 
+                            f1.addGElement(f1.projectViewer.readSVGfile(arg)); 
                             EventQueue.invokeLater( new Runnable() {                                
                                 @Override
                                 public void run() { f1.setVisible(true); } });
                         } else if ( arg.endsWith(".dxf")) {
                             JEditorFrame f2 = new JEditorFrame(false, true);
-                            f2.blocksviewer.importDXF(arg);                        
+                            f2.projectViewer.importDXF(arg);                        
                             EventQueue.invokeLater( new Runnable() {                                
                                 @Override
                                 public void run() { f2.setVisible(true); } });
@@ -73,11 +70,11 @@ public class Main {
                     //f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -360));
                     //f.addGElement( new GArc("arc", new GCode(0,0), 50, 45, -150));
                     //f.addGElement( new GArc("arc", new GCode(100,100), 50, 45, 150));
-                    //f.addGElement( JBlocksViewer.importGCODE("/tmp/toto.gcode", null));
-                    //f.addGElement(f.blocksviewer.readSVGfile("/tmp/dessin.svg"));
-                    //f.addGElement(f.blocksviewer.readSVGfile("/tmp/tools-report-bug.svg")); // tools-report-bug
-                    //f.addGElement(f.blocksviewer.readSVGfile("/tmp/coeur2.svg"));
-                    //f.addGElement(JBlocksViewer.importGCODE2("/home/clm/Documents/Perso/Créations/Imprimante3D/CNC_Fraisage/piecesV4/gabari_percage_3axes.gcode")); 
+                    //f.addGElement( JProjectEditor.importGCODE("/tmp/toto.gcode", null));
+                    //f.addGElement(f.projectViewer.readSVGfile("/tmp/dessin.svg"));
+                    //f.addGElement(f.projectViewer.readSVGfile("/tmp/tools-report-bug.svg")); // tools-report-bug
+                    //f.addGElement(f.projectViewer.readSVGfile("/tmp/coeur2.svg"));
+                    //f.addGElement(JProjectEditor.importGCODE2("/home/clm/Documents/Perso/Créations/Imprimante3D/CNC_Fraisage/piecesV4/gabari_percage_3axes.gcode")); 
                     //f.addGElement(GArc.makeBulge(new GCLine(1.5,0), new GCLine(0,1.5), -0.414214));
                     //new GArc("circle", new GCLine(1.5,1.5), 1.5, 90, 90));
                     /* LibreCadFont font;
@@ -91,7 +88,7 @@ public class Main {
                     EventQueue.invokeLater( new Runnable() {
                         @Override
                         public void run() {
-                            f.setVisible(true);                        
+                            f.setVisible(true);                             
                         }
                     });
                 }
@@ -99,20 +96,20 @@ public class Main {
                     JOptionPane.showMessageDialog(null, ex.getLocalizedMessage(), "Error",  JOptionPane.ERROR_MESSAGE);
                     ex.printStackTrace();
             }
-            //f.addGElement( GBlock.makeCircle(new Point2D.Double(0,0), 24, 30));
+            //f.addGElement( GElement.makeCircle(new Point2D.Double(0,0), 24, 30));
             // try {
             
-            /*     GBlock s = new GBlock("triangle");
+            /*     GElement s = new GElement("triangle");
             s.addGElement( new Point(10, 10, 0));
             s.addGElement( new Point(100, 30, 0));
             s.addGElement( new Point(50, 100, 0));
             s.addGElement( new Point(10, 10, 0));
             f.addGElement( s);*/
-            //f.addGElement( GBlock.getPathForText(new java.awt.Font("Arial-10", 0, 30), "Super", new GCLine(10,10)));
+            //f.addGElement( GElement.getPathForText(new java.awt.Font("Arial-10", 0, 30), "Super", new GCLine(10,10)));
             /*      try {
             // f.addGElement(shapeList);
             
-            f.blocksviewer.importDXF("/home/clm/Documents/Perso/Machine_CNC/Laser/Creations/plateau.dxf");
+            f.projectViewer.importDXF("/home/clm/Documents/Perso/Machine_CNC/Laser/Creations/plateau.dxf");
             
             //f.shapeviewer.importDXF("/home/clm/Documents/Perso/Machine_CNC/#chevre.dxf");
             //f.shapeviewer.importDXF("/home/clm/Documents/Perso/Machine_CNC/Laser/Creations/soleil.dxf");

@@ -40,8 +40,15 @@ import java.util.regex.Pattern;
  */
 public class LibreCadFont extends GFont {
     
-    public static String LIBRECAD_FONT_DIR = "/usr/share/librecad/fonts";
-    public static final ArrayList<String>LIBRECAD_FONTS = new ArrayList<>();
+    public static final String[] LIBRECAD_FONTS = { "amiri-regular","azomix_i",
+        "azomix","cursive","cyrillic_ii","gothgbt","gothgrt","gothitt","greekc",
+        "greekcs","greek_ol","greekp","greeks","iso3098_i","iso3098","iso","italicc",
+        "italiccs","italict","kochigothic","kochimincho","kst32b","lc_opengost-ar",
+        "lc_opengost-br","OpenGostTypeA-Regular","OpenGostTypeB-Regular","romanc",
+        "romancs","romand","romanp","romansi","romans","romant","scriptc","scripts",
+        "simplex","standard","syastro","symap","symath","symbol","symbol_misc1",
+        "symbol_misc2","symeteo","symusic","unicode","wqy-unicode" };
+    
     public static boolean fontNameLoaded = false;
     static final HashMap<Integer,LibreCadFont> FONTS = new HashMap<>();
     
@@ -68,27 +75,28 @@ public class LibreCadFont extends GFont {
      * @return the new font or null if not found
      * @throws java.io.IOException
      */
-    public static LibreCadFont getFont( String name) throws IOException {
-        loadAvailableFonts();
+    public static LibreCadFont getFont(Class<?> me,  String name) throws IOException {
+        //loadAvailableFonts();
         int i=0;
         for( String s : LIBRECAD_FONTS)
             if ( s.equals(name))
-                return getFont( i);
+                return getFont(me, i);
             else
                 i++;
         return null;
     }
     
-    public static LibreCadFont getFont( int fontNumber) throws IOException {    
-        loadAvailableFonts();
-        if ( fontNumber > LIBRECAD_FONTS.size()) return null;
+    public static LibreCadFont getFont(Class<?> me, int fontNumber) throws IOException {    
+        //loadAvailableFonts();
+        if ( fontNumber > LIBRECAD_FONTS.length) return null;
         if ( FONTS.get(fontNumber) == null)
-            FONTS.put( fontNumber, new LibreCadFont(LIBRECAD_FONTS.get(fontNumber), 
-                                        new FileInputStream(new File(LIBRECAD_FONT_DIR+"/"+LIBRECAD_FONTS.get(fontNumber)+".lff"))));
+            FONTS.put( fontNumber, new LibreCadFont(LIBRECAD_FONTS[fontNumber], 
+                            me.getResourceAsStream("/fonts/librecad/" 
+                            + "/" + LIBRECAD_FONTS[fontNumber]+".lff")));
         
         return FONTS.get(fontNumber);
     }
-    
+       
     /**
      * Create LibreCad (.lff) font from a stream.
      * @param  name the name without "LCAD;" nor extension ".lff"
@@ -190,20 +198,6 @@ public class LibreCadFont extends GFont {
         });
     }
     
-    static void loadAvailableFonts()
-    {
-        if ( ! fontNameLoaded) {
-            File dir = new File(LIBRECAD_FONT_DIR);
-            if ( dir.isDirectory()) {
-
-                for ( File f : dir.listFiles())
-                    if ( f.getName().endsWith(".lff"))
-                        LIBRECAD_FONTS.add( f.getName().split("\\.")[0]);
-            }
-            fontNameLoaded = true;
-            LIBRECAD_FONTS.sort((String o1, String o2) -> o1.compareToIgnoreCase(o2));
-        }
-    }
     
     public LibreCadFont(File fromFile) throws FileNotFoundException, IOException {
         this( "file|"+fromFile.getAbsolutePath(), new FileInputStream( fromFile));

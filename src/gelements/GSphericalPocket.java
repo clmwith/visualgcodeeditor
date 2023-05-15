@@ -18,7 +18,7 @@ package gelements;
 
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
-import gcodeeditor.JBlocksViewer;
+import gcodeeditor.JProjectEditor;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -236,8 +236,7 @@ public class GSphericalPocket extends GPocket3D {
             for ( GCode p : pc.selectedPoints) {
                 final int x = (int)(p.getX()*zoomFactor), y = -(int)(p.getY()*zoomFactor);
                 g.fillOval(x-3,y-3, 6, 6);   
-            }
-        
+        }       
         
         g.setColor(Color.darkGray);
         g.drawOval((int)((center.getX()-radius)*zoomFactor), (int)((-center.getY()-radius)*zoomFactor), 
@@ -261,7 +260,7 @@ public class GSphericalPocket extends GPocket3D {
         
         if ( (pc.editedElement == this) || pc.showStartPoints) g.setColor(Color.red);     
         else g.setColor(Color.darkGray);
-        JBlocksViewer.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),3);
+        JProjectEditor.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),3);
         if ( (pc.color!=Color.darkGray) && pc.showStartPoints) {
             g.setColor(Color.red); 
             final int sx = (int)(startPoint.getX()*zoomFactor);
@@ -293,13 +292,6 @@ public class GSphericalPocket extends GPocket3D {
         if ( p == center) return 1;
         return -1;
     } 
-
-    @Override
-    public boolean isSameTo(G1Path b, double deltaMax) {
-        if ( ! (b instanceof GSphericalPocket )) return false;
-        final GSphericalPocket sp = (GSphericalPocket)b;
-        return (center.distance(sp.center)<0.000001) && (radius == sp.radius) && (inlayDepth==sp.inlayDepth);
-    }
 
     @Override
     public void removeByDistance(ArrayList<GCode> points, double d) { }
@@ -351,25 +343,6 @@ public class GSphericalPocket extends GPocket3D {
     }
 
     @Override
-    public void simplify(double angleMin, double distanceMax) { }
-
-    @Override
-    public void removeAll(ArrayList<GCode> points) { }
-
-    @Override
-    public GCode remove(int index) { 
-        return null;
-    }
-
-    @Override
-    public void remove(GCode l) { }
-
-    @Override
-    public boolean joinPoints(ArrayList<GCode> selectedPoints) { 
-        return false;
-    }
-
-    @Override
     public boolean movePoints(ArrayList<GCode> selectedPoints, double dx, double dy) {
         final boolean isCenter, isStart = selectedPoints.contains(startPoint);
         if ( (isCenter = selectedPoints.contains(center)) & isStart) 
@@ -379,7 +352,7 @@ public class GSphericalPocket extends GPocket3D {
             else if ( isStart) startPoint.translate(dx, dy);
             else return false;
         }
-        informAboutChange();
+        recalculate();
         return true; 
     }
     
@@ -418,11 +391,6 @@ public class GSphericalPocket extends GPocket3D {
         center.translate(dx, dy);
         startPoint.translate(dx, dy);
         informAboutChange();
-    }
-
-    @Override
-    public boolean concat(GElement shape, double tolerance) {
-        return false;
     }
     
     @Override

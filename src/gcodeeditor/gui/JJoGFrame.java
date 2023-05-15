@@ -501,7 +501,7 @@ public class JJoGFrame extends javax.swing.JFrame {
         if ( o instanceof JTextField) {
             String val = ((JTextField) o).getText();
             try {
-                double d = Double.valueOf(val);
+                double d = Double.parseDouble(val);
                 if ( d < 1000)
                 ((JTextField) o).setText(NUM_FORMAT.format( (d * 10)));
             }
@@ -514,7 +514,7 @@ public class JJoGFrame extends javax.swing.JFrame {
         if ( o instanceof JTextField) {
             String val = ((JTextField) o).getText();
             try {
-                double d = Double.valueOf(val);
+                double d = Double.parseDouble(val);
                 if ( d > 0.0001)
                 ((JTextField) o).setText(NUM_FORMAT.format((d / 10)));
             }
@@ -527,7 +527,7 @@ public class JJoGFrame extends javax.swing.JFrame {
         if ( o instanceof JTextField) {
             String val = ((JTextField) o).getText();
             try {
-                double d = Double.valueOf(val);
+                double d = Double.parseDouble(val);
                 int m = 0;
                 if ( d > 1) {
                     while( d >= 10) { m++; d /= 10; }
@@ -547,7 +547,7 @@ public class JJoGFrame extends javax.swing.JFrame {
         if ( o instanceof JTextField) {
             String val = ((JTextField) o).getText();
             try {
-                double d = Double.valueOf(val);
+                double d = Double.parseDouble(val);
                 int m = 0;
                 if ( d > 1) {
                     while( d >= 10) { 
@@ -635,7 +635,7 @@ public class JJoGFrame extends javax.swing.JFrame {
 
     private void jTextFieldWyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldWyActionPerformed
         try {
-            double d = Double.valueOf( jTextFieldWz.getText());
+            double d = Double.parseDouble( jTextFieldWz.getText());
             grbl.pushCmd("G10L20Y"+GWord.roundForGCODE(d));         
         } catch ( NumberFormatException e) { }
     }//GEN-LAST:event_jTextFieldWyActionPerformed
@@ -658,14 +658,14 @@ public class JJoGFrame extends javax.swing.JFrame {
 
     private void jTextFieldWzActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldWzActionPerformed
         try {
-            double d = Double.valueOf( jTextFieldWz.getText());
+            double d = Double.parseDouble( jTextFieldWz.getText());
             grbl.pushCmd("G10L20Z"+GWord.roundForGCODE(d));         
         } catch ( NumberFormatException e) { }
     }//GEN-LAST:event_jTextFieldWzActionPerformed
 
     private void jTextFieldWxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldWxActionPerformed
         try {
-            double d = Double.valueOf( jTextFieldWz.getText());
+            double d = Double.parseDouble( jTextFieldWz.getText());
             grbl.pushCmd("G10L20X"+GWord.roundForGCODE(d));         
         } catch ( NumberFormatException e) { }
     }//GEN-LAST:event_jTextFieldWxActionPerformed
@@ -678,8 +678,9 @@ public class JJoGFrame extends javax.swing.JFrame {
     private void jog(int x, int y, int z) {
         Object o = jComboBoxDistance.getEditor().getEditorComponent();
         if ( o instanceof JTextField) {
-            double d = Double.valueOf(((JTextField) o).getText());
-            grbl.jog(d * x, d * y, d * z, 5000, true);
+            double d = Double.parseDouble(((JTextField) o).getText());
+            if ( grbl.isConnected() )
+                grbl.jog(d * x, d * y, d * z, 5000, true);
         }
     }
     /**

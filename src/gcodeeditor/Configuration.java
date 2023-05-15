@@ -63,6 +63,7 @@ public class Configuration  {
     public int showLaserPowerValue;
     public double minG1move;
     public String CNCnotes;
+    public String guiTheme;
 
     public Configuration() {  
         getDefault();
@@ -95,6 +96,7 @@ public class Configuration  {
         toolDiameter = prefs.getDouble("toolDiameter", 3);
         showLaserPowerValue = prefs.getInt("showLaserPowerValue", DEFAULT_SHOW_LASER_POWER);             
         minG1move = prefs.getDouble("minG1move", 1);
+        guiTheme  = prefs.get("guiTheme", "");
         CNCnotes = prefs.get("CNCnote", "");
     }
     
@@ -150,6 +152,7 @@ public class Configuration  {
             toolDiameter = Double.parseDouble(v[18]);                  
             showLaserPowerValue = Integer.parseInt(v[19]);
             minG1move = Double.parseDouble(v[20]);
+            guiTheme  = v[21];
             } catch ( IndexOutOfBoundsException e) {
                 
             }
@@ -189,7 +192,7 @@ public class Configuration  {
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JBlocksViewer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
@@ -200,7 +203,7 @@ public class Configuration  {
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JBlocksViewer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
@@ -232,11 +235,12 @@ public class Configuration  {
             prefs.putDouble("toolDiameter", toolDiameter);
             prefs.putInt( "showLaserPowerValue", showLaserPowerValue);
             prefs.putDouble("minG1move", minG1move);
+            prefs.put("guiTheme", guiTheme);
             prefs.put("CNCnotes", CNCnotes);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JBlocksViewer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -249,7 +253,7 @@ public class Configuration  {
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JBlocksViewer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
