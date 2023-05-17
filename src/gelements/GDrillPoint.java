@@ -16,6 +16,7 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
 import java.awt.Color;
@@ -84,7 +85,7 @@ public final class GDrillPoint extends G1Path {
                     case 'R': break;
                     case 'P': hasP=true; break;
                     case 'Q': hasQ=true; break;
-                    case 'Z': properties.zEnd = w.getValue(); ignore=true; break;
+                    case 'Z': properties.setZEnd(w.getValue()); ignore=true; break;
                     default:
                         ignore=true;
                 }

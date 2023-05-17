@@ -22,7 +22,7 @@ import gcodeeditor.LibreCadFont;
 import gcodeeditor.SystemFont;
 import gelements.GElement;
 import gelements.GGroup;
-import gelements.PaintContext;
+import gcodeeditor.PaintContext;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;

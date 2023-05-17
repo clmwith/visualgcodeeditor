@@ -18,7 +18,6 @@ package gcodeeditor;
 
 import gelements.GElement;
 import gelements.GGroup;
-import gelements.PaintContext;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;

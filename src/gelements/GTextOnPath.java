@@ -16,6 +16,8 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.Segment2D;
 import gcodeeditor.GCode;
 import gcodeeditor.GFont;
 import gcodeeditor.GWord;

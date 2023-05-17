@@ -18,7 +18,6 @@ package gcodeeditor;
 
 import gelements.GGroup;
 import gelements.G1Path;
-import gelements.PaintContext;
 import java.awt.Font;
 
 /**

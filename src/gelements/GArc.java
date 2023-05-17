@@ -16,9 +16,11 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.Segment2D;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
-import gcodeeditor.JProjectEditor;
+import gcodeeditor.gui.JProjectEditorPanel;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -497,7 +499,7 @@ public class GArc extends GElement {
             g.setColor(Color.DARK_GRAY);
             Segment2D t = new Segment2D(start, end).getTangentSegment();
             GCode pt = t.getClosestPointFrom( center);
-            JProjectEditor.drawCross(g, new Point((int)(pt.getX()*zoomFactor),-(int)(pt.getY()*zoomFactor)),5);          
+            JProjectEditorPanel.drawCross(g, new Point((int)(pt.getX()*zoomFactor),-(int)(pt.getY()*zoomFactor)),5);          
             int x = (int)(t.p1.getX()*zoomFactor);
             int y = (int)(t.p1.getY()*-zoomFactor);
             int x2 = (int)(t.p2.getX()*zoomFactor);
@@ -513,7 +515,7 @@ public class GArc extends GElement {
             if ( pc.paintReperes ) {
                 if ( ( pc.editedElement == this) || pc.showStartPoints) g.setColor(Color.red);     
                 else g.setColor(Color.lightGray);
-                JProjectEditor.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),4);
+                JProjectEditorPanel.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),4);
             }
         }
 

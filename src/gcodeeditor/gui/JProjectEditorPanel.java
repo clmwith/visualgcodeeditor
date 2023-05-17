@@ -14,11 +14,17 @@
  * You should have receivedLine a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor;
+package gcodeeditor.gui;
 
+import gcodeeditor.BackgroundPictureParameters;
+import gcodeeditor.Configuration;
+import gcodeeditor.GCode;
+import gcodeeditor.GWord;
+import gcodeeditor.JarvisMarchHull;
+import gcodeeditor.Point3D;
 import gelements.UndoManager;
 import gcodeeditor.gui.JFilterFrame;
-import gelements.EngravingProperties;
+import gcodeeditor.EngravingProperties;
 import gelements.GArc;
 import gelements.G1Path;
 import gelements.GMixedPath;
@@ -28,7 +34,7 @@ import gelements.GGroup;
 import gelements.GPocket3D;
 import gelements.GSpline;
 import gelements.GTextOnPath;
-import gelements.PaintContext;
+import gcodeeditor.PaintContext;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -106,14 +112,14 @@ import org.xml.sax.SAXException;
  *
  * @author Clément
  */
-public final class JProjectEditor extends javax.swing.JPanel implements BackgroundPictureParameters.ParameterChangedListenerInterface, MouseListener, MouseMotionListener, MouseWheelListener, KeyListener {
+public final class JProjectEditorPanel extends javax.swing.JPanel implements BackgroundPictureParameters.ParameterChangedListenerInterface, MouseListener, MouseMotionListener, MouseWheelListener, KeyListener {
 
     public static final String CONTENT_HEADER = "(Content-Type: ";
     public static final String SVGE_HEADER = "(Simple G-Code Visual Editor Project: ";
     public static final String SVGE_RELEASE = "0.8.6";
 
     Configuration conf = new Configuration();
-    JProjectEditorListenerInterface listener;
+    JProjectEditorPanelListenerInterface listener;
     
     /** List of all elements of the document. */
     GGroup document;
@@ -250,7 +256,7 @@ public final class JProjectEditor extends javax.swing.JPanel implements Backgrou
      * Creates new form NewJPanel
      * @param newEmptyDoc create an empty document in this window
      */
-    public JProjectEditor( boolean newEmptyDoc) {
+    public JProjectEditorPanel( boolean newEmptyDoc) {
         
         selectedElements = new ArrayList<>(10);
         selectedPoints = new ArrayList<>(100);
@@ -379,7 +385,7 @@ public final class JProjectEditor extends javax.swing.JPanel implements Backgrou
                 new java.awt.Point(m, m), "crossCursor");
     }
     
-    public void setListener( JProjectEditorListenerInterface l)
+    public void setListener( JProjectEditorPanelListenerInterface l)
     {
         listener = l;
     }
@@ -473,7 +479,7 @@ public final class JProjectEditor extends javax.swing.JPanel implements Backgrou
         g.setColor(Color.black);
         g.fillRect(0,0,getWidth(),getHeight());
         
-        if ( (backgroundPictureParameter != null) && (backgroundPictureParameter.img != null) && backgroundPictureParameter.isImageVisible()) {
+        if ( (backgroundPictureParameter != null) && (backgroundPictureParameter.getImage() != null) && backgroundPictureParameter.isImageVisible()) {
             Graphics2D g2 = (Graphics2D)g;
             AffineTransform t = g2.getTransform();
             Composite comp = g2.getComposite();
@@ -484,16 +490,16 @@ public final class JProjectEditor extends javax.swing.JPanel implements Backgrou
             g2.setComposite( acomp);
             g2.rotate(Math.toRadians(backgroundPictureParameter.getRotation()));
             
-            double w = backgroundPictureParameter.width;
-            double h = backgroundPictureParameter.height;
+            double w = backgroundPictureParameter.getWidth();
+            double h = backgroundPictureParameter.getHeight();
             if ( (w == 0) || (h == 0)) { 
-                w = backgroundPictureParameter.img.getWidth();
-                h = backgroundPictureParameter.img.getHeight();
+                w = backgroundPictureParameter.getImage().getWidth();
+                h = backgroundPictureParameter.getImage().getHeight();
             }
-            g2.drawImage(backgroundPictureParameter.img, 0, 0, 
-                    (int)(w*zoomFactor),
-                    (int)(h*zoomFactor),
-                    this);
+            g2.drawImage(backgroundPictureParameter.getImage(), 0, 0, 
+                            (int)(w*zoomFactor),
+                            (int)(h*zoomFactor),
+                            this);
             g2.setComposite(comp);
             g2.setTransform(t);
         }

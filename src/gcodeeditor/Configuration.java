@@ -16,6 +16,7 @@
  */
 package gcodeeditor;
 
+import gcodeeditor.gui.JProjectEditorPanel;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -30,7 +31,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 /**
- * Class to store and restore several permanent application settings.
+ * Class used to store and restore several permanent application and GRBL machine settings.
  * @author Clément
  */
 public class Configuration  {
@@ -192,18 +193,18 @@ public class Configuration  {
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditorPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
-    void saveVisualSettings() {
+    public void saveVisualSettings() {
         try {
             Preferences prefs = Preferences.userNodeForPackage(Configuration.class);
             prefs.put("guiSettings", editorSettings);
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditorPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
@@ -240,7 +241,7 @@ public class Configuration  {
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditorPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -253,7 +254,7 @@ public class Configuration  {
             prefs.sync();
             prefs.flush();
         } catch (BackingStoreException ex) {
-            Logger.getLogger(JProjectEditor.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JProjectEditorPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     

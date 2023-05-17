@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gcodeeditor;
+package gcodeeditor.gui;
 
 import java.awt.geom.Point2D;
 
@@ -22,7 +22,7 @@ import java.awt.geom.Point2D;
  *
  * @author Clément
  */
-public interface JProjectEditorListenerInterface {
+public interface JProjectEditorPanelListenerInterface {
     public void updateGUIAndStatus();
     
     public void updateMouseCoord( int x, int y, double rx, double ry);

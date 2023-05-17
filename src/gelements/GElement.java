@@ -16,6 +16,8 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.EngravingProperties;
 import gcodeeditor.GCode;
 import gcodeeditor.gui.dialogs.ManagedPanel;
 import gelements.GElement.GElementFactoryInterface;
@@ -235,7 +237,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     }
 
     public boolean isEnabled() {
-        return properties.enabled;
+        return properties.isEnabled();
     }
 
     public void translate(Point2D delta) {

@@ -17,7 +17,7 @@
 package gcodeeditor.gui;
 
 import gcodeeditor.Configuration;
-import gelements.GCodeDocumentRender;
+import gcodeeditor.GCodeDocumentRender;
 import gelements.GGroup;
 import gcodeeditor.GRBLControler;
 import java.awt.Color;

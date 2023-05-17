@@ -18,7 +18,7 @@ package gcodeeditor;
 
 /**
  *
- * @author Clément Gérardin @ Marseille.fr
+ * @author Clément
  */
 public class Point3D {
     public double x, y, z;

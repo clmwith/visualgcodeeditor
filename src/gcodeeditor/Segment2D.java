@@ -14,9 +14,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gelements;
+package gcodeeditor;
 
 import gcodeeditor.GCode;
+import gelements.GElement;
 import java.awt.geom.Point2D;
 
 /**
@@ -24,8 +25,8 @@ import java.awt.geom.Point2D;
  * @author Clément
  */
 public class Segment2D {
-    GCode p1;
-    GCode p2;
+    public GCode p1;
+    public GCode p2;
     double a, b;    // graph : y=ax+b
     
     public Segment2D( GCode p1, GCode p2) {
@@ -114,7 +115,7 @@ public class Segment2D {
                      ((sp1x > p1x) && (sp2x > p1x))) return null;
                 else {
                     final double y = s.a* p1x + s.b;
-                    if ((y >= p1y) && (y<=p2y)) return new GCode(p1x, y);
+                    if ((y >= Math.min(p1y, p2y)) && (y<= Math.max(p1y,p2y))) return new GCode(p1x, y);
                     else return null;
                 }         
         } else { 
@@ -123,7 +124,8 @@ public class Segment2D {
                 if ((cx < Math.min(p1x, p2x)) || (cx > Math.max(p1x, p2x))) return null;
                 if ((cx < Math.min(sp1x, sp2x)) || (cx > Math.max(sp1x, sp2x))) return null;
                 final double y = a*cx+b;
-                if ((y<p1y) || (y>p2y) || ((Math.abs(s.a)<1e-12)?Math.abs(y-sp1y)>1e-12:(y<sp1y) || (y>sp2y))) return null;     
+                if ( (Math.abs(a) < 1e-12 ?   (Math.abs(y-p1y)>1e-12)  : (y<Math.min(p1y, p2y)) || (y>Math.max(p1y,p2y))) ||
+                     (Math.abs(s.a)<1e-12 ? (Math.abs(y-sp1y)>1e-12) : (y<Math.min(sp1y, sp2y)) || (y>Math.max(sp1y,sp2y)))) return null;     
                 return new GCode(cx, y);
         }
     }
@@ -140,7 +142,7 @@ public class Segment2D {
         return new Segment2D(pt1, pt2);
     }
     
-    private double getCenterOfXIntersectionInterval( Segment2D s) {
+    public double getCenterOfXIntersectionInterval( Segment2D s) {
         final double p1x = Math.min(p1.getX(), p2.getX());
         final double p2x = Math.max(p1.getX(), p2.getX());
         final double sp1x = Math.min(s.p1.getX(), s.p2.getX());
@@ -170,7 +172,7 @@ public class Segment2D {
     /**
      * sort Y for the calculation of the intersectionPoint
      */
-    void sortPointsByY() {
+    public void sortPointsByY() {
         if ( p2.getY() < p1.getY()) {
             final GCode t = p1;
             p1 = p2;
@@ -181,7 +183,7 @@ public class Segment2D {
     /**
      * @return angle in radian
      */
-    double getAngle() {
+    public double getAngle() {
         return GElement.getAngleInRadian(p1, p2);
     }
 
@@ -190,7 +192,7 @@ public class Segment2D {
      * @param d
      * @return 
      */
-    Point2D getPointAt(double d) {
+    public Point2D getPointAt(double d) {
         double a = getAngle();
         return new GCode(p1.getX() + Math.cos(a) * d, p1.getY() + Math.sin(a) * d);
     }
@@ -208,7 +210,26 @@ public class Segment2D {
             return new GCode(p2.getX()*u+p1.getX()*(1.0-u), p2.getY()*u+p1.getY()*(1.0-u));
     }
     
-    static double sqr( double v) {
+    public static double sqr( double v) {
         return v*v;
+    }
+
+    /**
+     * Return the point at 'len' from p1.
+     * @param len
+     * @return 
+     */
+    public GCode getPointByDistance(double len) {
+        double ratio = len / getLength();
+        return new GCode(p1.getX()+ (p2.getX()-p1.getX())*ratio, p1.getY() + (p2.getY()-p1.getY())*ratio);
+    }
+    
+    /**
+     * Compare segments from distance.
+     * @param s
+     * @return true if s is at same position than it.
+     */
+    public boolean equals( Segment2D s) {
+        return p1.isAtSamePosition(s.p1) && p2.isAtSamePosition(s.p2);
     }
 }

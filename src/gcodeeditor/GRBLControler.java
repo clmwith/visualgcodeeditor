@@ -164,13 +164,6 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         "<not connected>", "IDLE", "RUN", "HOLD", "JOG", "ALARM", "DOOR", "CHECK",
         "HOME", "SLEEP", "HOLDING", "DOOR_CLOSED", "DOOR_WAITING_CLOSED", "DOOR_OPENNED",
         "DOOR_CLOSING", "<init>" };
-
-
-    public static int getIndexOfSetting(int grblSettingNumber) {
-        for ( int i = 0; i < GRBL_SETTING_STR.length-1; i+=2)
-            if ( Integer.parseInt(GRBL_SETTING_STR[i]) == grblSettingNumber) return i >> 1;
-        return -1;
-    }
     
     /** Realtime GRBL states. */
     int grblState = GRBL_STATE_DISCONNECTED;
@@ -206,7 +199,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     /** last directions for all axes, x=false(for left), y=false(for north), z=false(for top). */
     boolean[] lastDirectionIsPositive = { false, false, false };
     /** backLash compensations values for all axes {X,Y,Z}. */
-    double backLashCompensation[] = {0,0,0};
+    double[] currentBackLashCompensation = {0,0,0};
     /** For backLash compensations ; Contains the last destination asked (without backLash correction). */
     GCode lastTrueDestination;
     /** For backLash compensation ; Contains the last true destination sent to GRBL with BL correction. */
@@ -222,20 +215,15 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     
     /** The serial port for Arduino/GRBL comunication */
     CommPort commPort;
-    public InputStream serialIn;
-    public OutputStream serialOut;
+    InputStream serialIn;
+    OutputStream serialOut;
     BufferedReader serialReader;
     PrintStream serialWriter;
     private String limitSwitchValue;
-       
-    public Object[] getSerialPorts() {
-        Enumeration portsEnumaration = CommPortIdentifier.getPortIdentifiers();
-        ArrayList<String> ports = new ArrayList<>();
-        while( portsEnumaration.hasMoreElements()) {
-            ports.add(((CommPortIdentifier)portsEnumaration.nextElement()).getName());
-        }
-        return ports.toArray();
-    }
+     
+    
+    private boolean useHeighMap;
+    private HeightMap heightMap;
     
     @SuppressWarnings("SleepWhileInLoop")
     public boolean connect(String portName, int rate) throws NoSuchPortException, PortInUseException, TooManyListenersException, UnsupportedCommOperationException, IOException {
@@ -292,6 +280,17 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         }
         return false;
     }
+    
+    
+    public Object[] getSerialPorts() {
+        Enumeration portsEnumaration = CommPortIdentifier.getPortIdentifiers();
+        ArrayList<String> ports = new ArrayList<>();
+        while( portsEnumaration.hasMoreElements()) {
+            ports.add(((CommPortIdentifier)portsEnumaration.nextElement()).getName());
+        }
+        return ports.toArray();
+    }
+    
     
     /** Send immediately a char to GRBL if (fileLogger == null) */
     private void sendRTCmd( char c) {
@@ -371,26 +370,27 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         try {
 
             while( ! stopGRBLSenderThread ) {
-                while(  grblCmdQueue.isEmpty()) try {
+                while(  ! stopGRBLSenderThread && grblCmdQueue.isEmpty()) try {
                     //System.out.println("senderThread=>slepping");
                     Thread.sleep(100000);
                 } catch ( InterruptedException e) {
                     //System.out.println("senderThread=>interrupted");
                 }
-                switch ( grblState) {
-                    case GRBL_STATE_ALARM:
-                        if ( grblCmdQueue.peek().equals("$X") || 
-                             grblCmdQueue.peek().equals("$H")) 
-                                sendCmd(new GCode(grblCmdQueue.poll()),"");
-                        break;
-                    case GRBL_STATE_SLEEP: // GRBL ignore commands serialReader these states
-                        grblCmdQueue.poll(); 
-                        break;
-                    default:
-                        if (grblCmdQueue.isEmpty()) break;       
-                        GCode cmd = applyBackLash(new GCode(grblCmdQueue.poll()).toGRBLString()); // round values
-                        if ( ! cmd.isEmpty()) sendCmd(cmd, "");
-                }                
+                if ( ! stopGRBLSenderThread)
+                    switch ( grblState) {
+                        case GRBL_STATE_ALARM:
+                            if ( grblCmdQueue.peek().equals("$X") || 
+                                 grblCmdQueue.peek().equals("$H")) 
+                                    sendCmd(new GCode(grblCmdQueue.poll()),"");
+                            break;
+                        case GRBL_STATE_SLEEP: // GRBL ignore commands serialReader these states
+                            grblCmdQueue.poll(); 
+                            break;
+                        default:
+                            if (grblCmdQueue.isEmpty()) break;       
+                            GCode cmd = applyBackLash(new GCode(grblCmdQueue.poll()).toGRBLString()); // round values
+                            if ( ! cmd.isEmpty()) sendCmd(cmd, "");
+                    }                
             }          
         } catch ( Exception ex) {
             softReset();
@@ -430,7 +430,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 } else {
                     lastTrueDestination = dest.clone();                          
                 } 
-                backLashCompensation[0] = backLashCompensation[1] = backLashCompensation[2] = 0;
+                currentBackLashCompensation[0] = currentBackLashCompensation[1] = currentBackLashCompensation[2] = 0;
             }
                         
             if ( ! lastTrueDestination.isSet('X') && dest.isSet('X')) 
@@ -449,13 +449,13 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     if ( lastDirectionIsPositive[0] ) { 
                         // was going +right
                         if (dest.getX() < lastTrueDestination.getX()) { // reversal of X direction, adding backLashCmd
-                            backLashCompensation[0] -= backLashValue[0];
+                            currentBackLashCompensation[0] -= backLashValue[0];
                             lastDirectionIsPositive[0]=false;
                         }
                     } else
                         // was going -left
                         if (dest.getX() > lastTrueDestination.getX()) { // reversal of X direction, adding backLashCmd
-                            backLashCompensation[0] += backLashValue[0];
+                            currentBackLashCompensation[0] += backLashValue[0];
                             lastDirectionIsPositive[0]=true;
                         }
                 }
@@ -464,12 +464,12 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     if ( lastDirectionIsPositive[1] ) {
                         // was going +north
                         if (dest.getY()< lastTrueDestination.getY()) { // reversal of Y direction, adding backLashCmd
-                            backLashCompensation[1] -= backLashValue[1];
+                            currentBackLashCompensation[1] -= backLashValue[1];
                             lastDirectionIsPositive[1]=false;
                         }
                     } else
                         if (dest.getY() > lastTrueDestination.getY()) { // reversal of Y direction, adding backLashCmd
-                            backLashCompensation[1] += backLashValue[1];
+                            currentBackLashCompensation[1] += backLashValue[1];
                             lastDirectionIsPositive[1]=true;
 
                         }
@@ -479,12 +479,12 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                     if ( lastDirectionIsPositive[2] ) {
                         // was going +up
                         if (dest.get('Z').value < lastTrueDestination.get('Z').value) { // reversal of Z direction, adding backLashCmd
-                            backLashCompensation[2] -= backLashValue[2];
+                            currentBackLashCompensation[2] -= backLashValue[2];
                             lastDirectionIsPositive[2]=false;
                         }
                     } else
                         if (dest.get('Z').value > lastTrueDestination.get('Z').value) { // reversal of Z direction, adding backLashCmd
-                            backLashCompensation[2] += backLashValue[2];
+                            currentBackLashCompensation[2] += backLashValue[2];
                             lastDirectionIsPositive[2]=true;
                         }
                 }
@@ -493,15 +493,15 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 lastCorrectedDestination = (GCode) dest.clone();
                 if ( dest.isSet('X')) {
                     lastTrueDestination.setX(dest.getX());
-                    lastCorrectedDestination.setX( dest.getX()+backLashCompensation[0]);                    
+                    lastCorrectedDestination.setX(dest.getX()+currentBackLashCompensation[0]);                    
                 }
                 if ( dest.isSet('Y')) {
                     lastTrueDestination.setY(dest.getY());
-                    lastCorrectedDestination.setY( dest.getY()+backLashCompensation[1]);                    
+                    lastCorrectedDestination.setY(dest.getY()+currentBackLashCompensation[1]);                    
                 }
                 if ( dest.isSet('Z')) {
                     lastTrueDestination.set('Z', dest.get('Z').value);
-                    lastCorrectedDestination.set('Z', dest.get('Z').value+backLashCompensation[2]);                    
+                    lastCorrectedDestination.set('Z', dest.get('Z').value+currentBackLashCompensation[2]);                    
                 }                               
 
                 return lastCorrectedDestination;
@@ -584,7 +584,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                         final int bits =  grblSettings.get(23).intValue(); // homming direction invert mask:0b00000ZYX (1=>negDir)
                         for(int i = 0; i < 3; i++) {
                             lastDirectionIsPositive[i] = ((bits&(1<<i)) != 0);
-                            backLashCompensation[0] = 0;
+                            currentBackLashCompensation[0] = 0;
                         }
                     }      
                     setState(GRBL_STATE_IDLE); 
@@ -887,19 +887,39 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         }
     }  
    
+    /**
+     * Return current machine position.
+     * WPOS = MPOS - WCO
+     * @return 
+     */
     public Point3D getMPos() {
         if ( grblMPos == null) return null;
         return new Point3D(grblMPos.getX(), grblMPos.getY(), grblMPos.getZ());
     }
     
+    
+    /**
+     * Return current gantry Work Position.
+     * WPOS = MPOS - WCO
+     * @return 
+     */
     public Point3D getWPos() {
         if ( grblWPos == null) return null;
-        return new Point3D(grblWPos.getX(), grblWPos.getY(), grblWPos.getZ());
+        return new Point3D( grblWPos.getX() - (useBackLash ? currentBackLashCompensation[0] : 0),
+                            grblWPos.getY() - (useBackLash ? currentBackLashCompensation[1] : 0), 
+                            grblWPos.getZ() - (useBackLash ? currentBackLashCompensation[2] : 0));
     }
     
+    /**
+     * Return current GRBL Work Coordonate Offset.
+     * WPOS = MPOS - WCO
+     * @return 
+     */
     public Point3D getWCO() {
         if ( grblWCO == null) return null;
-        return new Point3D(grblWCO.getX(), grblWCO.getY(), grblWCO.getZ());
+        return new Point3D( grblWCO.getX() , 
+                            grblWCO.getY() ,
+                            grblWCO.getZ() );
     }
     
     public TreeMap<Integer,Double> getGRBLSettings() {
@@ -1082,6 +1102,31 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     public void spindleDecrease1p() { 
         sendRTCmd((char)0x9D);
     }
+    
+    /**
+     * Get current HeightMap used by this controler.
+     * @return null if none
+     */
+    public HeightMap getHeightMap() {
+        return heightMap;
+    }
+    
+    /**
+     * Set the new HeightMap.
+     * @param newMap 
+     */
+    public void setHeightMap(HeightMap newMap) {
+        heightMap = newMap;
+    }    
+    
+    /**
+     * Send "set virtual machine" position GCODE to GRBL.
+     * @param newVirtualMachinePosition 
+     */
+    public void setVMPos(Point2D newVirtualMachinePosition) {
+        pushCmd("G10L20P1X"+newVirtualMachinePosition.getX()+"Y"+newVirtualMachinePosition.getY());
+    }
+    
     
     /**
      * Toggles spindle enable or disable states immediately, but only while serialReader the HOLD states.
@@ -1298,25 +1343,23 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     }
 
     
-    /**
-     * Send "set virtual machine" position GCODE to GRBL.
-     * @param newVirtualMachinePosition 
-     */
-    public void setVMPos(Point2D newVirtualMachinePosition) {
-        pushCmd("G10L20P1X"+newVirtualMachinePosition.getX()+"Y"+newVirtualMachinePosition.getY());
-    }
-
-    /**
-     * @return the machine name of GRBL (taken from GRBL version line).
-     */
-    public String getMachineName() {
-        if ( grblVersion != null) return grblVersion.split(":")[2];
-        return "";
+    public static int getIndexOfSetting(int grblSettingNumber) {
+        for ( int i = 0; i < GRBL_SETTING_STR.length-1; i+=2)
+            if ( Integer.parseInt(GRBL_SETTING_STR[i]) == grblSettingNumber) return i >> 1;
+        return -1;
     }
 
     public String getLimitSwitchValues() {
         return limitSwitchValue;
     }
+    
+    /**
+     * @return the machine name of GRBL (taken from GRBL version line).
+     */
+    public String getMachineName() {
+        if ( grblVersion != null) return grblVersion.split(":")[2];
+        return "<unknow>";
+    }    
 
     /**
      * Used with addListenner to know what is doing with GRBL.

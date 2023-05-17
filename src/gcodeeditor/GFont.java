@@ -17,7 +17,6 @@
 package gcodeeditor;
 
 import gelements.GGroup;
-import gelements.PaintContext;
 import java.io.IOException;
 
 /**

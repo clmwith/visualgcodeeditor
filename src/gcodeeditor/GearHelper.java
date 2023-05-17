@@ -14,9 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gelements;
+package gcodeeditor;
 
 import gcodeeditor.GCode;
+import gelements.G1Path;
+import gelements.GArc;
+import gelements.GGroup;
 import java.awt.geom.Point2D;
 
 

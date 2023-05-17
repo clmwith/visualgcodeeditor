@@ -16,6 +16,8 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.Segment2D;
 import gcodeeditor.GCode;
 import java.awt.Color;
 import java.awt.Graphics;

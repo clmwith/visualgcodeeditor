@@ -16,8 +16,10 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.EngravingProperties;
 import gcodeeditor.GCode;
-import gcodeeditor.JProjectEditor;
+import gcodeeditor.gui.JProjectEditorPanel;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Point2D;
@@ -333,13 +335,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public EngravingProperties getHeritedEngravingPropreties( GElement e) {
         if ( elements.contains(e)) {
             EngravingProperties res = properties.clone();
-            res.enabled &= e.properties.enabled;
-            if ( ! Double.isNaN(e.properties.feed))   res.feed = e.properties.feed;
-            if ( ! Double.isNaN(e.properties.zStart)) res.zStart = e.properties.zStart;
-            if ( ! Double.isNaN(e.properties.zEnd))   res.zEnd = e.properties.zEnd;
-            if ( ! Double.isNaN(e.properties.passDepth)) res.passDepth = e.properties.passDepth;
-            if ( e.properties.power != -1 )           res.power = e.properties.power;
-            if ( e.properties.passCount != -1 )       res.passCount = e.properties.passCount;
+            res.setEnabled( res.isEnabled() & e.properties.isEnabled());
+            if ( ! Double.isNaN(e.properties.getFeed()))   res.setFeed(e.properties.getFeed());
+            if ( ! Double.isNaN(e.properties.getZStart())) res.setZStart( e.properties.getZStart());
+            if ( ! Double.isNaN(e.properties.getZEnd()))   res.setZEnd( e.properties.getZEnd());
+            if ( ! Double.isNaN(e.properties.getPassDepth())) res.setPassDepth( e.properties.getPassDepth());
+            if ( e.properties.getPower() != -1 )     res.setPower( e.properties.getPower());
+            if ( e.properties.getPassCount() != -1 ) res.setPassCount( e.properties.getPassCount());
         } else for ( GElement el : elements) 
                     if ( el instanceof GGroup) {
                         if ( ((GGroup)el).getParent(e) != null) 
@@ -697,7 +699,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     public static void exportToDXF(String DXFfileName, GElement element, boolean flattenSpline) throws FileNotFoundException, IOException {
         OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(DXFfileName));       
 	// header
-        out.write("999\nDXF created by SimpleGCodeVisualEditor v"+JProjectEditor.SVGE_RELEASE+"\n");
+        out.write("999\nDXF created by SimpleGCodeVisualEditor v"+JProjectEditorPanel.SVGE_RELEASE+"\n");
         out.write("  0\nSECTION\n");
         out.write("  2\nHEADER\n");
         out.write("  9\n$ACADVER\n1\nAC1006\n");

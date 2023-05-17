@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gelements;
+package gcodeeditor;
 
 import gcodeeditor.Configuration;
 import java.util.Iterator;
@@ -30,6 +30,7 @@ public class EngravingProperties {
     /** Used in pocket GGroup */
     boolean allAtOnce;
     double feed;
+    
     int passCount, power;
     double zStart, zEnd;
     
@@ -71,6 +72,10 @@ public class EngravingProperties {
         this.listener = listener;
     }
     
+    /**
+     * Make a clone of this properties <b>without cloning listeners.</b>
+     * @return a clone of this properties.
+     */
     @Override
     public EngravingProperties clone() {
         EngravingProperties clone = new EngravingProperties();

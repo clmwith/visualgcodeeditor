@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gelements;
+package gcodeeditor;
 
 import gcodeeditor.ParserState;
 import gcodeeditor.GWord;
@@ -23,8 +23,13 @@ import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.ArrayList;
 import gcodeeditor.Configuration;
-import gcodeeditor.JProjectEditor;
+import gcodeeditor.gui.JProjectEditorPanel;
 import gcodeeditor.GRBLControler;
+import gelements.G1Path;
+import gelements.GDrillPoint;
+import gelements.GElement;
+import gelements.GGroup;
+import gelements.GPocket3D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -116,7 +121,7 @@ public class GCodeDocumentRender implements Runnable {
             //grbl.startFileLogger( outputFileName);
             
             currentZ = currentZStart = currentZEnd = currentZPassDepth = Double.NaN;
-            sendCmd("; Generated with SimpleGCodeVisualEditor " + JProjectEditor.SVGE_RELEASE);
+            sendCmd("; Generated with SimpleGCodeVisualEditor " + JProjectEditorPanel.SVGE_RELEASE);
 
             if ( laserMode) {
                 sendCmd(conf.adaptativePower ? "M4" : "M3");

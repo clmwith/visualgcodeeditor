@@ -16,6 +16,8 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.EngravingProperties;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
 import java.awt.Color;
@@ -57,7 +59,7 @@ public final class GCylindricalPocket extends GPocket3D {
         this.inlayDepth = inlayDepth;
         this.len = cylinderLen;
         this.rotationAngle = Math.toRadians(rotationAngle);
-        properties.setZEnd( Double.isNaN(properties.zStart) ? -inlayDepth : properties.zStart - inlayDepth); 
+        properties.setZEnd( Double.isNaN(properties.getZStart()) ? -inlayDepth : properties.getZStart() - inlayDepth); 
                 
         for( int i = 0; i < 10; i++) lines.add(new GCode((i==0)?0:1,0,0));
         properties.addChangeListener(new EngravingProperties.PropertieChangeListener() {
@@ -65,10 +67,10 @@ public final class GCylindricalPocket extends GPocket3D {
             public void propertyChanged(int type) {
                 switch ( type) {
                     case EngravingProperties.PropertieChangeListener.START:
-                        properties.setZEnd(properties.zStart - inlayDepth);
+                        properties.setZEnd(properties.getZStart() - inlayDepth);
                         break;
                     case EngravingProperties.PropertieChangeListener.END:
-                        properties.setZStart(properties.zEnd + inlayDepth);
+                        properties.setZStart(properties.getZEnd() + inlayDepth);
                         break;
                 }
             }

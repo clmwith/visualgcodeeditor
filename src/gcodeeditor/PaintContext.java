@@ -14,9 +14,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gelements;
+package gcodeeditor;
 
 import gcodeeditor.GCode;
+import gelements.GElement;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -59,7 +60,7 @@ public class PaintContext {
     }
 
     @Override
-    protected PaintContext clone() {
+    public PaintContext clone() {
         return new PaintContext(g, zoomFactor, showStartPoints, highlitedPoint, selectedPoints, toolDiameter);
     }
     

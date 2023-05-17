@@ -298,10 +298,9 @@ public class GCode extends Point2D implements Iterable<GWord> {
     public boolean isEmpty() {
         return words.isEmpty();
     }
-    
     /**
      * @param point
-     * @return true is pos X,Y are "same" (near 10e-7) with <i>point</i> (doesn't compare others words). 
+     * @return true is pos <b>X and Y</b>  are "same" (near 10e-7) with <i>point</i> (<b>warning:</b> it doesn't compare others words like Z). 
      *         the result unsure if not a point (without X and Y) !
      */
     public boolean isAtSamePosition(Point2D point) {
@@ -638,7 +637,7 @@ public class GCode extends Point2D implements Iterable<GWord> {
      * @param pt the point to calculate the mirror
      * @return 
      */
-    GCode getMirrorPoint(GCode pt) {
+    public GCode getMirrorPoint(GCode pt) {
         return new GCode( getG(), pt.getX() - getX() * 2, pt.getY() - getY() * 2);
     }
 
@@ -647,7 +646,7 @@ public class GCode extends Point2D implements Iterable<GWord> {
      * @param letter the word to search
      * @return true if GCode 'letter' exist and is not NaN, or if it is a comment.
      */
-    boolean isSet(char letter) {
+    public boolean isSet(char letter) {
         GWord w = get(letter); 
         
         if ( w != null) {

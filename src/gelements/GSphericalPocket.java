@@ -16,9 +16,10 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
-import gcodeeditor.JProjectEditor;
+import gcodeeditor.gui.JProjectEditorPanel;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -242,9 +243,9 @@ public class GSphericalPocket extends GPocket3D {
         g.drawOval((int)((center.getX()-radius)*zoomFactor), (int)((-center.getY()-radius)*zoomFactor), 
                    (int)(zoomFactor*radius*2), (int)(zoomFactor*radius*2));
         double pd;
-        if ( Double.isNaN(properties.passDepth)) pd=inlayDepth;
-        else pd = properties.passDepth;
-        for( double depth = properties.passDepth; depth <= inlayDepth; depth += properties.passDepth) {
+        if ( Double.isNaN(properties.getPassDepth())) pd=inlayDepth;
+        else pd = properties.getPassDepth();
+        for( double depth = properties.getPassDepth(); depth <= inlayDepth; depth += properties.getPassDepth()) {
             g.setColor((depth==0)?pc.color:Color.darkGray);
             double r = Math.sqrt(radius * radius - (radius-inlayDepth+depth) * (radius-inlayDepth+depth) );
 
@@ -260,7 +261,7 @@ public class GSphericalPocket extends GPocket3D {
         
         if ( (pc.editedElement == this) || pc.showStartPoints) g.setColor(Color.red);     
         else g.setColor(Color.darkGray);
-        JProjectEditor.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),3);
+        JProjectEditorPanel.drawCross(g, new Point((int)(center.getX()*zoomFactor),-(int)(center.getY()*zoomFactor)),3);
         if ( (pc.color!=Color.darkGray) && pc.showStartPoints) {
             g.setColor(Color.red); 
             final int sx = (int)(startPoint.getX()*zoomFactor);

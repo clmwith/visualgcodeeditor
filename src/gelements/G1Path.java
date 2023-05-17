@@ -16,6 +16,9 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
+import gcodeeditor.Segment2D;
+import gcodeeditor.EngravingProperties;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
 import java.awt.BasicStroke;

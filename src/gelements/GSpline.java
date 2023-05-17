@@ -16,6 +16,7 @@
  */
 package gelements;
 
+import gcodeeditor.PaintContext;
 import gcodeeditor.GWord;
 import gcodeeditor.GCode;
 import java.awt.BasicStroke;

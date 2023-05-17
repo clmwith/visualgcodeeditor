@@ -238,6 +238,18 @@ public class BackgroundPictureParameters {
     public int getImageHeight() {
         return (img == null) ? 0 : img.getHeight();
     }
+
+    public BufferedImage getImage() {
+        return img;
+    }
+
+    public double getWidth() {
+        return width;
+    }
+
+    public double getHeight() {
+        return height;
+    }
     
     public interface ParameterChangedListenerInterface {
         /** Called when a parameter has change. */

@@ -26,11 +26,11 @@ import javax.swing.JList;
 import javax.swing.KeyStroke;
 
 /**
- * Class to configure Keyboard and Mouse actions into a JList.
+ * Class to configure Keyboard and Mouse actions into the JList (GCode editor).
  * 
  * @author Clément
  */
-public class ListAction extends MouseAdapter
+public class ListActionConfigurator extends MouseAdapter
 {
     public static final KeyStroke ENTER = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
     public static final KeyStroke ESCAPE = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
@@ -44,9 +44,9 @@ public class ListAction extends MouseAdapter
     private final KeyStroke dblClickKeyStrokeEquivalent;
 
     /*
-     * Create ListAction to manage mouse Click and set shortcut to <i>list</i>
+     * Create ListActionConfigurator to manage mouse Click and set shortcut to <i>list</i>
      */
-    public ListAction(JList list)
+    public ListActionConfigurator(JList list)
     {
         this.list = list;
         list.addMouseListener( this );

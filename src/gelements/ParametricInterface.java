@@ -17,7 +17,7 @@
 package gelements;
 
 /**
- * Add parametric properties to the Element
+ * Add parametric properties to the Element (not actualy used)
  * @author clement
  */
 public interface ParametricInterface {

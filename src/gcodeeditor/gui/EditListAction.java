@@ -22,7 +22,6 @@ package gcodeeditor.gui;
  */
 
 import gelements.GGroup;
-import gcodeeditor.JProjectEditor;
 import gelements.GElement;
 import gelements.GTextOnPath;
 import java.awt.Container;
@@ -62,9 +61,9 @@ public class EditListAction extends AbstractAction
 	private JPopupMenu editPopup;
 	private JTextField editTextField;
         
-        private final JProjectEditor shapeviewer;
+        private final JProjectEditorPanel shapeviewer;
 
-	public EditListAction(JProjectEditor v)
+	public EditListAction(JProjectEditorPanel v)
 	{
             shapeviewer = v;
         }
@@ -80,7 +79,7 @@ public class EditListAction extends AbstractAction
             if ( list.getSelectedIndex() == -1) return;
 
             // Enter in a Group ?
-            if ( (model instanceof GGroup) || (model instanceof JProjectEditor.DocumentListModel)) { 
+            if ( (model instanceof GGroup) || (model instanceof JProjectEditorPanel.DocumentListModel)) { 
                 // we are not in a block then no line to edit
                 shapeviewer.editElement(list.getSelectedIndex());
                 return;
