@@ -346,8 +346,9 @@ public class GCodeDocumentRender implements Runnable {
         if (path==null) return;
         assert( ! (path instanceof GGroup));
 
-        if ( !(path instanceof G1Path))
-            path = path.flatten();
+        path = path.flatten();
+   //     if ( !(path instanceof G1Path))
+    //        path = path.flatten();
 
         for( currentBlockLine = 0; ! stopThread && (currentBlockLine < path.size()); currentBlockLine++) {
 

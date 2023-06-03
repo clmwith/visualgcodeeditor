@@ -444,11 +444,6 @@ public class JFontChooserPanel extends javax.swing.JPanel {
     public String getChoosedText() {
         return jTextFieldText.getText();
     }
-                
-    public static void main(String args[]) {
-        new JFontChooserPanel().showFontChooserWindow();
-        System.out.println("fini");
-    }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonCancel;

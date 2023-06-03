@@ -737,6 +737,14 @@ public class GMixedPath extends GElement {
         int oldx=Integer.MAX_VALUE, oldy=Integer.MAX_VALUE;
         boolean oldShowStartPoint = pc.showStartPoints;
         
+        if ( (pc.color!=Color.darkGray) && pc.showStartPoints) {
+            /*if( (pc.color == PaintContext.SEL_COLOR1)|| (pc.color == PaintContext.SEL_DISABLED_COLOR)) g.setColor(pc.color);
+            else */g.setColor(Color.red); 
+            g.drawRect((int)(getFirstPoint().getX()*zoomFactor)-3, -(int)(getFirstPoint().getY()*zoomFactor)-3, 6, 6);
+        }
+        pc.showStartPoints = false;
+                
+        
         if ( pc.editedElement == this) {      
             if ( !pc.selectedPoints.isEmpty()) {
                 g.setColor(Color.yellow);
@@ -875,7 +883,24 @@ public class GMixedPath extends GElement {
     public void reverse() {
         ArrayList<Object> inv = new ArrayList<>(gContent.size());
         for( int i = size(); i > 0; ) {
-            inv.add(gContent.get(--i));
+            GCode lp = null, fp = null;
+            Object o = gContent.get(--i);
+            if ( o instanceof GCode) {
+                if ( ((GCode) o).isAPoint()) {
+                    if ( (lp == null) || ! lp.isAtSamePosition((Point2D) o)) inv.add( o);
+                    lp = ((GCode) o).clone();
+                } else
+                    inv.add(o);       
+            } else {
+                if ( o instanceof GElement) { // GArc or GSpline
+                    ((GElement) o).reverse();
+                    if ( inv.isEmpty() || (lp == null) || ! lp.isAtSamePosition( ((GElement) o).getFirstPoint())) 
+                        inv.add( ((GElement) o).getFirstPoint().clone());
+                    
+                    inv.add(o);
+                    lp = ((GElement) o).getLastPoint();
+                }               
+            }
         }
         gContent = inv;
         informAboutChange();

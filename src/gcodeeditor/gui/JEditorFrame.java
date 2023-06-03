@@ -680,6 +680,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jSeparator33 = new javax.swing.JPopupMenu.Separator();
         jMenuItemAddG23Circle = new javax.swing.JMenuItem();
         jMenuItemAddCircle = new javax.swing.JMenuItem();
+        jMenuItemAddCurve = new javax.swing.JMenuItem();
         jMenuItemAddOval = new javax.swing.JMenuItem();
         jMenuItemAddDrill = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
@@ -1807,6 +1808,17 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });
         jMenuAdds.add(jMenuItemAddCircle);
 
+        jMenuItemAddCurve.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
+        jMenuItemAddCurve.setText("Curve");
+        jMenuItemAddCurve.setToolTipText("Curve G5");
+        jMenuItemAddCurve.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCurveActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItemAddCurve);
+
+        jMenuItemAddOval.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0));
         jMenuItemAddOval.setText("Circle (mode 2)");
         jMenuItemAddOval.setToolTipText("<html>Create a G1 circle with mouse and <i>Alt</i>, <i>Ctrl</i> and <i>Shift</i> combinaisons keys.</html>");
         jMenuItemAddOval.addActionListener(new java.awt.event.ActionListener() {
@@ -3513,7 +3525,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jToggleButtonAddRectsActionPerformed
 
     private void jToggleButtonAddCirclesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonAddCirclesActionPerformed
-        projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_OVAL, 0, null);                                           
+        projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_CIRCLES, 0, null);                                           
     }//GEN-LAST:event_jToggleButtonAddCirclesActionPerformed
 
     private void jToggleButtonAddLinesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButtonAddLinesActionPerformed
@@ -3771,7 +3783,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jMenuItemSetCursorToActionPerformed
 
     private void jMenuItemAddOvalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddOvalActionPerformed
-        projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_CIRCLES, 0, null);
+        projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_OVAL, 0, null);
     }//GEN-LAST:event_jMenuItemAddOvalActionPerformed
 
     private void jMenuItemAddHullActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddHullActionPerformed
@@ -3946,6 +3958,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemPasteLastActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemPasteLastActionPerformed
         projectViewer.doAction(JProjectEditorPanel.ACTION_PASTE, 0, null);
     }//GEN-LAST:event_jMenuItemPasteLastActionPerformed
+
+    private void jMenuItemAddCurveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCurveActionPerformed
+        projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_CURVE, 0, null);
+    }//GEN-LAST:event_jMenuItemAddCurveActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -4528,6 +4544,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenuItem jMenuItemAddBounds;
     private javax.swing.JMenuItem jMenuItemAddCircle;
     private javax.swing.JMenuItem jMenuItemAddCross;
+    private javax.swing.JMenuItem jMenuItemAddCurve;
     private javax.swing.JMenuItem jMenuItemAddCurvesCircle;
     private javax.swing.JMenuItem jMenuItemAddCustom;
     private javax.swing.JMenuItem jMenuItemAddCylindricalPocket;

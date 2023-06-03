@@ -71,14 +71,14 @@ public class JFilterFrame extends javax.swing.JPanel {
                             case 'H':
                             case 'O': 
                             case 'N': 
-                            case 'T':   if ( jCheckBoxToolCoice.isSelected()) l.remove(w); 
+                            case 'T':   if ( jCheckBoxToolChoice.isSelected()) l.remove(w); 
                                         break;
                             case 'M':   switch ( l.getM()) {
                                             case 3: case 4: case 5:
-                                                if ( jCheckBoxCoolantM789.isSelected()) l.remove(w);
+                                                if ( jCheckBoxM345.isSelected()) l.remove(w);
                                                 break;
                                             case 7: case 8: case 9:
-                                                if ( jCheckBoxSplines.isSelected()) l.remove(w);
+                                                if ( jCheckBoxCoolantM789.isSelected()) l.remove(w);
                                                 break;
                                             case 0: case 1: case 2: case 6: case 30: case 60:
                                                 if ( ! jCheckBoxMStopping.isSelected()) break;
@@ -90,14 +90,13 @@ public class JFilterFrame extends javax.swing.JPanel {
                             case 'G':   int g = w.getIntValue();
                                         switch ( g/10) {
                                             case 0:
-                                                if ( (g==4) && jCheckBoxTempo.isSelected()) l.remove(w);
-                                                if ( (g==5) && jCheckBoxSplines.isSelected()) l.remove(w);
+                                                if ( (g==4) && jCheckBoxTempo.isSelected()) l.remove(w);                                                
                                                 break;
                                             case 1: case 2: case 3:
                                                 if ( jCheckBoxSpaceG123.isSelected()) l.remove(w);
                                                 break;
                                             case 4: case 7: case 8:
-                                                if ( jCheckBoxToolLength.isSelected()) l.remove(w);
+                                                if ( jCheckBoxCoolantM789.isSelected()) l.remove(w);
                                                 break;
                                             case 5:
                                                 if ( jCheckBoxG54x.isSelected()) l.remove(w);
@@ -129,34 +128,7 @@ public class JFilterFrame extends javax.swing.JPanel {
             }
         }
         return applyFilter;
-    }
-     
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(JFilterFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-        
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> {
-            new JFilterFrame().applyFilterOn(null);
-            //new JFilterFrame().applyFilterOn(null);
-        });
-    }
+    }     
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -170,7 +142,7 @@ public class JFilterFrame extends javax.swing.JPanel {
 
         jButtonRemove = new javax.swing.JButton();
         jButtonCancel = new javax.swing.JButton();
-        jLabel1 = new javax.swing.JLabel();
+        jLabelInfo = new javax.swing.JLabel();
         jPanelMotion = new javax.swing.JPanel();
         jCheckBoxSpaceG123 = new javax.swing.JCheckBox();
         jCheckBoxG54x = new javax.swing.JCheckBox();
@@ -185,8 +157,7 @@ public class JFilterFrame extends javax.swing.JPanel {
         jCheckBoxComma = new javax.swing.JCheckBox();
         jCheckBoxPatenthesis = new javax.swing.JCheckBox();
         jCheckBoxTempo = new javax.swing.JCheckBox();
-        jCheckBoxSplines = new javax.swing.JCheckBox();
-        jCheckBoxToolCoice = new javax.swing.JCheckBox();
+        jCheckBoxToolChoice = new javax.swing.JCheckBox();
         jCheckBoxToolLength = new javax.swing.JCheckBox();
         jCheckBoxZcoords = new javax.swing.JCheckBox();
 
@@ -221,13 +192,13 @@ public class JFilterFrame extends javax.swing.JPanel {
         gridBagConstraints.insets = new java.awt.Insets(12, 102, 12, 0);
         add(jButtonCancel, gridBagConstraints);
 
-        jLabel1.setText("Choose GCODE to remove :");
+        jLabelInfo.setText("Choose GCODE to remove :");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 0;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(30, 12, 0, 0);
-        add(jLabel1, gridBagConstraints);
+        add(jLabelInfo, gridBagConstraints);
 
         jPanelMotion.setBorder(javax.swing.BorderFactory.createTitledBorder("Motion"));
         jPanelMotion.setLayout(new javax.swing.BoxLayout(jPanelMotion, javax.swing.BoxLayout.PAGE_AXIS));
@@ -235,15 +206,12 @@ public class JFilterFrame extends javax.swing.JPanel {
         jCheckBoxSpaceG123.setText("Space (G1x G2x G3x)");
         jPanelMotion.add(jCheckBoxSpaceG123);
 
-        jCheckBoxG54x.setSelected(true);
         jCheckBoxG54x.setText("Workspace (G5x)");
         jPanelMotion.add(jCheckBoxG54x);
 
-        jCheckBoxFeedG9x.setSelected(true);
         jCheckBoxFeedG9x.setText("Feed rate (Fx G9x)");
         jPanelMotion.add(jCheckBoxFeedG9x);
 
-        jCheckBoxG6x.setSelected(true);
         jCheckBoxG6x.setText("Path control (G6x)");
         jPanelMotion.add(jCheckBoxG6x);
 
@@ -260,19 +228,15 @@ public class JFilterFrame extends javax.swing.JPanel {
         jPanelModal.setBorder(javax.swing.BorderFactory.createTitledBorder("Modal"));
         jPanelModal.setLayout(new javax.swing.BoxLayout(jPanelModal, javax.swing.BoxLayout.PAGE_AXIS));
 
-        jCheckBoxMStopping.setSelected(true);
         jCheckBoxMStopping.setText("Stopping (M0-2,30,60)");
         jPanelModal.add(jCheckBoxMStopping);
 
-        jCheckBoxM345.setSelected(true);
         jCheckBoxM345.setText("Spindle/Laser (M3-5 Sx)");
         jPanelModal.add(jCheckBoxM345);
 
-        jCheckBoxCoolantM789.setSelected(true);
         jCheckBoxCoolantM789.setText("Coolant (M7,8,9)");
         jPanelModal.add(jCheckBoxCoolantM789);
 
-        jCheckBoxAllOtherMCode.setSelected(true);
         jCheckBoxAllOtherMCode.setText("All the others");
         jPanelModal.add(jCheckBoxAllOtherMCode);
 
@@ -287,26 +251,18 @@ public class JFilterFrame extends javax.swing.JPanel {
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Misc"));
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.PAGE_AXIS));
 
-        jCheckBoxComma.setSelected(true);
         jCheckBoxComma.setText("Comment ( comma )");
         jPanel1.add(jCheckBoxComma);
 
-        jCheckBoxPatenthesis.setSelected(true);
         jCheckBoxPatenthesis.setText("Parenthesis");
         jPanel1.add(jCheckBoxPatenthesis);
 
-        jCheckBoxTempo.setSelected(true);
         jCheckBoxTempo.setText("Tempo (G4)");
         jPanel1.add(jCheckBoxTempo);
 
-        jCheckBoxSplines.setText("Splines (G5)");
-        jPanel1.add(jCheckBoxSplines);
+        jCheckBoxToolChoice.setText("Tool Choice (Ox Tx)");
+        jPanel1.add(jCheckBoxToolChoice);
 
-        jCheckBoxToolCoice.setSelected(true);
-        jCheckBoxToolCoice.setText("Tool Choice (Ox Tx)");
-        jPanel1.add(jCheckBoxToolCoice);
-
-        jCheckBoxToolLength.setSelected(true);
         jCheckBoxToolLength.setText("Tool Length (G4x G7x G8x)");
         jPanel1.add(jCheckBoxToolLength);
 
@@ -347,12 +303,11 @@ public class JFilterFrame extends javax.swing.JPanel {
     private javax.swing.JCheckBox jCheckBoxMStopping;
     private javax.swing.JCheckBox jCheckBoxPatenthesis;
     private javax.swing.JCheckBox jCheckBoxSpaceG123;
-    private javax.swing.JCheckBox jCheckBoxSplines;
     private javax.swing.JCheckBox jCheckBoxTempo;
-    private javax.swing.JCheckBox jCheckBoxToolCoice;
+    private javax.swing.JCheckBox jCheckBoxToolChoice;
     private javax.swing.JCheckBox jCheckBoxToolLength;
     private javax.swing.JCheckBox jCheckBoxZcoords;
-    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabelInfo;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanelModal;
     private javax.swing.JPanel jPanelMotion;

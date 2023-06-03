@@ -635,20 +635,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
      */
     public static GCode optimizeMoves(ArrayList<GElement> selection, Point2D lastPosition, boolean recursive) {
         //GCode lastPointOfCloser;
-        if ( selection.isEmpty()) return (lastPosition != null) ? new GCode(lastPosition) : null;
-        
-        // optimizeMoves childs first
-        /*
-        if ( recursive)
-            selection.stream().filter((e) -> 
-                    ( e instanceof GGroup)).forEach((e) ->
-                        { ((GGroup) e).sort(recursive); });
-        */
-        
-        /*if ( (selection.size() == 1) ) {
-            lastPoint = selection.get(0).getLastPoint();
-            return lastPoint;
-        }   */    
+        if ( selection.isEmpty()) return (lastPosition != null) ? new GCode(lastPosition) : null;          
         
         GElement closer;
         for( int i = 0; i < selection.size(); i++) {
@@ -664,7 +651,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
                 e = selection.get(j);
                 final GCode firstPoint = e.getFirstPoint();
                 if ( firstPoint == null) continue;
-                final double d=lastPosition.distance(e.getFirstPoint());
+                final double d=lastPosition.distance(firstPoint);
                 
                 // TODO in the betters closed next paths : try choosing the first that have endPoint near all others
                 if ( (d<dmin) /*&& ((lastPointOfCloser==null) ||

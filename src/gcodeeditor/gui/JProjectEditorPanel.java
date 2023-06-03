@@ -2317,9 +2317,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     
         if ( mouseMode != MOUSE_MODE_NONE) setCursor(crossCursor);
         mouseDragged = true;
+        coordSnapPosition = getCoordSnapPointFor(e.getX(), e.getY());
         screenMousePosition = (mouseMode==MOUSE_MODE_NONE) ? e.getPoint() 
-                                : coordToScreenPoint(
-                                        coordSnapPosition = getCoordSnapPointFor(e.getX(), e.getY()));
+                                : coordToScreenPoint(coordSnapPosition);
         
         switch (mouseMode) {
             case MOUSE_MODE_DRAG_VIEW: // translate view position
@@ -3651,18 +3651,23 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 }
                 break;
             case ACTION_OPTIMIZE_MOVES:
-                @SuppressWarnings("unchecked")
-                final ArrayList<GElement> el = (ArrayList<GElement>) selectedElements.clone();
-                GGroup.moveLength=0;
-                GGroup.optimizeMoves(el.isEmpty() ? (ArrayList<GElement>)editedGroup.getAll().clone() : el, coord2DCursor, true);
-                // reorder selection in EditedGroup
-                for(int i = 0; i < el.size(); i++) {
-                    int pos1 = editedGroup.indexOf(selectedElements.get(i));
-                    int pos2 = editedGroup.indexOf(el.get(i));
-                    editedGroup.remove(pos1);
-                    editedGroup.add(pos1, el.get(i));
-                    editedGroup.remove(pos2);
-                    editedGroup.add(pos2, selectedElements.get(i));
+                if ( selectedElements.isEmpty() ) editedGroup.sort(coord2DCursor, true);
+                else if ( (selectedElements.size() == 1) && (selectedElements.get(0) instanceof GGroup))
+                    ((GGroup)selectedElements.get(0)).sort(coord2DCursor, true);
+                else {
+                    @SuppressWarnings("unchecked")
+                    final ArrayList<GElement> el = (ArrayList<GElement>) selectedElements.clone();
+                    GGroup.moveLength=0;
+                    GGroup.optimizeMoves(el.isEmpty() ? (ArrayList<GElement>)editedGroup.getAll().clone() : el, coord2DCursor, true);
+                    // reorder selection in EditedGroup
+                    for(int i = 0; i < el.size(); i++) {
+                        int pos1 = editedGroup.indexOf(selectedElements.get(i));
+                        int pos2 = editedGroup.indexOf(el.get(i));
+                        editedGroup.remove(pos1);
+                        editedGroup.add(pos1, el.get(i));
+                        editedGroup.remove(pos2);
+                        editedGroup.add(pos2, selectedElements.get(i));
+                    }
                 }
                 saveState(true);
                 break;

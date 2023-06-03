@@ -671,8 +671,23 @@
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddCircleActionPerformed"/>
                   </Events>
                 </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddCurve">
+                  <Properties>
+                    <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                      <KeyStroke key="C"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="Curve"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Curve G5"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddCurveActionPerformed"/>
+                  </Events>
+                </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddOval">
                   <Properties>
+                    <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                      <KeyStroke key="O"/>
+                    </Property>
                     <Property name="text" type="java.lang.String" value="Circle (mode 2)"/>
                     <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Create a G1 circle with mouse and &lt;i&gt;Alt&lt;/i&gt;, &lt;i&gt;Ctrl&lt;/i&gt; and &lt;i&gt;Shift&lt;/i&gt; combinaisons keys.&lt;/html&gt;"/>
                   </Properties>

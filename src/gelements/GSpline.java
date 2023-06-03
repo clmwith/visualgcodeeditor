@@ -381,6 +381,11 @@ public class GSpline extends GElement {
         GCode t = start;
         start = end;
         end = t;
+        if ( cp2 != null) {
+            t = cp1;
+            cp1 = cp2;
+            cp2 = t;
+        }
         informAboutChange();
     }
 
@@ -506,6 +511,12 @@ public class GSpline extends GElement {
             if ((cp1 != null) && (cp2==null)) g.drawLine(ex, ey, x1, y1); 
         }
         
+        if ( (pc.color!=Color.darkGray) && pc.showStartPoints) {
+            /*if( (pc.color == PaintContext.SEL_COLOR1)|| (pc.color == PaintContext.SEL_DISABLED_COLOR)) g.setColor(pc.color);
+            else */g.setColor(Color.red); 
+            g.drawRect(sx-3, sy-3, 6, 6);
+        }
+                    
         g.setColor(pc.color);      
         Graphics2D g2 = (Graphics2D)g.create();
         g2.scale(zoomFactor, -zoomFactor);
@@ -524,11 +535,6 @@ public class GSpline extends GElement {
                 g.fillOval(x-3,y-3, 6, 6);   
             }
 
-            if ( (pc.color!=Color.darkGray) && pc.showStartPoints) {
-                if( (pc.color == PaintContext.SEL_COLOR1)|| (pc.color == PaintContext.SEL_DISABLED_COLOR)) g.setColor(pc.color);
-                else g.setColor(Color.red); 
-                g.drawRect(sx-3, sy-3, 6, 6);
-            }
             // draw selectedPoints
             g.setColor(PaintContext.SEL_COLOR1);
             pc.selectedPoints.forEach((p) -> {

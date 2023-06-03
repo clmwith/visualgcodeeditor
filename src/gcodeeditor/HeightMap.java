@@ -27,6 +27,9 @@ import java.awt.event.MouseMotionListener;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -53,6 +56,10 @@ import javax.swing.JPanel;
  * @author clement
  */
 public class HeightMap {
+    
+    public static final String HEADER_STRING = "(HeightMap: ";
+    
+    String name;
     
     double delta;
     
@@ -83,28 +90,7 @@ public class HeightMap {
                 clone.points[x][y] = points[x][y];
         return clone;
     }
-    
-    /**
-     * set height value to the closest point of the grid.
-     * @param heightPoint 
-     */
-    public void setHeight( Point3D heightPoint) {
-        int px = (int)(0.5 + ((heightPoint.getX() - bounds.getX())/delta));
-        int py = (int)(0.5 + ((heightPoint.getY() - bounds.getY())/delta));
-        if ( (px < 0) || (py < 0) || (px >= points.length) || (py >= points[0].length)) return;
-        points[px][py] = (double)heightPoint.getZ();
-    }
-    
-    /**
-     * Set an height at grid[x,y]
-     * @param x
-     * @param y
-     * @param h 
-     */
-    public void setHeight(int x, int y, double h) {
-        points[x][y] = h;
-    }
-    
+     
     int getGridWidth() {
         return points.length;
     }
@@ -217,7 +203,7 @@ public class HeightMap {
                         break;
                     }
                 }
-                assert( p != null);
+                //assert( p != null);
                 t = t2;
             }
         }
@@ -231,9 +217,55 @@ public class HeightMap {
         return t1[0].equals(t2[0]) && t1[1].equals(t2[1]) && t1[2].equals(t2[2]);
     }
     
+    public void saveToStream(FileWriter fw, GCode lastPoint) throws IOException {
+        fw.append(HEADER_STRING + name + ")\n");
+        fw.append("; bounds=" + bounds.getX()+","+bounds.getY()+","+bounds.getWidth()+","+bounds.getHeight()+"\n");
+        fw.append("; points=");
+        boolean first = true;
+        for( int x = 0; x < getGridWidth(); x++)
+            for( int y = 0; y < getGridHeight(); y++) {
+                if ( first) first = false; else fw.append(',');            
+                fw.append(""+points[x][y]);   
+            }
+    }
+    
+    public String loadFromStream(BufferedReader stream, GCode lastGState) throws IOException {
+        String line = stream.readLine();
+        if ( line.startsWith("; bounds=")) {
+            String v[] = line.substring(9).split(",");
+            bounds = new Rectangle2D.Double(Double.valueOf(v[0]),Double.valueOf(v[1]),Double.valueOf(v[2]),Double.valueOf(v[3]));
+        } else return line;
+        
+        line = stream.readLine();
+        
+        return stream.readLine();
+    }       
+       
     
     /**
-     * Class used to visualy test HeightMap class.
+     * set height value to the closest point of the grid.
+     * @param heightPoint 
+     */
+    public void setHeight( Point3D heightPoint) {
+        int px = (int)(0.5 + ((heightPoint.getX() - bounds.getX())/delta));
+        int py = (int)(0.5 + ((heightPoint.getY() - bounds.getY())/delta));
+        if ( (px < 0) || (py < 0) || (px >= points.length) || (py >= points[0].length)) return;
+        points[px][py] = (double)heightPoint.getZ();
+    }
+    
+    /**
+     * Set an height at grid[x,y]
+     * @param x
+     * @param y
+     * @param h 
+     */
+    public void setHeight(int x, int y, double h) {
+        points[x][y] = h;
+    }
+    
+    
+    /**
+     * Test Class used only to visualy test HeightMap class.
      */
     private static class JHeightMapTester extends JPanel {
 
