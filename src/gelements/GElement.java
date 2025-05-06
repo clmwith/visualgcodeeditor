@@ -515,6 +515,13 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    /** 
+     * Remove all G-comments contained in this element.
+     */
+    public void removeComments() {
+        return;
+    }
+
     /**
      * Interface to manage GElement factory (with setGElementBuilder() ).
      */

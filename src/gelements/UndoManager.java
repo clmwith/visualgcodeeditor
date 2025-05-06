@@ -99,6 +99,8 @@ public class UndoManager {
      * @return the edited element or group at save time
      */
     public GElement undo(GGroup document) {
+        assert( undoStack.size() > 0);
+                
         GElement res = null;
         if ( undoStackPosition > 1) --undoStackPosition;
         

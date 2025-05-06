@@ -37,9 +37,11 @@ import gcodeeditor.GearHelper;
 import gcodeeditor.GWord;
 import gcodeeditor.Configuration;
 import gelements.GSphericalPocket;
+/*
 import gnu.io.NoSuchPortException;
 import gnu.io.PortInUseException;
 import gnu.io.UnsupportedCommOperationException;
+*/
 import gcodeeditor.GRBLControler;
 import gcodeeditor.gui.dialogs.DialogManager;
 import gcodeeditor.gui.dialogs.JMovePanel;
@@ -772,6 +774,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("VGEditor");
+        getContentPane().setLayout(new java.awt.BorderLayout());
 
         jPanelStatus.setLayout(new java.awt.BorderLayout());
 
@@ -1710,7 +1713,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
         jMenuItemJoin.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_J, 0));
         jMenuItemJoin.setText("Join");
-        jMenuItemJoin.setToolTipText("Try to join paths");
+        jMenuItemJoin.setToolTipText("Try to join non grouped selected paths");
         jMenuItemJoin.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemJoinActionPerformed(evt);
@@ -2982,7 +2985,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 jCheckBoxMenuItemShowHeadPosition.setSelected(true);
                 jCheckBoxMenuItemShowHeadPositionActionPerformed(null);      
             }
-        } catch (IOException | NoSuchPortException | PortInUseException | TooManyListenersException | UnsupportedCommOperationException e) {
+        } catch ( Exception e) {
+            //IOException | NoSuchPortException | PortInUseException | TooManyListenersException | UnsupportedCommOperationException e }) {
             JOptionPane.showMessageDialog(this, port + "\n" + e.toString(), "Can't connect to GRBL", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_jMenuItemGRBLConnectActionPerformed
@@ -3386,7 +3390,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jMenuItemMakeCutPathOActionPerformed
 
     private void jMenuItemGroupActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGroupActionPerformed
-        String name = JOptionPane.showInputDialog(this, "Group name ?", "group");
+        String name = JOptionPane.showInputDialog(this, "Group name ?", "group"+GElement.getUniqID());
         if ( name != null)
             projectViewer.doAction(JProjectEditorPanel.ACTION_GROUP_UNGROUP, 1, name);
     }//GEN-LAST:event_jMenuItemGroupActionPerformed
@@ -3929,7 +3933,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jPropFieldFocusLost
 
     private void jMenuItemRemoveSelectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRemoveSelectionActionPerformed
-        // TODO add your handling code here:
+        projectViewer.doAction(JProjectEditorPanel.ACTION_DELETE, 0, null);
     }//GEN-LAST:event_jMenuItemRemoveSelectionActionPerformed
 
     private void jMenuItemFlipG1G5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlipG1G5ActionPerformed
@@ -4186,11 +4190,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jCheckBoxMenuItenItemShowPicture.setSelected(projectViewer.getBackgroundPictureParameters().isImageVisible());
         jCheckBoxMenuItemShowMoves.setEnabled(noEdition);  
         jCheckBoxMenuItemShowMoves.setSelected(((s & JProjectEditorPanel.STATE_SHOW_MOVES_FLAG) !=0));
+        jCheckBoxMenuItemShowObjectSurface.setSelected(((s & projectViewer.STATE_SHOW_OBJECT_SURFACE) != 0));
         jCheckBoxMenuItemShowWorkspace.setEnabled( (conf.workspaceWidth != 0) &&(conf.workspaceHeight != 0));
         jCheckBoxMenuItemSnapGrid.setEnabled(noEdition);
         jCheckBoxMenuItemSnapGrid.setSelected(noEdition && ((s & JProjectEditorPanel.STATE_SNAP_TO_GRID_FLAG) != 0));
         jCheckBoxMenuItemSnapPoints.setEnabled(noEdition);
         jCheckBoxMenuItemSnapPoints.setSelected(noEdition && ((s & JProjectEditorPanel.STATE_SNAP_TO_POINTS_FLAG) != 0));
+        jCheckBoxMenuItemShowStart.setEnabled(noEdition);
+        jCheckBoxMenuItemShowStart.setSelected(noEdition && ((s & JProjectEditorPanel.STATE_SHOW_START) != 0));
         jMenuAdds.setEnabled(noEdition);
         jMenuAlign.setEnabled( (block|blocks| (edit & points)) & noEdition);
         jMenuItemAddArc.setEnabled( isMix && noEdition);

@@ -16,15 +16,10 @@
  */
 package gcodeeditor;
 
-import gcodeeditor.ParserState;
-import gcodeeditor.GWord;
-import gcodeeditor.GCode;
 import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.ArrayList;
-import gcodeeditor.Configuration;
 import gcodeeditor.gui.JProjectEditorPanel;
-import gcodeeditor.GRBLControler;
 import gelements.G1Path;
 import gelements.GDrillPoint;
 import gelements.GElement;
@@ -144,19 +139,19 @@ public class GCodeDocumentRender implements Runnable {
             long t2 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
             System.out.println("Rendering duration (s) = " + (t2-t1)/1000);
                         
-            // try { Thread.sleep(1000); } catch ( InterruptedException e) { } // Small delay
             while (grbl.isConnected() && ! stopThread && 
-                    ((grbl.getState() == GRBLControler.GRBL_STATE_RUN)||(grbl.getState() == GRBLControler.GRBL_STATE_HOLD))) {
+                    ((grbl.getState() == GRBLControler.GRBL_STATE_RUN)  ||
+                     (grbl.getState() == GRBLControler.GRBL_STATE_HOLD) ||
+                      ! grbl.isControlerIdle())) {
                 updateGUI();
                 try { Thread.sleep(330); } catch ( InterruptedException e) { }            
             }
 
-            // Wait task finished
-            while( ! grbl.isControlerIdle()) try { Thread.sleep(10); } catch ( InterruptedException e) { }
             grbl.stopFileLogger();                            
         }
         catch ( Exception e) { 
             e.printStackTrace(); 
+            grbl.holdAndReset();
             
             if (outputFile != null) {
                 try {

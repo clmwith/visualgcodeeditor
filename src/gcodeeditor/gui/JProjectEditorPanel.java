@@ -23,7 +23,6 @@ import gcodeeditor.GWord;
 import gcodeeditor.JarvisMarchHull;
 import gcodeeditor.Point3D;
 import gelements.UndoManager;
-import gcodeeditor.gui.JFilterFrame;
 import gcodeeditor.EngravingProperties;
 import gelements.GArc;
 import gelements.G1Path;
@@ -109,7 +108,8 @@ import org.w3c.dom.traversal.TreeWalker;
 import org.xml.sax.SAXException;
 
 /**
- *
+ * A panel the permit to display a GCodeProject, and modify it with mouse and keyboard.
+ * 
  * @author Clément
  */
 public final class JProjectEditorPanel extends javax.swing.JPanel implements BackgroundPictureParameters.ParameterChangedListenerInterface, MouseListener, MouseMotionListener, MouseWheelListener, KeyListener {
@@ -155,7 +155,10 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     private GElement gcodeHeader, gcodeFooter;
     
     private boolean shiftDown, ctrlDown, altDown;
+    
+    /** rendering display options */
     private boolean showWorkspace, showObjectSurface, showMoves, showGrid, snapToGrid, snapToPoints;
+    
     private double gridStep = 10;
     
     public static final int MOUSE_MODE_NONE = 0;
@@ -2686,67 +2689,69 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         }
     }
 
-    public static final int ACTION_UNDO         = 1;
-    public static final int ACTION_COPY         = 2;
-    public static final int ACTION_CUT          = 3;
-    public static final int ACTION_PASTE        = 4;
-    public static final int ACTION_JOIN         = 5;
-    public static final int ACTION_SIMPLIFY     = 6;
-    public static final int ACTION_SCALE        = 7;
-    public static final int ACTION_ROTATE       = 8;
-    public static final int ACTION_MOVE         = 10;
-    public static final int ACTION_FLIP_H       = 11;
-    public static final int ACTION_FLIP_V       = 12;
-    public static final int ACTION_CHANGE_START_POINT = 13;
-    public static final int ACTION_EXTRACT      = 14;
+    public static final int ACTION_ADD_AT_CENTER             = 10;
+    public static final int ACTION_ADD_CIRCLES               = 20;
+    public static final int ACTION_ADD_CURVE                 = 30;
+    public static final int ACTION_ADD_G2G3_CIRCLE           = 40;
+    public static final int ACTION_ADD_HULL                  = 50;
+    public static final int ACTION_ADD_INTERSECTION_POINTS   = 60;
+    public static final int ACTION_ADD_LINES                 = 70;
+    public static final int ACTION_ADD_LINKED_PATHS          = 80;
+    public static final int ACTION_ADD_MIXED_PATH            = 90; 
+    public static final int ACTION_ADD_OVAL                  = 100;
+    public static final int ACTION_ADD_POINTS_AT_HALF        = 110;
+    public static final int ACTION_ADD_RECTANGLES            = 120;
+    public static final int ACTION_ALIGN                     = 130;
+    public static final int ACTION_CHANGE_START_POINT        = 140;
+    public static final int ACTION_CONVERT_TO_MIXEDPATH      = 150;
+    public static final int ACTION_COPY                      = 160;
+    public static final int ACTION_CURSOR_AT_CENTER          = 170;
+    public static final int ACTION_CURSOR_AT_HEAD            = 180;
+    public static final int ACTION_CUT                       = 190;
+    public static final int ACTION_DELETE                    = 200;
+    public static final int ACTION_DISTANCE                  = 210;
     /** Insert a line in the current editedPath. */
-    public static final int ACTION_INSERT        = 15;
-    public static final int ACTION_DELETE        = 16;
-    public static final int ACTION_SET_AS_HEADER = 17;
-    public static final int ACTION_SET_AS_FOOTER = 18;
-    public static final int ACTION_MOVE_UP       = 19;
-    public static final int ACTION_MOVE_DOWN     = 20;
-    public static final int ACTION_FILTER        = 21;
-    public static final int ACTION_SHOW_MOVES    = 22;
-    public static final int ACTION_SHOW_OBJECT_SURFACE = 23;
-    public static final int ACTION_SHOW_GRID            = 24;
-    public static final int ACTION_SELECT_ALL          = 26;
-    public static final int ACTION_SET_2D_CURSOR       = 27;
-    public static final int ACTION_SHOW_WORKSPACE        = 28;
-    public static final int ACTION_CURSOR_AT_CENTER   = 29;
-    public static final int ACTION_MOVE_GRBL_HEAD   = 32;
-    public static final int ACTION_CURSOR_AT_HEAD = 34;
-    public static final int ACTION_OPTIMIZE_MOVES = 36;
-    public static final int ACTION_REVERSE = 37;
-    public static final int ACTION_ALIGN = 38;
-    public static final int ACTION_MOVE_MPOS = 39;
-    public static final int ACTION_MAKE_POCKET = 40;
-    public static final int ACTION_MAKE_OFFSET_CUT = 41;
-    public static final int ACTION_SIMPLIFY_ANGLE = 42;
-    public static final int ACTION_FOCUS_VIEW = 43;
-    public static final int ACTION_DISTANCE = 44;
-    public static final int ACTION_GROUP_UNGROUP = 45;
-    public static final int ACTION_ADD_RECTANGLES = 46;
-    public static final int ACTION_ADD_CIRCLES = 47;
-    public static final int ACTION_ADD_LINES = 48;
-    public static final int ACTION_MAKE_FLATTEN = 49;
-    public static final int ACTION_ADD_AT_CENTER = 50;
-    public static final int ACTION_SHOW_ANGLE = 51;
-    public static final int ACTION_ADD_OVAL = 52;
-    public static final int ACTION_ADD_HULL = 53;
-    public static final int ACTION_REDO = 54;
-    public static final int ACTION_ADD_LINKED_PATHS = 55;
-    public static final int ACTION_ADD_INTERSECTION_POINTS = 56;
-    public static final int ACTION_MAP_TEXT_TO_PATH = 57;
-    public static final int ACTION_ADD_CURVE = 58;
-    public static final int ACTION_ADD_MIXED_PATH = 59; 
-    public static final int ACTION_INVERSE_SEL = 60; 
-    public static final int ACTION_ADD_POINTS_AT_HALF = 62;
-    public static final int ACTION_ADD_G2G3_CIRCLE = 63;
-    public static final int ACTION_CONVERT_TO_MIXEDPATH = 64;
-    public static final int ACTION_FLIP_G1GX = 65;
+    public static final int ACTION_INSERT                    = 220;
+    public static final int ACTION_INVERSE_SEL               = 230; 
+    public static final int ACTION_EXTRACT                   = 240;
+    public static final int ACTION_FILTER                    = 250;
+    public static final int ACTION_FLIP_G1GX                 = 260;
+    public static final int ACTION_FLIP_H                    = 270;
+    public static final int ACTION_FLIP_V                    = 280;
+    public static final int ACTION_FOCUS_VIEW                = 290;
+    public static final int ACTION_GROUP_UNGROUP             = 300;
+    public static final int ACTION_JOIN                      = 310;
+    public static final int ACTION_MAKE_FLATTEN              = 320;
+    public static final int ACTION_MAKE_OFFSET_CUT           = 330;
+    public static final int ACTION_MAKE_POCKET               = 340;
+    public static final int ACTION_MAP_TEXT_TO_PATH          = 350;
+    public static final int ACTION_MOVE                      = 360;
+    public static final int ACTION_MOVE_DOWN                 = 370;
+    public static final int ACTION_MOVE_GRBL_HEAD            = 380;
+    public static final int ACTION_MOVE_MPOS                 = 390;
+    public static final int ACTION_MOVE_UP                   = 400;
+    public static final int ACTION_OPTIMIZE_MOVES            = 410;
+    public static final int ACTION_PASTE                     = 420;
+    public static final int ACTION_REDO                      = 430;
+    public static final int ACTION_REMOVE_COMMENT            = 431;
+    public static final int ACTION_REVERSE                   = 440;
+    public static final int ACTION_ROTATE                    = 450;
+    public static final int ACTION_SCALE                     = 460;
+    public static final int ACTION_SELECT_ALL                = 470;
+    public static final int ACTION_SET_2D_CURSOR             = 480;
+    public static final int ACTION_SET_AS_FOOTER             = 490;
+    public static final int ACTION_SET_AS_HEADER             = 500;
+    public static final int ACTION_SHOW_ANGLE                = 510;
+    public static final int ACTION_SHOW_GRID                 = 520;
+    public static final int ACTION_SHOW_MOVES                = 530;
+    public static final int ACTION_SHOW_OBJECT_SURFACE       = 540;
+    public static final int ACTION_SHOW_WORKSPACE            = 550;
+    public static final int ACTION_SIMPLIFY                  = 560;
+    public static final int ACTION_SIMPLIFY_ANGLE            = 570;
+    public static final int ACTION_UNDO                      = 580;
+
     
-    public static final int ACTION_TEST = 154;
+    public static final int ACTION_TEST = 10000;
     
     public static final int ALIGN_LEFT = 0;
     public static final int ALIGN_RIGHT = 1;
@@ -3328,6 +3333,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                                 if (s2.getFirstPoint() == null) continue;
                                 
                                 if ( s1 != s2) {
+                                    if ( s1.getFirstPoint().distance( s2.getFirstPoint()) < param)
+                                        s2.reverse();
+                                    
                                     if ( (s1.getLastPoint().distance(s2.getFirstPoint()) < param) ||
                                          (s1.getLastPoint().distance(s2.getLastPoint()) < param)) {       
                                         
@@ -3490,6 +3498,43 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 saveState(true);
                 break;
                 
+               
+            case ACTION_INVERSE_SEL:
+                if (editedElement != null) {
+                    ArrayList<GCode> newSel = new ArrayList<>();
+                    for( GCode p : editedElement.getPointsIterator()) {
+                        if ( ! selectedPoints.contains(p)) newSel.add(p);
+                    }
+                    selectedPoints = newSel;
+
+                } else {
+                    ArrayList<GElement> newSel = new ArrayList<>();
+                    for( GElement el : editedGroup.getIterable()) {
+                        if ( ! selectedElements.contains(el)) newSel.add(el);
+                    }
+                    selectedElements.clear();
+                    selectedElements.addAll(newSel);                    
+                }
+                
+                selectionHasChanged = true;
+                invalidate();
+                break;
+                
+            case ACTION_MOVE_GRBL_HEAD:    
+                mouseMode = MOUSE_MODE_MOVE_GANTRY;
+                showLaser=param==1;
+                inform("Click to move gantry");
+                setCursor( jogCursor);
+                break;
+            
+            case ACTION_MOVE_MPOS:
+                mouseMode = MOUSE_MODE_SET_MPOS;
+                showLaser=param==1;
+                inform("Click to a position to set WPos according to MPos localisation");
+                setCursor( crossCursor);
+                break;                
+      
+                
             case ACTION_PASTE:
                 if ((clipBoard != null) && ! clipBoard.isEmpty()) {  
                     if ( clipBoard instanceof GGroup)
@@ -3529,7 +3574,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 transformationOrigin= (param==0) ? getCenterOfSelection() : coord2DCursor;
                 mouseMode=MOUSE_MODE_SCALE;
                 repaint();
-                break;
+                break;                
                 
             case ACTION_SELECT_ALL:
                 if (editedElement != null) {
@@ -3547,28 +3592,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 }
                 selectionHasChanged=true;
                 invalidate();
-                break;
-                
-            case ACTION_INVERSE_SEL:
-                if (editedElement != null) {
-                    ArrayList<GCode> newSel = new ArrayList<>();
-                    for( GCode p : editedElement.getPointsIterator()) {
-                        if ( ! selectedPoints.contains(p)) newSel.add(p);
-                    }
-                    selectedPoints = newSel;
-
-                } else {
-                    ArrayList<GElement> newSel = new ArrayList<>();
-                    for( GElement el : editedGroup.getIterable()) {
-                        if ( ! selectedElements.contains(el)) newSel.add(el);
-                    }
-                    selectedElements.clear();
-                    selectedElements.addAll(newSel);                    
-                }
-                
-                selectionHasChanged = true;
-                invalidate();
-                break;
+                break;                
                 
             case ACTION_SET_2D_CURSOR:
                 mouseMode = MOUSE_MODE_SET_2D_CURSOR;
@@ -3576,19 +3600,6 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 setCursor( crossCursor);
                 break;
                 
-            case ACTION_MOVE_GRBL_HEAD:    
-                mouseMode = MOUSE_MODE_MOVE_GANTRY;
-                showLaser=param==1;
-                inform("Click to move gantry");
-                setCursor( jogCursor);
-                break;
-            
-            case ACTION_MOVE_MPOS:
-                mouseMode = MOUSE_MODE_SET_MPOS;
-                showLaser=param==1;
-                inform("Click to a position to set WPos according to MPos localisation");
-                setCursor( crossCursor);
-                break;
                 
             case ACTION_SET_AS_HEADER:
                 if ( (selectedElements.size()==1) && 
@@ -3620,19 +3631,19 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 break;
             case ACTION_SHOW_MOVES:
                     showMoves = (param == 1);
-                    invalidateWithoutUpdateGCodeListViewer();
+                    invalidate();
                     break;
             case ACTION_SHOW_OBJECT_SURFACE:
                 showObjectSurface = (param == 1);
-                invalidateWithoutUpdateGCodeListViewer();
+                invalidate();
                 break;
             case ACTION_SHOW_GRID:
                 showGrid = (param == 1);
-                repaint();
+                invalidate();
                 break;
             case ACTION_SHOW_WORKSPACE:
                 showWorkspace = (param == 1);
-                invalidateWithoutUpdateGCodeListViewer();
+                invalidate();
                 break;
             case ACTION_SIMPLIFY_ANGLE:
                 if ( (editedElement != null) && (editedElement instanceof G1Path) ) {
@@ -3727,7 +3738,13 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     invalidate();
                 }
                 */
-                break;    
+                break;  
+                
+            case ACTION_REMOVE_COMMENT:
+                if ( selectedElements.size() > 1)
+                    for ( GElement e3 : selectedElements) e3.removeComments();
+                invalidate();
+                break;
         }
         return true;
     }
@@ -4003,6 +4020,8 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public static final int STATE_LINE_SELECTED = 8192;
     public static final int STATE_SHOW_MOVES_FLAG = 16384;
     public static final int STATE_CAN_REDO_FLAG = 32768;
+    public static final int STATE_SHOW_OBJECT_SURFACE = 65536;
+    public static final int STATE_SHOW_START = 131072;
     /**
      * Get the state of this editor
      * @return an union of STATE_xxx values
@@ -4024,6 +4043,8 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         if ( snapToPoints ) res |= STATE_SNAP_TO_POINTS_FLAG;
         if ( showGrid) res |= STATE_GRID_FLAG;
         if ( showMoves) res |= STATE_SHOW_MOVES_FLAG;
+        if ( showObjectSurface) res |= STATE_SHOW_OBJECT_SURFACE;
+        if ( showStartPoints) res |= STATE_SHOW_START;
         if ( ! keyFocus) res |= STATE_EDIT_LINE;
         return res;
     }
@@ -4144,7 +4165,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public void setEditedElement(GElement element) {
         assert( element != null);
         setKeyFocus(true);
-                               
+          
+        boolean exitingEditing = false;
+        
         if ( editedElement != null) {  
             if ( editedElement == element) return;
             
@@ -4152,14 +4175,16 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             clearSelectedPoints();
             editedElement = null;
             highlitedPoint = null;
+            exitingEditing = true;
         }
         
         clearMouseMode();       
-        selectedElements.clear();
+        selectedElements.clear(); 
+        
         if ( element != null) {
 
             if ( element instanceof GGroup) {
-                if ( editedGroup == element ) return;                
+                if ( (editedGroup == element ) && ! exitingEditing)  return;                
                 editedGroup = (GGroup) element;
             }
             else {
@@ -4873,20 +4898,15 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         if ( onlySelection) {
             if ( selectedElements.isEmpty()) return null;
             else {
-                if ((selectedElements.size() == 1) && (selectedElements.get(0) instanceof GGroup)) 
-                    return (GGroup)selectedElements.get(0);
-                
-                EngravingProperties p = document.properties.clone();
                 GGroup res = new GGroup("<selection>");
-                if (selectedElements.size() == 1) {
-                    res.properties = EngravingProperties.udateHeritedProps(p, selectedElements.get(0).properties);
-                    res.properties.setAllAtOnce(false);
-                } else 
-                    res.properties = EngravingProperties.udateHeritedProps(p,editedGroup.properties);
-
+                
                 if ( withHeaderFooter && (gcodeHeader!=null)) res.add(gcodeHeader);
                 res.addAll(selectedElements);
                 if ( withHeaderFooter && (gcodeFooter!=null)) res.add(gcodeFooter);
+                
+                // get herited defaults engravings properties
+                res.properties = document.getHeritedEngravingPropreties(editedGroup);                
+                res.properties.setAllAtOnce(false);
                 return res;
             }
         }

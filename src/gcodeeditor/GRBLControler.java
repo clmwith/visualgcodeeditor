@@ -16,6 +16,7 @@
  */
 package gcodeeditor;
 
+/* Avec la librairie RXTXComm 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.NoSuchPortException;
@@ -24,6 +25,15 @@ import gnu.io.SerialPort;
 import gnu.io.SerialPortEvent;
 import gnu.io.SerialPortEventListener;
 import gnu.io.UnsupportedCommOperationException;
+/* */
+
+/* Avec la librairie jSerialComm */
+import com.fazecast.jSerialComm.SerialPort;
+import com.fazecast.jSerialComm.SerialPortDataListener;
+import com.fazecast.jSerialComm.SerialPortEvent;
+
+
+
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.FileWriter;
@@ -49,7 +59,9 @@ import java.util.regex.Pattern;
  * A GRBL 1.1 Command Controler.
  * @author Clément
  */
-public class GRBLControler implements Runnable, SerialPortEventListener {
+public class GRBLControler implements Runnable, 
+                    SerialPortDataListener { // avec jSerialComm
+                    // SerialPortEventListener {   // avec RXTX
       
     public static final String GRBL_INIT_STRING_HEADER = "Grbl 1.1";
     
@@ -214,10 +226,13 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     private Thread cmdSenderThread;
     
     /** The serial port for Arduino/GRBL comunication */
-    CommPort commPort;
+    
+    //CommPort commPort; // RXTX
+    private SerialPort commPort;
+
     InputStream serialIn;
     OutputStream serialOut;
-    BufferedReader serialReader;
+    //BufferedReader serialReader;
     PrintStream serialWriter;
     private String limitSwitchValue;
      
@@ -226,11 +241,13 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     private HeightMap heightMap;
     
     @SuppressWarnings("SleepWhileInLoop")
-    public boolean connect(String portName, int rate) throws NoSuchPortException, PortInUseException, TooManyListenersException, UnsupportedCommOperationException, IOException {
+    public boolean connect(String portName, int rate) throws // NoSuchPortException, PortInUseException, UnsupportedCommOperationException, 
+                                                        TooManyListenersException, IOException {
         
         try {
             if (commPort != null) disconnect(true);
             
+            /* RXTX
             CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
             if (portIdentifier.isCurrentlyOwned()) {
                 listeners.forEach((li) -> { li.receivedMessage("Port '" + portName + "' currently in use."); });
@@ -239,21 +256,37 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 commPort = portIdentifier.open(this.getClass().getName(), 2000);
                 
                 SerialPort serialPort = (SerialPort) commPort;
+                
                 serialPort.addEventListener(this);
                 serialPort.notifyOnDataAvailable(true);
                 serialPort.notifyOnBreakInterrupt(true);
                 serialPort.notifyOnFramingError(true);
                 serialPort.notifyOnOverrunError(true);
                 serialPort.notifyOnParityError(true);
-                serialPort.notifyOnRingIndicator(true);
-                
+                serialPort.notifyOnRingIndicator(true);                              
                 serialPort.setSerialPortParams(rate, SerialPort.DATABITS_8,SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
                 serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
-
+            
                 serialIn = serialPort.getInputStream();
-                serialOut = serialPort.getOutputStream();
+                serialOut = serialPort.getOutputStream();                
+            /* fin RXTX */
+
+            // jSerialComm
+            if ( portName != null) {
+                commPort = SerialPort.getCommPort(portName);
+                commPort.setComPortParameters(115200, 8, 1, SerialPort.NO_PARITY);
+                commPort.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
+                if ( ! commPort.openPort()) {
+                    throw new IOException("Impossible d’ouvrir le port série : " + portName);
+                }
+                commPort.addDataListener(this);
+                serialIn =  commPort.getInputStream();
+                serialOut =  commPort.getOutputStream();
+            /* fin jSerialComm */
+                
+            
                 serialWriter = new PrintStream(serialOut);
-                serialReader = new BufferedReader(new InputStreamReader(serialIn));
+                //serialReader = new BufferedReader(new InputStreamReader(serialIn));
 
                 grblUpdateThread = new Thread( () -> {
                         do {
@@ -268,8 +301,10 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 return true; 
             }
             
-        } catch (NoSuchPortException | PortInUseException | TooManyListenersException | 
-                 UnsupportedCommOperationException | IOException ex) {
+        } catch (
+                // NoSuchPortException | UnsupportedCommOperationException | PortInUseException |  TooManyListenersException |  IOException ex // RXTX
+                        
+                        Exception ex) {
             
             listeners.forEach((li) -> {
                 li.receivedMessage("COM: Can't connect to '" + portName + "' (" + ex.toString() + ")");
@@ -283,21 +318,24 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     
     
     public Object[] getSerialPorts() {
+        /* RXTX 
         Enumeration portsEnumaration = CommPortIdentifier.getPortIdentifiers();
         ArrayList<String> ports = new ArrayList<>();
         while( portsEnumaration.hasMoreElements()) {
             ports.add(((CommPortIdentifier)portsEnumaration.nextElement()).getName());
         }
         return ports.toArray();
-    }
-    
-    
-    /** Send immediately a char to GRBL if (fileLogger == null) */
-    private void sendRTCmd( char c) {
-        if ( isComOpen()) {
-            serialWriter.print(c);
-            serialWriter.flush();
+        /* */
+        
+        /* ou jSerialCommm*/
+        SerialPort ports[] = commPort.getCommPorts();
+        ArrayList<String> res= new ArrayList<>();
+        for ( SerialPort p : ports) {
+            res.add(p.getSystemPortName());
         }
+        return res.toArray();
+        /* */
+        
     }
     
     /**
@@ -324,6 +362,17 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         cmdSenderThread.interrupt();
     }
     
+        
+    /** Send immediately a char to GRBL if (fileLogger == null) */
+    private void sendRTCmd( char c) {
+        if ( isComOpen()) {
+            synchronized (serialOut) {
+                serialWriter.print(c);
+                serialWriter.flush();
+            }
+        }
+    }
+    
     /** 
      * Realy send a command to GRBL through serial port and logFile, 
      * update grblBuffers values and warn listeners.
@@ -347,8 +396,10 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 if ( stopGRBLSenderThread) return;                              
                 grblBufferContent.add(s);
                 grblBufferFree -= s.length();
-                serialWriter.print(s);
-                serialWriter.flush();
+                synchronized (serialOut) {
+                    serialWriter.print(s);
+                    serialWriter.flush();
+                }
                              
                 // Update Gx states.
                 grblParserState.updateContextWith(cmd);
@@ -724,14 +775,16 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
      * @return true if serial port is open.
      */
     public boolean isConnected() {
-        return (commPort != null) && (grblState != GRBL_STATE_INIT) && (grblState != GRBL_STATE_DISCONNECTED);
+        return isComOpen() && (grblState != GRBL_STATE_INIT) && (grblState != GRBL_STATE_DISCONNECTED);
     }
     
     /**
      * @return true if serial port is open.
      */
     public boolean isComOpen() {
-        return (commPort != null);
+        return ( (commPort != null)
+                && commPort.isOpen()    // jSerialComm
+                );
     }
     
     /**
@@ -762,12 +815,12 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         serialWriter = null;
         
         try { 
-            if ( forceClose) serialReader.close();  // hangs sometimes
+            //if ( forceClose) serialReader.close();  // hangs sometimes
             serialIn.close();
             serialOut.close();
         } catch (IOException ex) { }    
         
-        if ( forceClose) commPort.close();
+        if ( (commPort != null) && forceClose && commPort.isOpen()) commPort.closePort(); // close();
         commPort = null;
         grblVersion = null;
         grblWCO = grblMPos = null;
@@ -777,15 +830,49 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
     }
     
     public static final Pattern WCO_PATTERN = Pattern.compile("^\\[G(5[4-9]|28|30|92):([^\\]]+)\\].*");
+    
+
+    
+    private final StringBuilder serialBuffer = new StringBuilder();
+    private String readLineFromSerialComm() {
+        try {
+            while (serialIn.available() > 0) {
+                int value = serialIn.read();
+                if (value == -1) return null;
+
+                char c = (char) value;
+                if (c == '\n') {
+                    String line = serialBuffer.toString().trim();
+                    serialBuffer.setLength(0);  // Reset le buffer
+                    return line;  // Retourne la ligne dès qu'elle est complète
+                } else {
+                    serialBuffer.append(c);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Erreur de lecture série : " + e.getMessage());
+        }
+
+        return null; // Pas de ligne complète encore disponible
+    }
+
+
+    
     @Override
     public void serialEvent(SerialPortEvent spe) {
+        
+        String line;
+        
         try {
             switch( spe.getEventType()) {
-            case SerialPortEvent.DATA_AVAILABLE:
-                while ( serialReader.ready()) {
+            //case SerialPortEvent.DATA_AVAILABLE:    // avec RXTX
+            case SerialPort.LISTENING_EVENT_DATA_AVAILABLE:   
+                
+                while ( (line = readLineFromSerialComm()) != null)  {
                     Matcher m;
+                    String l = line;
                     // Read ACK
-                    String l = serialReader.readLine();
+                    //String l = readLineFromSerialComm();// serialReader.readLine();
                     try {
                         for( GRBLCommListennerInterface li : listeners) 
                                 li.receivedLine(l);  
@@ -882,7 +969,7 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
                 System.err.println("SerialEvent("+spe.getEventType()+")");
         }
         
-        } catch ( IOException e) {
+        } catch ( Exception e) {
             e.printStackTrace();
         }
     }  
@@ -1360,6 +1447,11 @@ public class GRBLControler implements Runnable, SerialPortEventListener {
         if ( grblVersion != null) return grblVersion.split(":")[2];
         return "<unknow>";
     }    
+
+    @Override
+    public int getListeningEvents() {
+        return SerialPort.LISTENING_EVENT_DATA_AVAILABLE;
+    }
 
     /**
      * Used with addListenner to know what is doing with GRBL.

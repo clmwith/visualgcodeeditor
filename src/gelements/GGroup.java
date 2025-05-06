@@ -332,9 +332,15 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return g;
     }
 
+    /**
+     * find the engraving properties of 'e' in this group as root of the tree
+     * @param e
+     * @return 
+     */
     public EngravingProperties getHeritedEngravingPropreties( GElement e) {
-        if ( elements.contains(e)) {
-            EngravingProperties res = properties.clone();
+        EngravingProperties res = properties.clone();
+        if ( e == this) return res;
+        if ( elements.contains(e)) {            
             res.setEnabled( res.isEnabled() & e.properties.isEnabled());
             if ( ! Double.isNaN(e.properties.getFeed()))   res.setFeed(e.properties.getFeed());
             if ( ! Double.isNaN(e.properties.getZStart())) res.setZStart( e.properties.getZStart());
@@ -342,11 +348,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
             if ( ! Double.isNaN(e.properties.getPassDepth())) res.setPassDepth( e.properties.getPassDepth());
             if ( e.properties.getPower() != -1 )     res.setPower( e.properties.getPower());
             if ( e.properties.getPassCount() != -1 ) res.setPassCount( e.properties.getPassCount());
-        } else for ( GElement el : elements) 
-                    if ( el instanceof GGroup) {
-                        if ( ((GGroup)el).getParent(e) != null) 
-                            return ((GGroup) el).getHeritedEngravingPropreties(e);
-                    }
+        } else 
+            for ( GElement el : elements) 
+                if ( el instanceof GGroup) {
+                    if ( ((GGroup)el).getParent(e) != null) 
+                        return ((GGroup) el).getHeritedEngravingPropreties(e);
+                }
+        
         return null;
     }
     
@@ -1049,5 +1057,13 @@ public class GGroup extends GElement implements Iterator<GElement> {
         }
     }
 
-
+    @Override
+    public void removeComments() {
+        for( GElement el : elements) {
+            if ( el instanceof GGroup)
+                ((GGroup)el).removeComments();
+            else
+                el.removeComments();
+        }
+    }
 }

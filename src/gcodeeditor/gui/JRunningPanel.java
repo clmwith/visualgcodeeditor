@@ -903,7 +903,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
                 Thread.sleep(1000); 
                 if ( grbl.getState() == GRBLControler.GRBL_STATE_HOLD)
                     grbl.softReset();
-                if ( i++ == 10 )break;
+                if ( i++ == 10 ) break;
             } catch ( InterruptedException e) { }
         parent.setVisible(false);
     }//GEN-LAST:event_jButtonStopActionPerformed

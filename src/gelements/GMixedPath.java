@@ -737,9 +737,9 @@ public class GMixedPath extends GElement {
         int oldx=Integer.MAX_VALUE, oldy=Integer.MAX_VALUE;
         boolean oldShowStartPoint = pc.showStartPoints;
         
-        if ( (pc.color!=Color.darkGray) && pc.showStartPoints) {
-            /*if( (pc.color == PaintContext.SEL_COLOR1)|| (pc.color == PaintContext.SEL_DISABLED_COLOR)) g.setColor(pc.color);
-            else */g.setColor(Color.red); 
+        if ( (pc.color!=Color.darkGray) && pc.showStartPoints && (getFirstPoint() !=null)) {
+            
+            g.setColor(Color.red); 
             g.drawRect((int)(getFirstPoint().getX()*zoomFactor)-3, -(int)(getFirstPoint().getY()*zoomFactor)-3, 6, 6);
         }
         pc.showStartPoints = false;

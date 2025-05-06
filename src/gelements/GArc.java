@@ -55,8 +55,7 @@ public class GArc extends GElement {
     
     boolean clockwise;
     private double arcStart,arcExtend,radius; 
-    GCode center;    
-    
+    GCode center;        
     GCode start;
     GCode end;
     

@@ -452,6 +452,13 @@ public class G1Path extends GElement implements Iterable<GCode> {
     }
     
     @Override
+    public void removeComments() {
+        for ( GCode gc : lines)
+            if ( gc.isComment()) 
+                lines.remove(gc);
+    }
+    
+    @Override
     public void removeAll(ArrayList<GCode> points) {
         lines.removeAll(points);
         GCode l = getFirstPoint();
