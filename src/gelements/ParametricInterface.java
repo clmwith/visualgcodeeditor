@@ -36,15 +36,15 @@ public interface ParametricInterface {
     
     /**
      * Get the value of a parameter
-     * @param name
+     * @param key the value to search
      * @return 
      */
     public Object getParam( String key);
     
     /**
      * Set the value of a parameter
-     * @param name
-     * @param value
+     * @param key   the key so set
+     * @param value the value associated with the key
      * @return true if the value is accepted (valid)
      */
     public boolean setParam( String key, String value);

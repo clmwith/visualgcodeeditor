@@ -21,7 +21,7 @@ import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 /**
- *
+ * the window that permit to set/change 2D cursor position
  * @author Clément
  */
 public class SetCursorToPanel extends javax.swing.JPanel {

@@ -20,7 +20,7 @@ import gelements.GGroup;
 import java.io.IOException;
 
 /**
- *
+ * A font used for Text representation
  * @author Clément Gérardin @ Marseille.fr
  */
 public abstract class GFont {

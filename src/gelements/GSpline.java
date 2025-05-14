@@ -39,7 +39,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
- *
+ * A GCode implementation of a bezier curve
  * @author Clément
  */
 public class GSpline extends GElement {

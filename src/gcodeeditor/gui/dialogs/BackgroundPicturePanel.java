@@ -27,19 +27,17 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
- *
+ * the window that display background picture parameter
  * @author Clément
  */
 public class BackgroundPicturePanel extends ManagedPanel implements BackgroundPictureParameters.ParameterChangedListenerInterface {
 
+    /** The parameter modified in this panel */
     public BackgroundPictureParameters params;
     static File lastOpenDir;
     
     /**
      * Creates new form BackgroundPicturePanel
-     * @param parentFrame the parent window of the edit frame
-     * @param parameters the parameter to edit
-     * @param title the title of the frame
      */
     public BackgroundPicturePanel() {
         super("Background picture");

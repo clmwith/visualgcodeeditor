@@ -17,7 +17,7 @@
 package gcodeeditor.gui.dialogs;
 
 /**
- *
+ * the window that display duplication of shapes
  * @author Clément Gérardin @ Marseille.fr
  */
 public class JDuplicatePanel extends ManagedPanel {

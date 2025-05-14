@@ -45,7 +45,6 @@ public class UndoManager {
 
     /**
      * Does the stack contains older state tha the current document ?
-     * @param currentDocumentState
      * @return true if the stack contains sth. different from the current document state.
      */
     public boolean canUndo( /* GGroup currentDocument*/) {

@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 /**
- *
+ * A shape representing a rectangle (not finished nor used currently)
  * @author clement
  */
 public class G1Rectangle extends G1Path {

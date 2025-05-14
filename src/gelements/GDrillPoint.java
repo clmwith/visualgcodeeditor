@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 /**
- *
+ * A shape that implement GCODE drill point
  * @author Clément
  */
 public final class GDrillPoint extends G1Path {

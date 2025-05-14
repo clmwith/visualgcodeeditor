@@ -16,7 +16,7 @@ With some interesting things :
 - Realtime execution with GRBL with backlash compensation.
 
 It use some external library (all included in jar releases) :
-- RXTXcomm.jar
+- jSerialComm.jar
 - kabeja-0.4.jar
 - exp4j-0.4.8.jar
 

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 
 
 /**
+ * A glyph used in Hershey fonts
  * @author Clément Gérardin @ Marseille.fr
  */
 public class HersheyGlyph {

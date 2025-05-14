@@ -47,7 +47,7 @@ import java.util.function.Consumer;
 import org.kabeja.dxf.helpers.Point;
 
 /**
- *
+ * Represent a GCODE path composed only by G1 moves
  * @author Clément
  */
 public class G1Path extends GElement implements Iterable<GCode> {

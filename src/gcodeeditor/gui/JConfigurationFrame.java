@@ -31,7 +31,7 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 /**
- *
+ * The window that display and edit the configuration of the app
  * @author Clément
  */
 public class JConfigurationFrame extends javax.swing.JFrame {
@@ -889,6 +889,11 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jPanelEditor.add(jLabel12, gridBagConstraints);
 
         jCheckBoxDarkTheme.setText("Dark theme");
+        jCheckBoxDarkTheme.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jCheckBoxDarkThemeActionPerformed(evt);
+            }
+        });
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
         gridBagConstraints.gridy = 6;
@@ -1083,6 +1088,10 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         updateConf();
         conf.save(jComboBoxConfiguration.getSelectedItem().toString());
     }//GEN-LAST:event_jButtonUpdateActionPerformed
+
+    private void jCheckBoxDarkThemeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxDarkThemeActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jCheckBoxDarkThemeActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonCancel;

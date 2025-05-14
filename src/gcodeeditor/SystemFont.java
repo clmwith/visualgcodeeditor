@@ -21,7 +21,7 @@ import gelements.G1Path;
 import java.awt.Font;
 
 /**
- *
+ * a font loaded from system fonts
  * @author Clément Gérardin @ Marseille.fr
  */
 public class SystemFont extends GFont {

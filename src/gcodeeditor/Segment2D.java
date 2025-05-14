@@ -21,7 +21,7 @@ import gelements.GElement;
 import java.awt.geom.Point2D;
 
 /**
- *
+ * A 2D segment used in GPaths
  * @author Clément
  */
 public class Segment2D {

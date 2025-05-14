@@ -17,7 +17,7 @@
 package gcodeeditor.gui.dialogs;
 
 /**
- *
+ * the window that set/edit a move
  * @author clement
  */
 public class JMovePanel extends ManagedPanel {

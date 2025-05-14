@@ -20,7 +20,7 @@ import gcodeeditor.Configuration;
 import java.util.Iterator;
 
 /**
- *
+ * Contains GCODE engraving properties
  * @author Clément
  */
 public class EngravingProperties {
@@ -60,7 +60,8 @@ public class EngravingProperties {
     }
     
     /** Create enabled EngravinvProperties with defaults values taken from 'c'.
-     * @param defaultConfiguration */
+     * @param defaultConfiguration used as default (for feed, power and passCount)
+     */
     public EngravingProperties(Configuration defaultConfiguration) {
         this();
         feed = defaultConfiguration.feedRate;
@@ -161,6 +162,7 @@ public class EngravingProperties {
     }
     
     /**
+     * the laser power or spindle speed
      * @return -1 if not defined
      */
     public int getPower() {
@@ -168,6 +170,7 @@ public class EngravingProperties {
     }
     
     /**
+     * the start Z level
      * @return Double.NaN if not defined
      */
     public double getZStart() {
@@ -175,6 +178,7 @@ public class EngravingProperties {
     }
     
     /**
+     * the last Z level
      * @return Double.NaN if not defined
      */
     public double getZEnd() {
@@ -182,6 +186,7 @@ public class EngravingProperties {
     }
     
     /**
+     * the number of pass
      * @return Double.NaN if not defined
      */
     public double getPassDepth() {
@@ -189,8 +194,7 @@ public class EngravingProperties {
     }
     
     /**
-     * Return the pass Z height iterator, the priority is passDepth
-     * @param enabled 
+     * Return the pass Z height iterator, the priority is passDepth. 
      */
     public Iterator<Double> iterator() {
         return new Iterator<Double>() {
@@ -349,9 +353,9 @@ public class EngravingProperties {
     }
     
     /**
-     * Update properties properties according to the new one, and recalculate passCount if needed.
-     * @param props
-     * @param newProps
+     * Update properties props according to the new one, and recalculate passCount if needed.
+     * @param props property to update
+     * @param newProps new value to use
      * @return Return <i>props</i> parameter (not a clone)
      */
     public static EngravingProperties udateHeritedProps(EngravingProperties props, EngravingProperties newProps) {

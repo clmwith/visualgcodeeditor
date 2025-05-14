@@ -39,7 +39,8 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     }
     
     /**
-     * @param value
+     * test if value is set
+     * @param value the value to test
      * @return true if <i>value</i> == Integer.MAX_VALUE
      */
     public static boolean isNaN( int value) {
@@ -49,7 +50,7 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     /**
      * Return the result of the arithmetic expression from 'field'
      * 
-     * @param field 
+     * @param field the fiels to get text from
      * @param optional set to true to allow empty/optional value (that will return Double.NEGATIV_INFINITY)
      * @return Double.NEGATIVE_INFINITY, NaN, or the value
      */
@@ -71,7 +72,7 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     
     /**
      * Return the integer part of the arithmetic expression from 'field'
-     * @param field 
+     * @param field  the field to get text from
      * @param optional set to true to allow empty/optional value (that will return Integer.MIN_VALUE)
      * @return the truncated int value or Integer.MIN_VALUE, or Integer.MAX_VALUE if not a number
      */
@@ -92,7 +93,7 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     
     /**
      * Return the result of the arithmetic expression from 'value'
-     * @param field 
+     * @param value the field to get text from
      * @return the result of expression or NaN if wrong
      */
     public static double parseExpression( String value) {
@@ -107,7 +108,7 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
     
     /**
      * Return the int value contained in 'value'
-     * @param field 
+     * @param value to parse 
      * @return the int or Integer.MAX_VALUE if wrong number or missing
      */
     public static int parseInt( String value) {

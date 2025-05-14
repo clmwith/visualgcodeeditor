@@ -22,7 +22,7 @@ import java.awt.event.WindowListener;
 import javax.swing.JDialog;
 
 /**
- *
+ * a panel used to show long task working
  * @author Clément Gérardin @ Marseille.fr
  */
 public class LongTaskJobPanel extends javax.swing.JPanel {

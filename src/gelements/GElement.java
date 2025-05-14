@@ -126,7 +126,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     /**
      * Used to list all lines in the editor.
      *
-     * @param index
+     * @param index the index to get
      * @return a G-Code line
      */
     @Override
@@ -156,7 +156,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     /**
      * To parse all G-line of this element (not only points)
      *
-     * @return
+     * @return a iterator that parse all GCode contained in this element
      */
     @Override
     abstract public Iterator<GCode> iterator();
@@ -164,7 +164,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     /**
      * To parse all points of this elements (editable/real or not)
      *
-     * @return
+     * @return a iterator that parse all GCode contained in this element
      */
     abstract public Iterable<GCode> getPointsIterator();
 
@@ -175,10 +175,11 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     }
 
     /**
-     * @param center
-     * @param p1
-     * @param p2
-     * @return angle in degree
+     * Calculate the angle of an arc
+     * @param center    the center of the angle
+     * @param p1        the first point of the angle
+     * @param p2        the last point of the angle
+     * @return angle length in degree
      */
     public double getAngleInDegre(Point2D center, Point2D p1, Point2D p2) {
         double a1, b1, a2, b2, a, b, t, cosinus;
@@ -335,7 +336,7 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
 
     /** 
      * Search the position (in point) of this GCode 
-     * @param point 
+     * @param highlitedPoint the point to search
      * @return the number of this point or -1 if point is not a point or does not belong to this shape 
      */
     abstract public int getIndexOfPoint(GCode highlitedPoint);

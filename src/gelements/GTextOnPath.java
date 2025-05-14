@@ -37,6 +37,8 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 /**
+ * A GCode implementation of a text fixed on an other GPath.
+ * 
  * @author Clément
  */
 public class GTextOnPath extends GElement implements ListDataListener {

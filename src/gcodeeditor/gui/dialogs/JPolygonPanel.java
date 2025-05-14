@@ -19,7 +19,7 @@ package gcodeeditor.gui.dialogs;
 import javax.swing.JOptionPane;
 
 /**
- *
+ * the panel to create new polygon
  * @author clement
  */
 public class JPolygonPanel extends ManagedPanel {

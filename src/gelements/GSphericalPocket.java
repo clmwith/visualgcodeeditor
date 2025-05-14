@@ -34,7 +34,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
- *
+ * A shape that implements GCODE spherical pocket.
+ * 
  * @author Clément Gérardin @ Marseille.fr
  */
 public class GSphericalPocket extends GPocket3D {

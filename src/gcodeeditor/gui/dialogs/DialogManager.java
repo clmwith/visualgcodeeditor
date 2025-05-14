@@ -58,6 +58,7 @@ public class DialogManager extends javax.swing.JDialog {
     /**
      * Show a JDialog containing the <i>panel</i> and return it if 'Ok' button pressed
      * @param panelClass the class of the panel to show
+     * @param param param to use in panel
      * @return null if closed by 'cancel' button or the panel
      */
     @SuppressWarnings("unchecked")

@@ -20,7 +20,7 @@ import java.awt.Frame;
 import javax.swing.JDialog;
 
 /**
- *
+ * a pannel that display a progress bar
  * @author Clément
  */
 public class JProgressPanel extends javax.swing.JPanel {

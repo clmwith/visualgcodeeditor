@@ -20,7 +20,8 @@ import gcodeeditor.GCode;
 import java.util.ArrayList;
 
 /**
- *
+ * Abstract class used for All Pockets (sphere and cylinder).
+ * 
  * @author Clément Gérardin @ Marseille.fr
  */
 public abstract class GPocket3D extends G1Path {

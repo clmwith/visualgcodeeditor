@@ -19,7 +19,7 @@ package gcodeeditor.gui;
 import java.awt.geom.Point2D;
 
 /**
- *
+ * Used to know what is in changed in a EditorPanel
  * @author Clément
  */
 public interface JProjectEditorPanelListenerInterface {

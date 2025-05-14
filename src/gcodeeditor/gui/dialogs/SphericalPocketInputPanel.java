@@ -22,7 +22,7 @@ import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 /**
- *
+ * a panel to edit spherical parameters
  * @author Clément Gérardin @ Marseille.fr
  */
 public class SphericalPocketInputPanel extends ManagedPanel {

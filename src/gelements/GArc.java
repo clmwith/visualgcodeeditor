@@ -39,7 +39,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
- *
+ * A shape representing G2/G3 GCODE Arc.
+ * 
  * @author Clément
 
     G90.1 - Mode de déplacement absolu pour les offsets I, J et K. 
@@ -94,7 +95,7 @@ public class GArc extends GElement {
      * @param center
      * @param radius
      * @param startAngle in degre
-     * @param arcExtend  in degre ( counter clockwyse )
+     * @param arcExtent  in degre ( counter clockwyse )
      */
     public GArc(String name0, Point2D center, double radius, double startAngle, double arcExtent) {
         super(name0);

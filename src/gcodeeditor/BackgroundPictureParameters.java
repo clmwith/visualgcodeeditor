@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 
 /**
- *
+ * Used to manage background picture content
  * @author Clément
  */
 public class BackgroundPictureParameters {
@@ -57,7 +57,6 @@ public class BackgroundPictureParameters {
       
     /**
      * Build the string to save this picture in a file (use decode to retrieve ti).
-     * @return 
      */
     public String toString() {
         return BACK_PICTURE_HEADER + "["+x+","+y+","+width+","+height+","+rotation+","+alpha+","+visible+"]"+(fileName!=null?fileName:"")+")";
@@ -89,7 +88,8 @@ public class BackgroundPictureParameters {
     
     /**
      * Call reloadImage() after that.
-     * @param param 
+     * @param param the backgroung picture info
+     * @throws java.io.IOException if image not found
      */
     public void setAll( BackgroundPictureParameters param) throws IOException {
         x = param.x;
@@ -251,6 +251,9 @@ public class BackgroundPictureParameters {
         return height;
     }
     
+    /** 
+     * To listen what hav changed.
+     */
     public interface ParameterChangedListenerInterface {
         /** Called when a parameter has change. */
         public void backgroundPictureParameterChanged();

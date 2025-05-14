@@ -39,7 +39,7 @@ import javax.swing.JDialog;
 import javax.swing.JPanel;
 
 /**
- *
+ * A window to choose a font
  * @author Clément Gérardin @ Marseille.fr
  */
 public class JFontChooserPanel extends javax.swing.JPanel {

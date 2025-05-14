@@ -17,7 +17,7 @@
 package gcodeeditor.gui.dialogs;
 
 /**
- *
+ * a panel that display rotation parameters
  * @author Clément
  */
 public class JRotationPanel extends ManagedPanel {

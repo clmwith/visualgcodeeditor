@@ -164,7 +164,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
 
 
     /**
-     * Remove <i>e</e> from this group
+     * Remove <i>e</i> from this group
      * @param e the element to remove
      * @return true if the element was removed.
      */

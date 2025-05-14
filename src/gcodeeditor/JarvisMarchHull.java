@@ -7,7 +7,7 @@ import java.util.ArrayList;
  * Class for computing the convex hull of a given series of points, using Jarvis' March.
  * 
  * @author	Devin Tuchsen
- * @src         https://github.com/devint1/ConvexHull/
+ * @see         <a href="https://github.com/devint1/ConvexHull/">source</a>
  */
 public class JarvisMarchHull {
 	private static final int TURN_LEFT = 1;

@@ -19,7 +19,7 @@ package gcodeeditor.gui.dialogs;
 import gelements.GCylindricalPocket;
 
 /**
- *
+ * the window that edit cylindrical pockets properties
  * @author Clément
  */
 public class CylindricalPocketInputPanel extends ManagedPanel {

@@ -17,7 +17,7 @@
 package gcodeeditor;
 
 /**
- *
+ * A point used for GCode
  * @author Clément
  */
 public class Point3D {

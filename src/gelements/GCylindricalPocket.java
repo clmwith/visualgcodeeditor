@@ -30,7 +30,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 /**
- *
+ * A shape that imlement GCODE of a spherical pocket.
+ * 
  * @author Clément
  */
 public final class GCylindricalPocket extends GPocket3D {

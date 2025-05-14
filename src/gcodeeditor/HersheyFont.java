@@ -28,7 +28,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 
 /**
- *
+ * Represent a Hershey type font
  * @author Clément Gérardin @ Marseille.fr
  */
 public class HersheyFont extends GFont {

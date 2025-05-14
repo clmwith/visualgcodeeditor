@@ -3972,7 +3972,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     
     /** 
      * Add a new path in the current edited group and replace Footer if necessary without calling saveState (for multiple adds).
-     * @param path a new path
+     * @param e a new path
      */
     public void addWithoutSaveState( GElement e) {
         if (e == null) return;
