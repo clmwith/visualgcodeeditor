@@ -368,7 +368,7 @@ public class GRBLControler implements Runnable,
         if ( isComOpen()) {
             synchronized (serialOut) {
                 serialWriter.print(c);
-                serialWriter.flush();
+                if ( serialWriter != null ) serialWriter.flush();
             }
         }
     }
@@ -430,8 +430,8 @@ public class GRBLControler implements Runnable,
                 if ( ! stopGRBLSenderThread)
                     switch ( grblState) {
                         case GRBL_STATE_ALARM:
-                            if ( grblCmdQueue.peek().equals("$X") || 
-                                 grblCmdQueue.peek().equals("$H")) 
+                            if ( (grblCmdQueue.peek() != null) && (grblCmdQueue.peek().equals("$X") || 
+                                 grblCmdQueue.peek().equals("$H")))
                                     sendCmd(new GCode(grblCmdQueue.poll()),"");
                             break;
                         case GRBL_STATE_SLEEP: // GRBL ignore commands serialReader these states
@@ -597,7 +597,7 @@ public class GRBLControler implements Runnable,
     /** Clear grblCmdQueue and restore values. */
     private void clearCmdQueue() {
         grblCmdQueue.clear();
-        grblBufferContent.clear();
+        // grblBufferContent.clear(); // don't clear sended content here (perhaps only after reset) !
         grblBufferFree = grblBufferSize;
     }
     
@@ -632,10 +632,19 @@ public class GRBLControler implements Runnable,
                         lastTrueDestination = new GCode(0, grblWPos); // reset last position
                         lastCorrectedDestination = null;                         
                         // initialise compensations according to home directions
-                        final int bits =  grblSettings.get(23).intValue(); // homming direction invert mask:0b00000ZYX (1=>negDir)
-                        for(int i = 0; i < 3; i++) {
-                            lastDirectionIsPositive[i] = ((bits&(1<<i)) != 0);
-                            currentBackLashCompensation[0] = 0;
+                        if ( ! grblSettings.isEmpty())
+                        {
+                            final int bits =  grblSettings.get(23).intValue(); // homming direction invert mask:0b00000ZYX (1=>negDir)
+                            for(int i = 0; i < 3; i++) {
+                                lastDirectionIsPositive[i] = ((bits&(1<<i)) != 0);
+                                currentBackLashCompensation[i] = 0;
+                            }
+                        } else {
+                            System.out.println("WARNING: gcodeeditor.GRBLControler.updateGRBLStatus: doesn't have machine setting to init backlash");
+                            for(int i = 0; i < 3; i++) {
+                                lastDirectionIsPositive[i] = true; // most case
+                                currentBackLashCompensation[i] = 0;
+                            }
                         }
                     }      
                     setState(GRBL_STATE_IDLE); 

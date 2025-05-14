@@ -351,9 +351,10 @@ public class GCodeDocumentRender implements Runnable {
             GCode l = (GCode) path.getLine(currentBlockLine).clone();
             if ( l.isComment()) continue;
           
-            if (l.getG()==0) 
-                safeMoveTo(l, currentZ, conf.safeZHeightForMoving);             
-            else
+            if (l.getG()==0) {
+                safeMoveTo(l, currentZ, conf.safeZHeightForMoving);   
+
+            } else
                 sendCmd(currentGLine=l.toGRBLString());
         }    
         lastBlock = path;
@@ -415,8 +416,10 @@ public class GCodeDocumentRender implements Runnable {
      * Used to go safely to position (X,Y,zLevelDestination). 
      * 
      * - It goes to Z 'moveAtZheight' (if needed),
-     * - move to (X,Y), 
+     * - move to (X,Y) at JOG Speed ! 
      * - then go down to Z 'zLevelDestination' (if needed)
+     * 
+     * WARNING: FEED RATE IS CHANGED, THEN AFTER IT RE-SET RIGHT FEED RATE
      * 
      * @param moveAtZSafeheight start with a <i>G0 Zxx</i> to go to destination if needed
      * @param destinationXYPoint  the destination (X,Y) to move to
@@ -426,7 +429,7 @@ public class GCodeDocumentRender implements Runnable {
     private void safeMoveTo(GCode destinationXYPoint, double zLevelDestination, double moveAtZSafeheight) throws IOException {
         assert( destinationXYPoint.isAPoint());
         
-        if ( Double.isNaN(zLevelDestination) ) {
+        if ( Double.isNaN(zLevelDestination) || Double.isNaN(moveAtZSafeheight)) {
             // nothing to do just go to destination
             sendCmd(destinationXYPoint.toGRBLString());
             return;
@@ -445,10 +448,10 @@ public class GCodeDocumentRender implements Runnable {
                 destinationXYPoint.set('Z', zLevelDestination);                
 
             } else {
-                // goto Z moveAtZheight before moving
-                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(moveAtZSafeheight));
-                destinationXYPoint.setG(1);
-                sendCmd(destinationXYPoint.toGRBLString());                
+                // goto Z level moveAtZheight before moving
+                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(moveAtZSafeheight));  
+                // then move to destination
+                sendCmd(destinationXYPoint.toGRBLString());  
             }                
         }
         

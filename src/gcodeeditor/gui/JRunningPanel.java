@@ -894,8 +894,9 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
 
     @SuppressWarnings("SleepWhileInLoop")
     private void jButtonStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonStopActionPerformed
-        if ( grbl.isConnected()) grbl.holdAndReset();
+        if ( grbl.isConnected()) grbl.hold();
         gcodeRunner.stop();
+        if ( grbl.isConnected()) grbl.holdAndReset();     
         
         int i = 0;
         while ( sender != null) 
@@ -905,6 +906,8 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
                     grbl.softReset();
                 if ( i++ == 10 ) break;
             } catch ( InterruptedException e) { }
+        
+        grbl.softReset();
         parent.setVisible(false);
     }//GEN-LAST:event_jButtonStopActionPerformed
 

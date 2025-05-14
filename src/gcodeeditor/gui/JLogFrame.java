@@ -60,16 +60,24 @@ public class JLogFrame extends javax.swing.JFrame {
     public void addLog( String text, boolean bold) {
         Document doc = jTextPaneCmd.getDocument();
         StyleConstants.setBold(attr, bold);
-        try {
+        //try {
             if ( text.startsWith("<") && ! bold && ! showStatus) return;
             
-            doc.insertString(doc.getLength(), text + (text.endsWith("\n")?"":"\n"), attr);
+            
+            SwingUtilities.invokeLater( ()->{
+                try {
+                    doc.insertString(
+                            doc.getLength(), text + (text.endsWith("\n")?"":"\n"), attr);
+                } catch (BadLocationException ex) {
+                    Logger.getLogger(JLogFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+});
             nbLines++;
             
             final JScrollBar sb = jScrollPane3.getVerticalScrollBar();
             SwingUtilities.invokeLater( ()->{ sb.setValue( sb.getMaximum()); });
             
-        } catch (BadLocationException ex) { ex.printStackTrace(); }
+       // } catch (BadLocationException ex) { ex.printStackTrace(); }
     }
 
     /**
