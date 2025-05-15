@@ -207,7 +207,7 @@ public class EngravingProperties {
                 zE = zEnd;
                 pD = passDepth;
                 pC = getPassCount();
-                fixed = Double.isNaN(zStart + zEnd + passDepth);
+                fixed = Double.isNaN(zStart + zEnd + passDepth) || (passDepth < 0.0001);
                 return this;
             }
             
@@ -227,9 +227,11 @@ public class EngravingProperties {
                     return cZ;
                 } else {
                     assert( cZ > zE);
-                    cZ -= pD;
+                    
                     if ( cZ < zE) cZ = zE;
-                    return cZ;
+                    double res = cZ;
+                    cZ -= pD;
+                    return res;
                 }
             }
         }.init();
@@ -284,7 +286,7 @@ public class EngravingProperties {
             if (passDepth < 0.00001) passDepth = 0; // security round
             this.passDepth = passDepth;
             if ( listener != null) listener.propertyChanged(PropertieChangeListener.DEPTH);
-            validatePass(false);
+            if ( ! Double.isNaN(this.passDepth)) validatePass(false);
         }
     }
     

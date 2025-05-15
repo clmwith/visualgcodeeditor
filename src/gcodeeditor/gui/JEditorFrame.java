@@ -3618,9 +3618,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         if ( ((projectViewer.getState() & (JProjectEditorPanel.STATE_SHAPE_SELECTED_FLAG|JProjectEditorPanel.STATE_SHAPES_SELECTED_FLAG)) != 0) &&
              (JOptionPane.showConfirmDialog(this, "Drill on center of each element selected ?", 
                      "New drill", JOptionPane.YES_NO_OPTION)== JOptionPane.OK_OPTION))
-                projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_AT_CENTER, 0 , new GDrillPoint("drill", (Point2D)null));
+                projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_AT_CENTER, 0 , new GDrillPoint("drill"+GElement.getUniqID(), (Point2D)null));
         else {
-            addGElement(new GDrillPoint("drill", projectViewer.get2DCursor()));
+            addGElement(new GDrillPoint("drill"+GElement.getUniqID(), projectViewer.get2DCursor()));
         }
     }//GEN-LAST:event_jMenuItemAddDrillActionPerformed
 

@@ -348,6 +348,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
             if ( ! Double.isNaN(e.properties.getPassDepth())) res.setPassDepth( e.properties.getPassDepth());
             if ( e.properties.getPower() != -1 )     res.setPower( e.properties.getPower());
             if ( e.properties.getPassCount() != -1 ) res.setPassCount( e.properties.getPassCount());
+            return res;
         } else 
             for ( GElement el : elements) 
                 if ( el instanceof GGroup) {

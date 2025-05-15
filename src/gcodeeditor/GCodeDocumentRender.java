@@ -362,6 +362,13 @@ public class GCodeDocumentRender implements Runnable {
     
     /**
      * Send Drill point emulation GCode.
+     * with G81 the drill is in shot !
+     * with G83 X10 Y10 Z-30 R2 Q5 F100 
+     * Drill from R=2 to Z=-30 in pecks of 5mm (Q5), retracting between each.
+     * 
+     * if L is present, the drill i set L time from Zstart to Zend, 
+     * and eventualy if R is present, the head go to R height value after each pass
+     * 
      * @param path
      * @param herited 
      */
@@ -386,11 +393,16 @@ public class GCodeDocumentRender implements Runnable {
         if ( currentPassCount < 1) currentPassCount = 1;
 
          // Go up if we must translate to destination
-        safeMoveTo(l, safeZ, safeZ);                     
+        safeMoveTo(l, safeZ, conf.safeZHeightForMoving);                     
+        if ( ! Double.isNaN(herited.getFeed())) sendCmd("F"+ GWord.GCODE_NUMBER_FORMAT.format(herited.getFeed()));
         
         if ( Double.isNaN(currentZPassDepth)) { 
             // one shot drill
             sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZEnd));
+            if ( l.get('P') != null) // make a pause at botton of hole ?
+                    sendCmd("G4 P"+ l.get('P').getIntValue());
+            sendCmd("G"+(laserMode?0:1)+"Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
+            
         } else { 
             // multi pass drill
             currentZ=currentZStart-currentZPassDepth;
@@ -398,18 +410,16 @@ public class GCodeDocumentRender implements Runnable {
             do {
                 if ( currentZ < currentZEnd) currentZ = currentZEnd;
                 sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(currentZ));
+                
+                if ( l.get('P') != null) // make a pause at botton of hole ?
+                    sendCmd("G4 P"+ l.get('P').getIntValue());
+
+                sendCmd("G"+(laserMode?0:1)+"Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
 
                 finished = Math.abs(currentZ - currentZEnd) < 0.00001;
-                if ( ! finished) 
-                    sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
-
                 currentZ -= currentZPassDepth;
             } while ( ! finished);
         }
-        if ( l.get('P') != null) // make a pause ?
-                sendCmd("G4 P"+ l.get('P').getIntValue());
-
-        sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(safeZ));
     }
 
     /**
@@ -428,23 +438,24 @@ public class GCodeDocumentRender implements Runnable {
      */
     private void safeMoveTo(GCode destinationXYPoint, double zLevelDestination, double moveAtZSafeheight) throws IOException {
         assert( destinationXYPoint.isAPoint());
+        destinationXYPoint = new GCode(0, destinationXYPoint.getX(), destinationXYPoint.getY());
+        
+        // remove potential wrong Z value masked by zLevelDestination
+        if ( destinationXYPoint.get('Z') != null) destinationXYPoint.remove('Z');
         
         if ( Double.isNaN(zLevelDestination) || Double.isNaN(moveAtZSafeheight)) {
             // nothing to do just go to destination
             sendCmd(destinationXYPoint.toGRBLString());
             return;
         }        
-        
-        destinationXYPoint = destinationXYPoint.clone();
+             
         final GCode curPos = state.getGXYPositon();
-        final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;
-        
+        final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;     
         if ( ! curPos.isAPoint() || ! curPos.isAtSamePosition(destinationXYPoint)) {
-            // We have to move to (X,Y)                                              
+            // We have to move to dest (X,Y)                                              
                 
             if ( laserMode) {
                 // go to destination with Z change at same time
-                destinationXYPoint.setG(0);
                 destinationXYPoint.set('Z', zLevelDestination);                
 
             } else {
@@ -457,7 +468,8 @@ public class GCodeDocumentRender implements Runnable {
         
         // We are in place now, juste change Z if needed
         if ( Double.isNaN(curZ) || (Math.abs(curZ - zLevelDestination) > 0.00001)) {  
-            if (laserMode) sendCmd( destinationXYPoint.toGRBLString());
+            if (laserMode)
+                sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
             else
                 sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
 

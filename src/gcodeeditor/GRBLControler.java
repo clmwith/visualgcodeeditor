@@ -421,12 +421,13 @@ public class GRBLControler implements Runnable,
         try {
 
             while( ! stopGRBLSenderThread ) {
-                while(  ! stopGRBLSenderThread && grblCmdQueue.isEmpty()) try {
-                    //System.out.println("senderThread=>slepping");
-                    Thread.sleep(100000);
-                } catch ( InterruptedException e) {
-                    //System.out.println("senderThread=>interrupted");
-                }
+                while(  ! stopGRBLSenderThread && grblCmdQueue.isEmpty()) 
+                    try {
+                        //System.out.println("senderThread=>slepping");
+                        Thread.sleep(100);
+                    } catch ( InterruptedException e) {
+                        //System.out.println("senderThread=>interrupted");
+                    }
                 if ( ! stopGRBLSenderThread)
                     switch ( grblState) {
                         case GRBL_STATE_ALARM:
@@ -893,6 +894,7 @@ public class GRBLControler implements Runnable,
                     if( l.startsWith("<")) updateGRBLStatus( l);
                     else if( l.startsWith(GRBL_INIT_STRING_HEADER)) {
                         grblCmdQueue.clear();
+                        grblBufferContent.clear();
                         grblBufferFree = grblBufferSize;
                         grblParserState = new ParserState();    // reset parserState
                         System.out.println("reset");
@@ -966,7 +968,7 @@ public class GRBLControler implements Runnable,
                             //s = s.substring(0, s.length()-1);
                             //System.err.println("OK for (" + s + ")  =>  free " + grblBufferFree);
                         } else
-                            throw new Error("GRBLComm.serialEvent() : 'ok' received but grblBufferContent is empty !!");
+                            throw new Exception("GRBLComm.serialEvent() : 'ok' received but grblBufferContent is empty !!");
                         
                         if ( ! grblCmdQueue.isEmpty()) restartSenderThread();
                     } else {

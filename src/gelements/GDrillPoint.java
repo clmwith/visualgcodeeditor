@@ -53,7 +53,7 @@ public final class GDrillPoint extends G1Path {
     }
 
     /**
-     * Create a non initialised GCylindricalPocket.
+     * Create a non initialised DrillPoint.
      * @param name0 name of the new element.
      */
     public GDrillPoint(String name0) {
@@ -110,7 +110,7 @@ public final class GDrillPoint extends G1Path {
         return "<html>A drill point<br>It simulate a G8{1,2,3} GCodes on XY plan.<br>"+
                 "Only P, Q and R words are used.<br>"+
                 "<i>Pass depth</i> is used like the Q word<br>"+
-                "<i>Z End</i> is used as <b>absolute</b> value and replace Z word"+
+                "<i>'Z end' prop</i> is used as <b>absolute</b> value and replace Z word"+
                 "</html>";
     }
     
