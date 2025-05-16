@@ -31,19 +31,15 @@ import gnu.io.UnsupportedCommOperationException;
 import com.fazecast.jSerialComm.SerialPort;
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
-
-
+import com.fazecast.jSerialComm.SerialPortInvalidPortException;
 
 import java.awt.geom.Point2D;
-import java.io.BufferedReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -53,6 +49,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.swing.SwingUtilities;
 
 
 /**
@@ -228,50 +225,38 @@ public class GRBLControler implements Runnable,
     /** The serial port for Arduino/GRBL comunication */
     
     //CommPort commPort; // RXTX
+    //BufferedReader serialReader; // RXTX
+    
     private SerialPort commPort;
 
     InputStream serialIn;
     OutputStream serialOut;
-    //BufferedReader serialReader;
+
     PrintStream serialWriter;
     private String limitSwitchValue;
      
-    
+    /** Does this controler compensate the height map ? */
     private boolean useHeighMap;
+    
+    /** The current height map of the plate */
     private HeightMap heightMap;
+    
+    /** Current GRBL Tool len offset value */
+    private String grblTLO;
+    
+    /** Current GRBL Probe value */
+    private String grblPRB;
+    
+    /** Current GRBL GC value */
+    private String grblGC;
     
     @SuppressWarnings("SleepWhileInLoop")
     public boolean connect(String portName, int rate) throws // NoSuchPortException, PortInUseException, UnsupportedCommOperationException, 
                                                         TooManyListenersException, IOException {
         
         try {
-            if (commPort != null) disconnect(true);
-            
-            /* RXTX
-            CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
-            if (portIdentifier.isCurrentlyOwned()) {
-                listeners.forEach((li) -> { li.receivedMessage("Port '" + portName + "' currently in use."); });
-           
-            } else {
-                commPort = portIdentifier.open(this.getClass().getName(), 2000);
-                
-                SerialPort serialPort = (SerialPort) commPort;
-                
-                serialPort.addEventListener(this);
-                serialPort.notifyOnDataAvailable(true);
-                serialPort.notifyOnBreakInterrupt(true);
-                serialPort.notifyOnFramingError(true);
-                serialPort.notifyOnOverrunError(true);
-                serialPort.notifyOnParityError(true);
-                serialPort.notifyOnRingIndicator(true);                              
-                serialPort.setSerialPortParams(rate, SerialPort.DATABITS_8,SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
-                serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
-            
-                serialIn = serialPort.getInputStream();
-                serialOut = serialPort.getOutputStream();                
-            /* fin RXTX */
+            if (commPort != null) disconnect(true);           
 
-            // jSerialComm
             if ( portName != null) {
                 commPort = SerialPort.getCommPort(portName);
                 commPort.setComPortParameters(115200, 8, 1, SerialPort.NO_PARITY);
@@ -282,11 +267,8 @@ public class GRBLControler implements Runnable,
                 commPort.addDataListener(this);
                 serialIn =  commPort.getInputStream();
                 serialOut =  commPort.getOutputStream();
-            /* fin jSerialComm */
-                
-            
+                           
                 serialWriter = new PrintStream(serialOut);
-                //serialReader = new BufferedReader(new InputStreamReader(serialIn));
 
                 grblUpdateThread = new Thread( () -> {
                         do {
@@ -294,18 +276,14 @@ public class GRBLControler implements Runnable,
                             try { Thread.sleep(1000); } catch (InterruptedException ex) { }
                             
                         } while( serialWriter != null );
-                    }, "grblUpdateStatusThread");
+                    }, "grblUpdateStatusSenderThread");
                 grblUpdateThread.start();
 
                 setState(GRBL_STATE_INIT);
                 return true; 
             }
             
-        } catch (
-                // NoSuchPortException | UnsupportedCommOperationException | PortInUseException |  TooManyListenersException |  IOException ex // RXTX
-                        
-                        Exception ex) {
-            
+        } catch ( SerialPortInvalidPortException | IOException ex) {            
             listeners.forEach((li) -> {
                 li.receivedMessage("COM: Can't connect to '" + portName + "' (" + ex.toString() + ")");
             });
@@ -317,25 +295,15 @@ public class GRBLControler implements Runnable,
     }
     
     
+    /** Return all serial ports available to connet to Artuino.
+     * @return  the list of available serials ports */
     public Object[] getSerialPorts() {
-        /* RXTX 
-        Enumeration portsEnumaration = CommPortIdentifier.getPortIdentifiers();
-        ArrayList<String> ports = new ArrayList<>();
-        while( portsEnumaration.hasMoreElements()) {
-            ports.add(((CommPortIdentifier)portsEnumaration.nextElement()).getName());
-        }
-        return ports.toArray();
-        /* */
-        
-        /* ou jSerialCommm*/
         SerialPort ports[] = commPort.getCommPorts();
         ArrayList<String> res= new ArrayList<>();
         for ( SerialPort p : ports) {
             res.add(p.getSystemPortName());
         }
         return res.toArray();
-        /* */
-        
     }
     
     /**
@@ -445,6 +413,7 @@ public class GRBLControler implements Runnable,
                     }                
             }          
         } catch ( Exception ex) {
+            ex.printStackTrace();
             softReset();
             listeners.forEach((li) -> { li.exceptionInGRBLComThread(ex); });
         }
@@ -615,14 +584,15 @@ public class GRBLControler implements Runnable,
     /** Update status.
      * @param grblStatusString as string like "<Idle|MPos:0.000,0.000,0.000|FS:0,0|WCO:-100.000,-100.000,0.000>"
      */
-    private void updateGRBLStatus(String grblStatusString) {
+    private void updateGRBLStatus(String grblStatusString) throws Exception {
         String[] args = grblStatusString.substring(1, grblStatusString.length()-1).split("\\|");
         String newLimitSwitchValues = "";
         
         // Read states
         switch ( args[0].toUpperCase()) {
             case "IDLE": 
-                    if ((grblState != GRBL_STATE_IDLE) && (grblVersion == null)) { // First time IDLE, ask GRBL stettings
+                    if ((grblState != GRBL_STATE_IDLE) && (grblVersion == null)) {
+                        // First time IDLE, ask GRBL stettings
                         pushCmd("$I");
                         pushCmd("$#");
                         pushCmd("$G");
@@ -663,7 +633,7 @@ public class GRBLControler implements Runnable,
             case "SLEEP": setState(GRBL_STATE_SLEEP); break;
             case "ALARM": setState(GRBL_STATE_ALARM); break;
             default:
-                    System.err.println("unknow GRBL state : " + args[0]);
+                    throw new Exception("unknow GRBL state : " + args[0]);
         }
         
         // Read others values
@@ -871,8 +841,7 @@ public class GRBLControler implements Runnable,
     @Override
     public void serialEvent(SerialPortEvent spe) {
         
-        String line;
-        
+        String line;      
         try {
             switch( spe.getEventType()) {
             //case SerialPortEvent.DATA_AVAILABLE:    // avec RXTX
@@ -918,9 +887,9 @@ public class GRBLControler implements Runnable,
                             grblBufferSize = Integer.parseInt(f[2])-3; // TODO: why -3 ??
                         
                     } else if ( l.startsWith("[GC:")) {
-                        String ps = l.substring(4, l.length()-1);
-                        grblParserState.updateContextWith(new GCode(ps));
-                        listeners.forEach(GRBLCommListennerInterface::stateChanged);
+                        grblGC = l.substring(4, l.length()-1);
+                        grblParserState.updateContextWith(new GCode(grblGC));
+                        
                         
                     } else if ( (m=WCO_PATTERN.matcher(l)).matches()) {
                         final int gNum = Integer.parseInt(m.group(1));
@@ -930,13 +899,18 @@ public class GRBLControler implements Runnable,
                         if ( (gNum==54) && (grblParserState.get(ParserState.COORDINATE).getIntValue() == 54))
                             updateWCO( l.substring(1, l.length()-1).split(":")[1]);    
                         
-                    } else if ( l.startsWith("[TLO:"))
-                        grblParserState.updateTLO(l.substring(1, l.length()-1).split(":")[1] );
+                        if ( (gNum==30))
+                            SwingUtilities.invokeLater( () ->  { listeners.forEach(GRBLCommListennerInterface::stateChanged); });
+                        
+                    } else if ( l.startsWith("[TLO:")) {
+                        grblTLO = l.substring(1, l.length()-1).split(":")[1];
+                        grblParserState.updateTLO( grblTLO);
                     
-                    else if ( l.startsWith("[PRB:"))
+                    } else if ( l.startsWith("[PRB:")) {
+                        grblPRB = l.substring(5, l.length()-1);
                         listeners.forEach( (li) -> { li.probFinished(l.substring(1, l.length()-1)); });
                         
-                    else if ( l.startsWith("ALARM:")) {
+                    } else if ( l.startsWith("ALARM:")) {
                         if ( grblState != GRBL_STATE_IDLE)
                             lastCorrectedDestination = lastTrueDestination = null;
                         
@@ -1407,6 +1381,7 @@ public class GRBLControler implements Runnable,
     /** Return GRBL options.
      * @return  */
     public String getOPT() {
+        if ( ! isConnected()) return null;        
         return grblOptions;
     }
     
@@ -1464,6 +1439,31 @@ public class GRBLControler implements Runnable,
         return SerialPort.LISTENING_EVENT_DATA_AVAILABLE;
     }
 
+    public String getTLO() {
+        if ( ! isConnected()) return null;
+        return grblTLO;
+    }
+
+    public String getPRB() {
+        if ( ! isConnected()) return null;
+        return grblPRB;
+    }
+
+    public String getGC() {
+        if ( ! isConnected()) return null;        
+        return grblGC;
+    }
+
+    public String getWCOs() {
+        if ( ! isConnected()) return null;        
+        String res = "";
+        for ( Integer v : grblWCOValues.keySet()) {
+            Point3D p = grblWCOValues.get(v);
+            res += "G" + v + ":" + p.toString() + "\n";
+        }
+        return res;
+    }
+
     /**
      * Used with addListenner to know what is doing with GRBL.
      */
@@ -1486,6 +1486,37 @@ public class GRBLControler implements Runnable,
         public void exceptionInGRBLComThread(Exception ex);
         public void probFinished(String substring);
         public void limitSwitchChanged();
+    }
+    
+    public static class GRBLCommListennerAdapter implements GRBLCommListennerInterface {
+        @Override
+        public void wPosChanged() { }
+        @Override
+        public void stateChanged() { }
+        @Override
+        public void settingsReady() { }
+        @Override
+        public void receivedError(int errono, String line) { }
+        @Override
+        public void receivedAlarm(int alarmno) { }
+        @Override
+        public void receivedMessage(String substring) { }
+        @Override
+        public void accessoryStateChanged() { }
+        @Override
+        public void feedSpindleChanged() { }
+        @Override
+        public void sendedLine(String cmd) { }
+        @Override
+        public void receivedLine(String l) { }
+        @Override
+        public void overrideChanged() { }
+        @Override
+        public void exceptionInGRBLComThread(Exception ex) { }
+        @Override
+        public void probFinished(String substring) { }
+        @Override
+        public void limitSwitchChanged() { }   
     }
 }
 

@@ -37,11 +37,6 @@ import gcodeeditor.GearHelper;
 import gcodeeditor.GWord;
 import gcodeeditor.Configuration;
 import gelements.GSphericalPocket;
-/*
-import gnu.io.NoSuchPortException;
-import gnu.io.PortInUseException;
-import gnu.io.UnsupportedCommOperationException;
-*/
 import gcodeeditor.GRBLControler;
 import gcodeeditor.gui.dialogs.DialogManager;
 import gcodeeditor.gui.dialogs.JMovePanel;
@@ -69,7 +64,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.TooManyListenersException;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -91,7 +85,6 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
-import javax.swing.LookAndFeel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -148,6 +141,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     
     /** The last import directory used. */
     public static File lastImportDir = null;
+    private JGRBLInfoDialog grblinfodialog;
     
     /**
      * Creates new form NewJFrame
@@ -303,6 +297,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 switch( grbl.getState()) {
                     case GRBLControler.GRBL_STATE_ALARM : 
                         jLabelGRBLState.setForeground(new Color(220,0,0));
+                        if ( ! grbl.isSettingsReady()) {
+                            // kill alarm to get settings
+                            grbl.killAlarm();
+                        }
                         break;
                     case GRBLControler.GRBL_STATE_HOME:
                     case GRBLControler.GRBL_STATE_JOG:
@@ -351,14 +349,13 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             }
             @Override
             public void exceptionInGRBLComThread(Exception ex) {
-                if ( activeWindow != thisFrame) return;
-                
+                if ( activeWindow == thisFrame) {                
                     SwingUtilities.invokeLater(() -> { 
                     JOptionPane.showMessageDialog(thisFrame, "Exception in sender, GRBL connexion closed : \n" + ex.toString(),
                             "Error", JOptionPane.ERROR_MESSAGE);
-                });
-                ex.printStackTrace();
-                if ( grbl.isConnected() && ! grbl.isIdle()) grbl.softReset();
+                    });
+                    if ( grbl.isConnected() && ! grbl.isIdle()) grbl.softReset();
+                }
             }
             @Override
             public void settingsReady() {
@@ -751,6 +748,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jMenuGRBL = new javax.swing.JMenu();
         jMenuItemGRBLConnect = new javax.swing.JMenuItem();
         jMenuItemGRBLDisconnect = new javax.swing.JMenuItem();
+        jMenuItemGRBLInfo = new javax.swing.JMenuItem();
         jMenuItemGRBLSettings = new javax.swing.JMenuItem();
         jMenuItemGRBLKillAlarm = new javax.swing.JMenuItem();
         jMenuItemGRBLSoftReset = new javax.swing.JMenuItem();
@@ -774,7 +772,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("VGEditor");
-        getContentPane().setLayout(new java.awt.BorderLayout());
 
         jPanelStatus.setLayout(new java.awt.BorderLayout());
 
@@ -2305,6 +2302,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });
         jMenuGRBL.add(jMenuItemGRBLDisconnect);
 
+        jMenuItemGRBLInfo.setText("Information");
+        jMenuItemGRBLInfo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemGRBLInfoActionPerformed(evt);
+            }
+        });
+        jMenuGRBL.add(jMenuItemGRBLInfo);
+
         jMenuItemGRBLSettings.setText("Settings");
         jMenuItemGRBLSettings.setToolTipText("Edit GRBL settings");
         jMenuItemGRBLSettings.addActionListener(new java.awt.event.ActionListener() {
@@ -2644,8 +2649,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemAboutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAboutActionPerformed
         JOptionPane.showMessageDialog(this, "A Simple 2D G-Code Visual Editor and CAD\n\n"+
                 "For laser engraving and simple milling projects\nInclude a realtime GRBL 1.1 controler\n\nVersion: "+
-                JProjectEditorPanel.SVGE_RELEASE+" - 2023\nAuthor: Clément Gérardin\n\nUse external libs:\n\t- kabeja-0.4.jar\n"
-                        + "\t- exp4j-0.4.8.jar\n\nSource:\nhttps://github.com/clmwith/visualgcodeeditor\n\nTry it WITHOUT ANY GUARANTEE !!!",
+                JProjectEditorPanel.SVGE_RELEASE+" - 2025\nAuthor: Clément Gérardin\n\nUse external libs:\n\t- kabeja-0.4.jar\n"
+                        + "\t- exp4j-0.4.8.jar\n\nSource:\nhttps://github.com/clmwith/visualgcodeeditor\n\nTry it WITHOUT ANY GUARANTEE and,\nat your own risk !!! !!!",
                 "About this software", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_jMenuItemAboutActionPerformed
 
@@ -3945,14 +3950,19 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jMenuItemFlipG1G2ActionPerformed
 
     private void jMenuItemQuickHelpActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemQuickHelpActionPerformed
-        JOptionPane.showMessageDialog(this, "<html>Edition:<br>"
-                + "- Use Right button to select/move or edit element<br>"
-                + "- Use Center Button to drag view<br>"
-                + "- Use Right button to add point (eventualy with [Ctrl] key)"
-                + "<p>GCode Edition:<br>"
-                + "Double click on GCode lines to edit them.<p><br>"
-                + "Other help:<br>- inlines popups on menus, butons and fields,<br>"
-                + "- messages operations on bottom right status bar.", "Quick help", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, "<html>\n" +
+                "Editing:<br>\n" +
+                "- Use the right mouse button to select, move, or edit elements.<br>\n" +
+                "- Use the middle mouse button to drag the view.<br>\n" +
+                "- Use the right mouse button to add a point (optionally with the [Ctrl] key).<br><br>\n" +
+                "\n" +
+                "G-code Editing:<br>\n" +
+                "- Double-click on G-code lines to edit them.<br><br>\n" +
+                "\n" +
+                "Other Help:<br>\n" +
+                "- Inline popups on menus, buttons, and fields.<br>\n" +
+                "- Operation messages are shown in the bottom-right status bar.\n" +
+                "</html>", "Quick help", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_jMenuItemQuickHelpActionPerformed
 
     private void jMenuItemInverseSelectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemInverseSelectionActionPerformed
@@ -3966,6 +3976,16 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemAddCurveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCurveActionPerformed
         projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_CURVE, 0, null);
     }//GEN-LAST:event_jMenuItemAddCurveActionPerformed
+
+    private void jMenuItemGRBLInfoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLInfoActionPerformed
+        if ( grblinfodialog == null)
+            grblinfodialog = new JGRBLInfoDialog(this, grbl, false);
+        else           
+            grblinfodialog.updateGUI();
+        
+        if ( ! grblinfodialog.isVisible()) grblinfodialog.setLocationRelativeTo(this);
+        grblinfodialog.setVisible(true);
+    }//GEN-LAST:event_jMenuItemGRBLInfoActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -4607,6 +4627,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenuItem jMenuItemGRBLConnect;
     private javax.swing.JMenuItem jMenuItemGRBLDisconnect;
     private javax.swing.JMenuItem jMenuItemGRBLHome;
+    private javax.swing.JMenuItem jMenuItemGRBLInfo;
     private javax.swing.JMenuItem jMenuItemGRBLJogWindow;
     private javax.swing.JMenuItem jMenuItemGRBLKillAlarm;
     private javax.swing.JMenuItem jMenuItemGRBLMoveHead;

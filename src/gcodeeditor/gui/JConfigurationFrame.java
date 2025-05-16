@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 import javax.swing.ComboBoxModel;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
@@ -71,8 +72,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         df.applyPattern("0.00###");
         listenner = listener;      
         conf = appConf;
-        
-        
+               
         comboModel = new ComboBoxModel<String>() {
             ArrayList<ListDataListener> listeners = new ArrayList<>(); 
             @Override
@@ -109,8 +109,8 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             public void removeListDataListener(ListDataListener l) { listeners.remove(l); }
         };
         initComponents();
-        updateGUI();
         conf.getSavedNames();
+        SwingUtilities.invokeLater(() -> { updateGUI(); });
     }
     
     public void updateButtons() {
@@ -151,6 +151,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jTextFieldShowLaserPosition.setText("" + conf.showLaserPowerValue);
         jTextFieldMinG1Move.setText("" + conf.minG1move);
         jCheckBoxDarkTheme.setSelected( conf.guiTheme.equals("dark"));
+        this.revalidate();
+        this.repaint();
+        this.pack();
     }
 
     /**

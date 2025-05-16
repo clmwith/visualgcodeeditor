@@ -18,32 +18,38 @@ package gcodeeditor.gui.dialogs;
 
 import java.awt.Frame;
 import javax.swing.JDialog;
+import javax.swing.SwingUtilities;
 
 /**
- * a pannel that display a progress bar
+ * a modal window that display a progress bar
  * @author Clément
  */
-public class JProgressPanel extends javax.swing.JPanel {
+public class JProgressWindow extends javax.swing.JPanel {
 
-    public interface ProgressListenner {
+    public interface CancelButtonListenner {
         public void cancelAsked();
     }
     
-    ProgressListenner listener;
+    CancelButtonListenner listener;
     JDialog d;
     
-    /**
-     * Creates new form JProgressPanel
-     */
-    public JProgressPanel(Frame owner) {
+    public JProgressWindow(Frame owner, CancelButtonListenner withMe) {
+        listener = withMe;
         initComponents();
         d=new JDialog(owner, true);
     }
     
-    public void doProgress( ProgressListenner withMe) {
-        listener = withMe;
-        jProgressBar.setValue(0);
-        d.setVisible(true);
+    /** 
+     * Change label and progress bar value.
+     * @param info
+     * @param workProgressPercent
+     */
+    public void setPercent(String info, int workProgressPercent) {
+        SwingUtilities.invokeLater( () -> {
+            jLabelMessage.setText(info);
+            jProgressBar.setValue(workProgressPercent);
+            d.setVisible(true);
+        });
     }
 
     /**

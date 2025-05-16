@@ -112,6 +112,7 @@ public class JLogFrame extends javax.swing.JFrame {
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
 
         jTextPaneCmd.setEditable(false);
+        jTextPaneCmd.setToolTipText("display the serial dialog between with GRBL");
         jTextPaneCmd.setPreferredSize(new java.awt.Dimension(350, 100));
         jScrollPane3.setViewportView(jTextPaneCmd);
 

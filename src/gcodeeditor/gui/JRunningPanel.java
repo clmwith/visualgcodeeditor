@@ -95,7 +95,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
             public void receivedMessage(String substring) { }
             @Override
             public void exceptionInGRBLComThread(Exception ex) {
-                gcodeRunner.stop();
+                stopPrint();
             }
             @Override
             public void settingsReady() { }

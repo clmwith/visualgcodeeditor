@@ -30,6 +30,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
+import javax.swing.SwingUtilities;
 
 /**
  * Class used to render the document into GCode to send to GRBL and|or save it in a file.
@@ -94,7 +95,7 @@ public class GCodeDocumentRender implements Runnable {
 
     /** Stop as soon as possible the job. (stop sending en exit thread) */
     public void stop() {
-        stopThread = true;
+        stopThread = true;       
     }
     
     /**
@@ -503,7 +504,7 @@ public class GCodeDocumentRender implements Runnable {
         s.currentZStart = currentZStart;
         s.currentZEnd= currentZEnd;
         s.currentZDepth = currentZPassDepth;
-        EventQueue.invokeLater(() -> { listener.updateGUI( s); });
+        SwingUtilities.invokeLater(() -> { listener.updateGUI( s); });
     }   
     
     /**

@@ -116,7 +116,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
 
     public static final String CONTENT_HEADER = "(Content-Type: ";
     public static final String SVGE_HEADER = "(Simple G-Code Visual Editor Project: ";
-    public static final String SVGE_RELEASE = "0.8.6";
+    public static final String SVGE_RELEASE = "0.8.8";
 
     Configuration conf = new Configuration();
     JProjectEditorPanelListenerInterface listener;
@@ -2523,11 +2523,11 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         
                 //System.err.println("No key " + e);
                 switch (e.getKeyChar()) {
-                    case '-': // menu do it ?
-                        doAction(ACTION_MOVE_UP, 0, null);
+                    case '-': // menu allready do it !
+                        //doAction(ACTION_MOVE_UP, 0, null);
                         break;
                     case '+':
-                        doAction(ACTION_MOVE_DOWN, 0, null);
+                        //(ACTION_MOVE_DOWN, 0, null);
                         break;
                     case '\n':
                         if ( selectedElements.size()==1) setEditedElement(selectedElements.get(0));
@@ -2574,9 +2574,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public void keyReleased(KeyEvent e) { 
         boolean changed = true;
         switch ( e.getKeyCode()) {
-            case KeyEvent.VK_MINUS:
-                        doAction(ACTION_MOVE_UP, 0, null);
-                        break;       
+            //case KeyEvent.VK_MINUS:
+            //            doAction(ACTION_MOVE_UP, 0, null);
+            //            break;       
             case KeyEvent.VK_SHIFT: 
                         shiftDown = false; 
                         break;
@@ -3456,24 +3456,28 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 setCursor(crossCursor);
                 break;
                 
-            case ACTION_MOVE_UP:
-                if ( gCodeListViewer.getSelectedIndex() <= 0) break;
+            case ACTION_MOVE_UP:              
                 if ( ! selectedPoints.isEmpty()) {
                     int[] sel = gCodeListViewer.getSelectedIndices();
                     for ( int i : sel) {
-                        GCode l = (GCode) editedElement.remove(i);
-                        if ( i > 0) editedElement.add(i-1, l);
+                        if ( i > 0) {
+                            GCode l = (GCode) editedElement.remove(i);
+                            editedElement.add(i-1, l);
+                        }
                     }
                     selectedPoints.clear();
                     for ( int i : sel) 
                         if ( i > 0) selectedPoints.add( editedElement.getLine(i-1));
                 } else {
                     if ( selectedElements.isEmpty()) break;
-                    int start = ((editedGroup==document)?((gcodeHeader!=null)?2:1):1);
-                    int end = editedGroup.size()-((editedGroup==document)?((gcodeFooter!=null)?1:0):0);
-                    for (int pos = start; pos < end; pos++)
-                        if ( selectedElements.contains(editedGroup.get(pos)))
-                            add(pos, editedGroup.remove(pos-1), false);
+                    
+                    int[] sel = gCodeListViewer.getSelectedIndices();
+                    for ( int i : sel) {
+                        if ( i > 0 ) {
+                            GElement el = editedGroup.remove(i);         
+                            editedGroup.add(i-1, el);
+                        }
+                    }
                 }
                 saveState(true);
                 break;
@@ -3481,18 +3485,21 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 if ( ! selectedPoints.isEmpty()) {
                     if ( gCodeListViewer.getMaxSelectionIndex() >=  editedElement.getSize()-1) break;
                     int[] sel = gCodeListViewer.getSelectedIndices();
-                    for ( int i : sel) {
-                        if ( i < editedElement.getSize()) editedElement.add(i+1, (GCode)editedElement.remove(i));
+                    
+                    for (int i = sel.length - 1; i >= 0; i--) {
+                        int n = sel[i];
+                        if ( n < editedElement.getSize()-1) editedElement.add(n+1, (GCode)editedElement.remove(n));
                     }
                     selectedPoints.clear();
-                    for ( int i : sel) 
-                        if ( i < editedElement.getSize()) selectedPoints.add( editedElement.getLine(i+1));
+                    
                 } else {
                     if ( selectedElements.isEmpty()) break;
-                    if ( gCodeListViewer.getMaxSelectionIndex() >=  editedGroup.size()-((gcodeFooter!=null)?1:0)) break;
-                    for (int pos = editedGroup.size()-((gcodeFooter!=null)?3:2); pos >= ((gcodeHeader!=null)?1:0); pos--) {
-                        if ( selectedElements.contains(editedGroup.get(pos))) 
-                            add(pos+1, editedGroup.remove(pos), false);
+                    int[] sel = gCodeListViewer.getSelectedIndices();
+                    
+                    for (int i = sel.length - 1; i >= 0; i--) {
+                        int n = sel[i];
+                        if ( n < editedGroup.size()-1)
+                            editedGroup.add(n+1, editedGroup.remove(n));
                     }
                 }
                 saveState(true);
@@ -4765,6 +4772,30 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     Point2D p2=e.getFirstPoint();
                     g.setColor(MOVE_COLOR);
                     g.drawLine((int)(lastPoint.getX()*zoomFactor), (int)(-lastPoint.getY()*zoomFactor), (int)(p2.getX()*zoomFactor), (int)(-p2.getY()*zoomFactor));
+
+                    // Calcul du centre du segment
+                    final double centerX = (lastPoint.getX() + p2.getX()) / 2;
+                    final double centerY = (lastPoint.getY() + p2.getY()) / 2;
+
+                    // Calcul de la direction du segment (vecteur direction)
+                    final double dx = lastPoint.getX() - p2.getX();
+                    final double dy = lastPoint.getY() - p2.getY() ;
+                    
+                    // Calcul des coordonnées des segments de la tête de la flèche
+                    final double arrowLength = 20/zoomFactor;  // Longueur de la flèche
+                    final double arrowAngle = Math.toRadians(30);  // Angle de la flèche par rapport au segment
+
+                    // Calcul des coordonnées des deux segments de la flèche (à partir du centre)
+                    final double arrowX1 = centerX + arrowLength * Math.cos(Math.atan2(dy, dx) + arrowAngle);
+                    final double arrowY1 = centerY + arrowLength * Math.sin(Math.atan2(dy, dx) + arrowAngle);
+
+                    final double arrowX2 = centerX + arrowLength * Math.cos(Math.atan2(dy, dx) - arrowAngle);
+                    final double arrowY2 = centerY + arrowLength * Math.sin(Math.atan2(dy, dx) - arrowAngle);
+
+                    // Dessiner les segments de la tête de flèche
+                    g.drawLine((int) (centerX*zoomFactor), (int) (-centerY*zoomFactor), (int)(arrowX1*zoomFactor), (int)( -arrowY1*zoomFactor));
+                    g.drawLine((int) (centerX*zoomFactor), (int) (-centerY*zoomFactor), (int)(arrowX2*zoomFactor), (int)( -arrowY2*zoomFactor));
+
                 }
                 lastPoint = e.getLastPoint();
             }
