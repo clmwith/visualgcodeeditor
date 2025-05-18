@@ -138,7 +138,7 @@ public class GearHelper {
                 gear.add(points);
                 GArc arc;
                 gear.add(arc = new GArc("circle", new Point2D.Double(), R, 0., 360.));
-                arc.properties.setEnabled(false);
+                arc.getEngravingProperties(false).setEnabled(false);
                 return gear;
     }
 }

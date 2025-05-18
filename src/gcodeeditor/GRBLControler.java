@@ -214,7 +214,7 @@ public class GRBLControler implements Runnable,
     /** For backLash compensation ; Contains the last true destination sent to GRBL with BL correction. */
     GCode lastCorrectedDestination;
 
-    /** If not null, all command send to GRBL will be written onto this file. */
+    /** If not null, all command send to GRBL will be written into this file too. */
     private FileWriter gcodeDebugFileLogger;
     
     /** Thread that ask GRBL status each second when connected. */
@@ -923,15 +923,16 @@ public class GRBLControler implements Runnable,
                         clearCmdQueue(); 
                     } 
                     else if (l.startsWith("error:")) {
-                        // Clear GRBBParserState
+                        // Clear GRBLParserState
                         grblParserState.reset();
-                        String wrongLine = grblBufferContent.remove(0);
-                        grblBufferFree += wrongLine.length(); 
-                        listeners.forEach((li) -> {
-                            li.receivedError(Integer.parseInt(l.split(":")[1]), wrongLine);
-                        });
-                           
-                        if ( ! grblCmdQueue.isEmpty()) restartSenderThread();
+                        if ( ! grblBufferContent.isEmpty()) {
+                            String wrongLine = grblBufferContent.remove(0);
+                            grblBufferFree += wrongLine.length(); 
+                            listeners.forEach((li) -> {
+                                li.receivedError(Integer.parseInt(l.split(":")[1]), wrongLine);
+                            });
+                        }                      
+                        // if ( ! grblCmdQueue.isEmpty()) restartSenderThread(); // good thing to don't restart after error
                     }
 
                     else if ( l.equals("ok")) {
@@ -939,10 +940,9 @@ public class GRBLControler implements Runnable,
                             String s = grblBufferContent.remove(0);
                             grblBufferFree += s.length(); 
                             if ( grblBufferFree > grblBufferSize) grblBufferFree = grblBufferSize;
-                            //s = s.substring(0, s.length()-1);
-                            //System.err.println("OK for (" + s + ")  =>  free " + grblBufferFree);
+
                         } else
-                            throw new Exception("GRBLComm.serialEvent() : 'ok' received but grblBufferContent is empty !!");
+                            System.err.println("GRBLComm.serialEvent() : 'ok' received but grblBufferContent is empty !!");
                         
                         if ( ! grblCmdQueue.isEmpty()) restartSenderThread();
                     } else {
@@ -1099,7 +1099,8 @@ public class GRBLControler implements Runnable,
             try { 
                 Thread.sleep(100); 
                 if ( i++ > 30) break;
-            } catch (InterruptedException e) { }     
+            } catch (InterruptedException e) { }    
+        grblCmdQueue.clear();
         softReset();
     }
     
@@ -1379,7 +1380,8 @@ public class GRBLControler implements Runnable,
     }
 
     /** Return GRBL options.
-     * @return  */
+     * @return  null if not connected 
+     */
     public String getOPT() {
         if ( ! isConnected()) return null;        
         return grblOptions;

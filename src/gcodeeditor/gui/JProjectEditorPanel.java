@@ -1710,7 +1710,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         fw.append(SVGE_HEADER + SVGE_RELEASE + ")\n");
         if ( backgroundPictureParameter != null) 
             fw.append(backgroundPictureParameter.toString()+"\n");
-        fw.append(document.properties.toString()+"\n");
+        fw.append(document.getEngravingProperties(false).toString()+"\n");
         for( GElement e : document.getIterable()) 
             lastPoint = e.saveToStream(fw, lastPoint);
         
@@ -2527,7 +2527,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                         //doAction(ACTION_MOVE_UP, 0, null);
                         break;
                     case '+':
-                        //(ACTION_MOVE_DOWN, 0, null);
+                        if ( shiftDown) doAction(ACTION_MOVE_DOWN, 0, null);
                         break;
                     case '\n':
                         if ( selectedElements.size()==1) setEditedElement(selectedElements.get(0));
@@ -2925,7 +2925,21 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 setCursor(crossCursor);
                 repaint();
                 break;
-                    
+              
+            case ACTION_ADD_AT_CENTER:
+                if ( object instanceof GElement) {
+                    selectedElements.forEach((s) -> { 
+                        Point2D c = s.getCenter();
+                        if ( c != null) {
+                            GElement el = ((GElement) object).clone();
+                            el.translate(c);
+                            add(el);
+                        }
+                    });
+                    saveState(true);
+                }
+                break; 
+                
             case ACTION_ALIGN:
                 Rectangle2D r = null;
                 double dest;
@@ -3201,21 +3215,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 mouseMode=MOUSE_MODE_SHOW_ANGLE;
                 inform("Click for first point");
                 setCursor(crossCursor);
-                break;                
-                
-            case ACTION_ADD_AT_CENTER:
-                if ( object instanceof GElement) {
-                    selectedElements.forEach((s) -> { 
-                        Point2D c = s.getCenter();
-                        if ( c != null) {
-                            GElement el = ((GElement) object).clone();
-                            el.translate(c);
-                            add(el);
-                        }
-                    });
-                    saveState(true);
-                }
-                break;                
+                break;                              
                 
             case ACTION_FILTER:
                  if ( filterFrame == null) filterFrame = new JFilterFrame();
@@ -3392,14 +3392,25 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 g = G1Path.makePocket(selectedElements, param);
                 if ( ! g.isEmpty()) {
                     editedGroup.add( g);
-                    (g.properties=new EngravingProperties()).setAllAtOnce(true);
+                    EngravingProperties ep = new EngravingProperties();
+                    ep.setAllAtOnce(true);
+                    g.setEngravingProperties(ep, false);
                 }             
                 saveState(true);
                 inform(g.size() + "path(s) created.");
                 break;
                 
             case ACTION_MAKE_OFFSET_CUT:
-                if ( selectedElements.size() < 1) return false;
+                // remove drill points
+                ArrayList<GElement> elOk = new ArrayList<>();
+                
+                for ( GElement el : selectedElements) {
+                    if ( ! (el instanceof GDrillPoint)) {
+                        elOk.add(el);
+                    }
+                }
+                if ( elOk.size() < 1) return false;
+                
                 boolean inner = false;
                 if ( param < 0) {
                     inner=true;
@@ -3407,7 +3418,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 }
                 
                 Area area = null;
-                for ( GElement b : selectedElements) {
+                for ( GElement b : elOk) {
                         Area a = b.getOffsetArea(param);
                         if ( area == null) area = a;
                         else area.add(a);   
@@ -3479,8 +3490,10 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                         }
                     }
                 }
+                stateHasChanged = true;
                 saveState(true);
                 break;
+                
             case ACTION_MOVE_DOWN:
                 if ( ! selectedPoints.isEmpty()) {
                     if ( gCodeListViewer.getMaxSelectionIndex() >=  editedElement.getSize()-1) break;
@@ -3488,7 +3501,10 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     
                     for (int i = sel.length - 1; i >= 0; i--) {
                         int n = sel[i];
-                        if ( n < editedElement.getSize()-1) editedElement.add(n+1, (GCode)editedElement.remove(n));
+                        if ( n < editedElement.getSize()-1) {
+                            editedElement.add(n+1, (GCode)editedElement.remove(n));
+                            stateHasChanged = true;
+                        }
                     }
                     selectedPoints.clear();
                     
@@ -3498,8 +3514,10 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     
                     for (int i = sel.length - 1; i >= 0; i--) {
                         int n = sel[i];
-                        if ( n < editedGroup.size()-1)
+                        if ( n < editedGroup.size()-1) {
                             editedGroup.add(n+1, editedGroup.remove(n));
+                            stateHasChanged = true;
+                        }
                     }
                 }
                 saveState(true);
@@ -3509,22 +3527,37 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             case ACTION_INVERSE_SEL:
                 if (editedElement != null) {
                     ArrayList<GCode> newSel = new ArrayList<>();
+                    
+                    if ( newSel.isEmpty()) break;
                     for( GCode p : editedElement.getPointsIterator()) {
                         if ( ! selectedPoints.contains(p)) newSel.add(p);
                     }
+                    saveState(true);
                     selectedPoints = newSel;
 
                 } else {
-                    ArrayList<GElement> newSel = new ArrayList<>();
-                    for( GElement el : editedGroup.getIterable()) {
-                        if ( ! selectedElements.contains(el)) newSel.add(el);
+                    if ( selectedElements.isEmpty()) break;
+                    
+                    // reverse the element
+                    if ( selectedElements.size() == 1) {
+                        selectedElements.get(0).reverse();
+                        saveState(false);
+                        break;
                     }
-                    selectedElements.clear();
-                    selectedElements.addAll(newSel);                    
+                    
+                    // inverse order of all selected elements
+                    int[] sel = gCodeListViewer.getSelectedIndices();                
+                    int count = sel[sel.length-1] - sel[0] + 1;
+                    for (int i = 0; i < (count/2); i++) {
+                        int i1 = sel[i];
+                        int i2 = sel[sel.length-1-i];
+                        GElement el2 = editedGroup.remove(i2);
+                        GElement el1 = editedGroup.remove(i1);
+                        editedGroup.add(i1, el2);
+                        editedGroup.add(i2, el1);                       
+                    }  
+                    saveState(true);
                 }
-                
-                selectionHasChanged = true;
-                invalidate();
                 break;
                 
             case ACTION_MOVE_GRBL_HEAD:    
@@ -3802,6 +3835,16 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 else 
                     return selectedElements.size() + " blocks(s) selected" + bounds;
             }
+    }
+    
+    /** Return the bounds of each selected elements */
+    public ArrayList<Rectangle2D> getSelectedElementsBounds()
+    {
+        ArrayList<Rectangle2D> res = new ArrayList<>();
+        for ( GElement e : selectedElements) {
+            res.add(e.getBounds());
+        }
+        return res;
     }
 
     private Point2D getCenterOfSelection() {
@@ -4434,11 +4477,11 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public EngravingProperties getHeritedPropertiesOf( GElement e) {
         if ( e == null) return null;
         
-        EngravingProperties ep = document.properties.clone();
+        EngravingProperties ep = document.getEngravingProperties(true);
         GGroup current = document;
         while( (current.getParent(e) != null) &&(current.getParent(e) != current)) {
             current = current.getFirstParentOf(e, true);
-            EngravingProperties p = current.properties;
+            EngravingProperties p = current.getEngravingProperties(false);
             ep.setEnabled( ep.isEnabled() & p.isEnabled());
             ep.setFeed( Double.isNaN(p.getFeed()) ? ep.getFeed() : p.getFeed());
             ep.setPower( (p.getPower() == -1) ? ep.getPower() : p.getPower());
@@ -4488,45 +4531,52 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     }
     
     /**
-     * @return the EngravingProperties of the only one Gelement selected 
+     * @return a clone of EngravingProperties of the only one Gelement selected 
      * or the GGroup curently <i>openned</i> 
      * or a new <i>EngravingProperties</i> to modify all the selection.
      */
     public EngravingProperties getSelectionProperties() {
-        GElement e = getEditedElement();     
-        if (e==null) 
-            if ( ! selectedElements.isEmpty()) {   
+        if ( getEditedElement() != null) {
+            selectionProperties = null;
+            return getEditedElement().getEngravingProperties(true);
+        }   
+        else if ( selectedElements.size() == 1) {
+                        // return the properties of the only one selected element 
+                        selectionProperties = null;
+                        return selectedElements.get(0).getEngravingProperties(true);
+        }
+        else if ( ! selectedElements.isEmpty()) {   
             // more than one element selected
             selectionProperties = new EngravingProperties();
             GGroup.makeCommonProperties( selectionProperties, selectedElements);
-            
+
             // add listener to remplace selection when needed
             selectionProperties.addChangeListener((int type) -> {
                 for (GElement e1 : selectedElements) {
                     switch (type) {
                         case EngravingProperties.PropertieChangeListener.ALL:
-                            e1.properties.setAllAtOnce(selectionProperties.isAllAtOnce());
+                            e1.getEngravingProperties(false).setAllAtOnce(selectionProperties.isAllAtOnce());
                             break;
                         case EngravingProperties.PropertieChangeListener.COUNT:
-                            e1.properties.setPassCount(selectionProperties.getPassCount());
+                            e1.getEngravingProperties(false).setPassCount(selectionProperties.getPassCount());
                             break;
                         case EngravingProperties.PropertieChangeListener.FEED:
-                            e1.properties.setFeed(selectionProperties.getFeed());
+                            e1.getEngravingProperties(false).setFeed(selectionProperties.getFeed());
                             break;
                         case EngravingProperties.PropertieChangeListener.DEPTH:
-                            e1.properties.setPassDepth(selectionProperties.getPassDepth());
+                            e1.getEngravingProperties(false).setPassDepth(selectionProperties.getPassDepth());
                             break;
                         case EngravingProperties.PropertieChangeListener.ENABLE:
-                            e1.properties.setEnabled(selectionProperties.isEnabled());
+                            e1.getEngravingProperties(false).setEnabled(selectionProperties.isEnabled());
                             break;
                         case EngravingProperties.PropertieChangeListener.END:
-                            e1.properties.setZEnd(selectionProperties.getZEnd());
+                            e1.getEngravingProperties(false).setZEnd(selectionProperties.getZEnd());
                             break;
                         case EngravingProperties.PropertieChangeListener.START:
-                            e1.properties.setZStart(selectionProperties.getZStart());
+                            e1.getEngravingProperties(false).setZStart(selectionProperties.getZStart());
                             break;
                         case EngravingProperties.PropertieChangeListener.POWER:
-                            e1.properties.setPower(selectionProperties.getPower());
+                            e1.getEngravingProperties(false).setPower(selectionProperties.getPower());
                             break;
                     }
                 }
@@ -4534,9 +4584,6 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             return selectionProperties;
         } else 
             return null;
-        
-        selectionProperties = null;
-        return e.properties;
     }
     
     /**
@@ -4566,6 +4613,21 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         if ( filterFrame != null) filterFrame.dispose();
     }
 
+    /** Scale each selected element with this ratio */
+    public void scaleEachOfTheSelection(double sx, double sy, int count, boolean fromCenter, boolean keepOriginal) {
+        ArrayList<GElement> els = (ArrayList<GElement>)selectedElements.clone();
+        for( GElement e : els)
+        {
+            selectedElements.clear();
+            selectedElements.add(e);
+            scaleSelection(sx, sy, count, fromCenter, keepOriginal);
+        }
+        selectedElements.clear();
+        selectedElements.addAll(els);
+        saveState(true);
+    }
+    
+    /** Scale all selected element as one */
     public void scaleSelection(double sx, double sy, int count, boolean fromCenter, boolean keepOriginal) {
         if ( selectedElements.isEmpty() || (count < 1)) return;
         
@@ -4936,8 +4998,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 if ( withHeaderFooter && (gcodeFooter!=null)) res.add(gcodeFooter);
                 
                 // get herited defaults engravings properties
-                res.properties = document.getHeritedEngravingPropreties(editedGroup);                
-                res.properties.setAllAtOnce(false);
+                EngravingProperties ep = document.getHeritedEngravingPropreties(editedGroup);
+                ep.setAllAtOnce(false);
+                res.setEngravingProperties( ep, false);                
                 return res;
             }
         }

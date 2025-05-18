@@ -17,6 +17,7 @@
 package gcodeeditor;
 
 import gcodeeditor.Configuration;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
@@ -37,7 +38,7 @@ public class EngravingProperties {
     /** always positive */
     double passDepth;
     
-    PropertieChangeListener listener;
+    ArrayList<PropertieChangeListener> changeListeners = new ArrayList<>();
     
     public interface PropertieChangeListener {
         public static final int ENABLE = 0;
@@ -70,7 +71,8 @@ public class EngravingProperties {
     }
     
     public void addChangeListener( PropertieChangeListener listener) {
-        this.listener = listener;
+        assert( ! changeListeners.contains(listener));
+        changeListeners.add( listener);
     }
     
     /**
@@ -92,7 +94,7 @@ public class EngravingProperties {
     }
     
     /** 
-     * Create new EngravingProperties decoded from 'props'.
+     * Create from props a new verified EngravingProperties.
      * @param props An EngravingProperties.toString() result
      * @return a new EngravingProperties corresponding to props
      */
@@ -113,6 +115,7 @@ public class EngravingProperties {
                     case 7: ep.allAtOnce = p[i].equals("1"); break;
                 }
         }
+        ep.validatePass(false);
         return ep;
     }
     
@@ -213,7 +216,7 @@ public class EngravingProperties {
             
             @Override
             public boolean hasNext() {
-                return fixed ? pC > 0 : cZ > zE;
+                return fixed ? pC > 0 : cZ >= zE;
             }
 
             /**
@@ -226,7 +229,7 @@ public class EngravingProperties {
                     pC--;
                     return cZ;
                 } else {
-                    assert( cZ > zE);
+                    assert( cZ >= zE);
                     
                     if ( cZ < zE) cZ = zE;
                     double res = cZ;
@@ -240,100 +243,105 @@ public class EngravingProperties {
     public void setEnabled(boolean enabled) {
         if ( this.enabled != enabled) {
             this.enabled = enabled;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.ENABLE);
+            for( PropertieChangeListener li : changeListeners) 
+                li.propertyChanged(PropertieChangeListener.ENABLE);
         }
     }
     
     public void setAllAtOnce(boolean allAtOnce) {
         if ( this.allAtOnce != allAtOnce) {
             this.allAtOnce = allAtOnce;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.ALL);
+            for( PropertieChangeListener listener : changeListeners)  listener.propertyChanged(PropertieChangeListener.ALL);
         }
     }
     
     public void setFeed(double feed) {
         if ((Double.isNaN(this.feed) ^ Double.isNaN(feed)) || (Math.abs(this.feed - feed) > 10e-6 )) {
             this.feed = feed;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.FEED);
+            for( PropertieChangeListener listener : changeListeners)  listener.propertyChanged(PropertieChangeListener.FEED);
         }
     }
     
     public void setPower(int power) {
         if ( this.power != power) {
             this.power = power;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.POWER);
+            for( PropertieChangeListener listener : changeListeners)  listener.propertyChanged(PropertieChangeListener.POWER);
         }
     }
     
     /**
      * Set the passCount, and update passDepth if zStart ans zEnd values existes.
-     * @param passCount 
+     * @param newPassCount 
      */
-    public void setPassCount(int passCount) {
-        if ( this.passCount != passCount) {
-            this.passCount = passCount;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.COUNT);         
+    public void setPassCount(int newPassCount) {
+        if ( passCount != newPassCount) {
+            passCount = newPassCount;
+            validatePass( true);
+            for( PropertieChangeListener listener : changeListeners)  listener.propertyChanged(PropertieChangeListener.COUNT);         
         }
-        validatePass( true);
     }
     
     /**
      * verify/update passCount too.
-     * @param passDepth is always positive or will be converted.
+     * @param newPassDepth is always positive or will be converted.
      */
-    public void setPassDepth(double passDepth) {   
-        if ( (Double.isNaN(this.passDepth) ^ Double.isNaN(passDepth)) || (Math.abs(this.passDepth - passDepth) > 10e-6 )) {
-            if (passDepth < 0.00001) passDepth = 0; // security round
-            this.passDepth = passDepth;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.DEPTH);
-            if ( ! Double.isNaN(this.passDepth)) validatePass(false);
+    public void setPassDepth(double newPassDepth) {   
+        if ( (Double.isNaN(passDepth) ^ Double.isNaN(newPassDepth)) || (Math.abs(passDepth - newPassDepth) > 10e-6 )) {
+            if (newPassDepth < 0.00001) newPassDepth = 0; // security round
+            passDepth = newPassDepth;
+            validatePass(false);
+            for( PropertieChangeListener listener : changeListeners) listener.propertyChanged(PropertieChangeListener.DEPTH);         
         }
     }
     
-    public void setZStart(double zStart) {
-        if ( ! Double.isNaN(zEnd) && (zStart < zEnd)) zStart = zEnd;
+    public void setZStart(double newZStart) {
+        if ( ! Double.isNaN(zEnd) && (newZStart < zEnd)) newZStart = zEnd;
         
-        if ( (Double.isNaN(this.zStart) ^ Double.isNaN( zStart)) || (Math.abs(this.zStart - zStart) > 10e-6 )) {     
-            this.zStart = zStart;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.START);
+        if ( (Double.isNaN(zStart) ^ Double.isNaN( newZStart)) || (Math.abs(zStart - newZStart) > 10e-6 )) {     
+            zStart = newZStart;
             validatePass(false);
+            for( PropertieChangeListener listener : changeListeners) listener.propertyChanged(PropertieChangeListener.START);
         }
     }
     
-    public void setZEnd(double zEnd) {
-        if ( ! Double.isNaN(zStart) && (zStart < zEnd)) zEnd = zStart;
+    public void setZEnd(double newZEnd) {
+        if ( ! Double.isNaN(zStart) && (zStart < newZEnd)) newZEnd = zStart;
         
-        if ( (Double.isNaN(this.zEnd) ^ Double.isNaN( zEnd)) || (Math.abs(this.zEnd - zEnd) > 10e-6 )) {
-            this.zEnd = zEnd;
-            if ( listener != null) listener.propertyChanged(PropertieChangeListener.END);
+        if ( (Double.isNaN(zEnd) ^ Double.isNaN( newZEnd)) || (Math.abs(zEnd - newZEnd) > 10e-6 )) {
+            zEnd = newZEnd;
             validatePass(false);
+            for( PropertieChangeListener listener : changeListeners) listener.propertyChanged(PropertieChangeListener.END);          
         }
     }
     
     /**
-     * Update correctly passDepth or passCount according to zStart en zEnd
+     * Update correctly passDepth or passCount according to zStart and zEnd
      * @param priority2TheCount 
      */
     private void validatePass(boolean priority2TheCount) {
         if ( Double.isNaN(zStart) || Double.isNaN(zEnd)) return;
         if ( zEnd > zStart ) zEnd = zStart;
         
-        if ( Double.isNaN(passCount) && Double.isNaN(passDepth) ) return;
+        if ( passDepth < 0.00001) passDepth = Double.NaN;     
+        if ( (passCount == -1) && Double.isNaN(passDepth) ) return;
                 
-        if ( (priority2TheCount && (passCount > 0)) || Double.isNaN(passDepth) || ((passDepth==0) && (zStart != zEnd))) {
+        if ( (priority2TheCount && (passCount > -1)) || Double.isNaN(passDepth) || ((passDepth==0) && (zStart != zEnd))) {
             if ( passCount == 0) passCount = 1;
-            setPassDepth( Math.abs(zStart - zEnd) / passCount);     
+            passDepth = Math.abs(zStart - zEnd) / passCount;     
             
         } else {
             if ((zStart - zEnd) < 10e-6) {
-                setPassDepth(0);
+                passDepth = 0;
                 passCount = 1;
                 zEnd = zStart;
             } else if ( passDepth > 0) {
-                int pc = (int)((zStart - zEnd) / passDepth);
-                if (Math.abs((zStart - (pc * passDepth)) - zEnd) > 0.001) pc++;
-                if ( passCount == 0) passCount = 1;
-                if ( passCount != pc) setPassCount(pc);
+                int pc = 1 + (int)((zStart - zEnd) / passDepth);
+                //if (Math.abs((zStart - (pc * passDepth)) - zEnd) > 0.001) pc++;
+                if ( passCount != pc) {
+                    passCount = pc;
+                    for( PropertieChangeListener listener : changeListeners)  listener.propertyChanged(PropertieChangeListener.COUNT);         
+
+                }
             }
         }
     }

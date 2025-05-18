@@ -677,13 +677,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jMenuItemAddMixedPath = new javax.swing.JMenuItem();
         jMenuItemAddCustom = new javax.swing.JMenuItem();
         jSeparator33 = new javax.swing.JPopupMenu.Separator();
+        jMenu1 = new javax.swing.JMenu();
+        jMenuItemAddOval = new javax.swing.JMenuItem();
         jMenuItemAddG23Circle = new javax.swing.JMenuItem();
         jMenuItemAddCircle = new javax.swing.JMenuItem();
+        jMenuItemAddCurvesCircle = new javax.swing.JMenuItem();
         jMenuItemAddCurve = new javax.swing.JMenuItem();
-        jMenuItemAddOval = new javax.swing.JMenuItem();
         jMenuItemAddDrill = new javax.swing.JMenuItem();
         jMenu2 = new javax.swing.JMenu();
-        jMenuItemAddCurvesCircle = new javax.swing.JMenuItem();
         jMenuItemAddCross = new javax.swing.JMenuItem();
         jMenuItemAddGear = new javax.swing.JMenuItem();
         jMenuItemAddRipple = new javax.swing.JMenuItem();
@@ -1791,13 +1792,25 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jMenuAdds.add(jMenuItemAddCustom);
         jMenuAdds.add(jSeparator33);
 
-        jMenuItemAddG23Circle.setText("G 2/3 Circle ...");
+        jMenu1.setText("Circle");
+
+        jMenuItemAddOval.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0));
+        jMenuItemAddOval.setText("Circle (mode 2)");
+        jMenuItemAddOval.setToolTipText("<html>Create a G1 circle with mouse and <i>Alt</i>, <i>Ctrl</i> and <i>Shift</i> combinaisons keys.</html>");
+        jMenuItemAddOval.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddOvalActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemAddOval);
+
+        jMenuItemAddG23Circle.setText("Arc G2 / G3 ...");
         jMenuItemAddG23Circle.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemAddG23CircleActionPerformed(evt);
             }
         });
-        jMenuAdds.add(jMenuItemAddG23Circle);
+        jMenu1.add(jMenuItemAddG23Circle);
 
         jMenuItemAddCircle.setText("Circle ...");
         jMenuItemAddCircle.setToolTipText("Add a circle composed by G1 segments");
@@ -1806,7 +1819,18 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 jMenuItemAddCircleActionPerformed(evt);
             }
         });
-        jMenuAdds.add(jMenuItemAddCircle);
+        jMenu1.add(jMenuItemAddCircle);
+
+        jMenuItemAddCurvesCircle.setText("Circle (4 Curves) ");
+        jMenuItemAddCurvesCircle.setToolTipText("A circle composed by four curves");
+        jMenuItemAddCurvesCircle.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddCurvesCircleActionPerformed(evt);
+            }
+        });
+        jMenu1.add(jMenuItemAddCurvesCircle);
+
+        jMenuAdds.add(jMenu1);
 
         jMenuItemAddCurve.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
         jMenuItemAddCurve.setText("Curve");
@@ -1818,16 +1842,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });
         jMenuAdds.add(jMenuItemAddCurve);
 
-        jMenuItemAddOval.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0));
-        jMenuItemAddOval.setText("Circle (mode 2)");
-        jMenuItemAddOval.setToolTipText("<html>Create a G1 circle with mouse and <i>Alt</i>, <i>Ctrl</i> and <i>Shift</i> combinaisons keys.</html>");
-        jMenuItemAddOval.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddOvalActionPerformed(evt);
-            }
-        });
-        jMenuAdds.add(jMenuItemAddOval);
-
         jMenuItemAddDrill.setText("Drill point");
         jMenuItemAddDrill.setToolTipText("Want to drill somewhere ?");
         jMenuItemAddDrill.addActionListener(new java.awt.event.ActionListener() {
@@ -1838,15 +1852,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jMenuAdds.add(jMenuItemAddDrill);
 
         jMenu2.setText("Misc");
-
-        jMenuItemAddCurvesCircle.setText("Circle (4 Curves) ");
-        jMenuItemAddCurvesCircle.setToolTipText("A circle composed by four curves");
-        jMenuItemAddCurvesCircle.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemAddCurvesCircleActionPerformed(evt);
-            }
-        });
-        jMenu2.add(jMenuItemAddCurvesCircle);
 
         jMenuItemAddCross.setText("Cross");
         jMenuItemAddCross.addActionListener(new java.awt.event.ActionListener() {
@@ -2726,17 +2731,33 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jMenuItemAddPolygonActionPerformed
 
     private void jMenuItemAddCircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCircleActionPerformed
+        
+        boolean multi = false;
+        if ( (projectViewer.getState() & JProjectEditorPanel.STATE_SHAPES_SELECTED_FLAG) != 0)
+             multi = JOptionPane.showConfirmDialog(this, "Add at center of each selected elements ?", 
+                     "New drill", JOptionPane.YES_NO_OPTION)== JOptionPane.YES_OPTION;
+        
+        double diameter;
+        int np;
         try {    
             String d = JOptionPane.showInputDialog(this, "Enter diameter", "10.0");
             if ( d == null) return;
-            double diameter = Double.parseDouble(d);
+            diameter = Double.parseDouble(d);
             String nbpts = JOptionPane.showInputDialog(this, "<html>Number of point in the circle ?<br><i>(Choose a multiple of 2,3,4,5,6,8,9 for best accuray)</i></html>", 12*(int)(2*Math.PI*diameter/6));
             if ( nbpts == null) return;
-            int np = Integer.parseInt(nbpts);         
+            np = Integer.parseInt(nbpts);         
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        
+        if ( ! multi)
             addGElement(G1Path.makeCircle(projectViewer.get2DCursor(), np, diameter/2, true, false));
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        else
+            projectViewer.doAction(JProjectEditorPanel.ACTION_ADD_AT_CENTER, 0.0 ,
+                    G1Path.makeCircle(projectViewer.get2DCursor(), np, diameter/2, true, false));
+                    
+     
     }//GEN-LAST:event_jMenuItemAddCircleActionPerformed
     
     private void jMenuItemAddRippleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddRippleActionPerformed
@@ -2837,13 +2858,41 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jMenuItemScale2DCActionPerformed
 
     private void jMenuItemScaleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemScaleActionPerformed
-        JScalePanel scalePanel = (JScalePanel)jDialogManager.showDialogFor(JScalePanel.class, projectViewer.getSelectionBoundary(false));
-                     
-        if (scalePanel != null) {
-                projectViewer.scaleSelection( scalePanel.xScale, scalePanel.yScale, scalePanel.copies,
-                                             scalePanel.fromCenter, scalePanel.keepOriginal);
-        }           
+        ArrayList<Rectangle2D> bs = projectViewer.getSelectedElementsBounds();
         
+        int r = JOptionPane.NO_OPTION;
+        if ( bs.size() > 2)
+            r = JOptionPane.showConfirmDialog(this, "Scale all the selection at once ?", "Scale selecton", JOptionPane.YES_NO_CANCEL_OPTION);
+         
+        if ( r == JOptionPane.YES_OPTION)
+        {
+            // only one selected, or all as grouped, or in editingMode
+            JScalePanel scalePanel = (JScalePanel)jDialogManager.showDialogFor(JScalePanel.class, projectViewer.getSelectionBoundary(false));
+                     
+            if (scalePanel != null) {
+                    projectViewer.scaleSelection( scalePanel.xScale, scalePanel.yScale, scalePanel.copies,
+                                             scalePanel.fromCenter, scalePanel.keepOriginal);
+            } 
+        } else if ( r == JOptionPane.NO_OPTION) {
+            // try to scale each of selected individually
+            
+            Rectangle2D ref = null;
+            ArrayList<Rectangle2D> sel = projectViewer.getSelectedElementsBounds();
+            for( Rectangle2D re : sel) {
+                if ( ref == null) ref = re;
+                else if ( (ref.getWidth() != re.getWidth()) || (ref.getHeight() != re.getHeight())) {
+                    if ( JOptionPane.showConfirmDialog(this, "Warning : All the element doesn't have the same size !\n Continue ?", "Scale each", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION) 
+                                == JOptionPane.NO_OPTION) return;
+                    else break;
+                }
+            }
+            
+            JScalePanel scalePanel = (JScalePanel)jDialogManager.showDialogFor(JScalePanel.class, ref);
+            if (scalePanel != null) {
+                    projectViewer.scaleEachOfTheSelection(scalePanel.xScale, scalePanel.yScale, scalePanel.copies,
+                                             scalePanel.fromCenter, scalePanel.keepOriginal);
+            }
+        }
     }//GEN-LAST:event_jMenuItemScaleActionPerformed
 
     private void jMenuItemSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveAsActionPerformed
@@ -3483,7 +3532,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     }//GEN-LAST:event_jButtonDeleteActionPerformed
 
     private void jButtonStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonStopActionPerformed
-        if ( grbl.isConnected()) grbl.softReset();
+        if ( grbl.isConnected()) {
+            grbl.holdAndReset();
+        }
     }//GEN-LAST:event_jButtonStopActionPerformed
 
     private void jButtonExecuteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonExecuteActionPerformed
@@ -4551,6 +4602,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JLabel jLabelPower;
     private javax.swing.JLabel jLabelStart;
     private javax.swing.JList<Object> jListGCode;
+    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenu jMenu5;
     private javax.swing.JMenu jMenuAdds;

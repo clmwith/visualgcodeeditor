@@ -430,7 +430,6 @@ public class G1Path extends GElement implements Iterable<GCode> {
     
     @Override
     protected void informAboutChange() {
-        modified=true;
         renderedShape=null;
         bounds=null;
         length = Double.NaN;

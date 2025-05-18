@@ -328,6 +328,16 @@ public class GArc extends GElement {
         return true;
     }
     
+    @Override
+    public boolean movePoints(ArrayList<GCode> selectedPoints, double dx, double dy) {
+        boolean moved = false;
+        if ( selectedPoints.contains(start)) { start.translate(dx, dy); moved = true; }
+        if ( selectedPoints.contains(end)) { end.translate(dx, dy); moved = true; }
+        if ( selectedPoints.contains(center)) { center.translate(dx, dy); moved = true; }
+
+        if (moved) informAboutChange(); 
+        return moved;
+    }
     
     public GCode getCenterOf3Points( GCode p1, GCode p2, GCode p3) {        
         final double yDelta_a = p2.getY() - p1.getY();
@@ -356,14 +366,6 @@ public class GArc extends GElement {
             //final double radius = Math.sqrt( Math.pow(p2.getX() - cx,2) + Math.pow(p2.getY()-cy,2)); 
         }
         return new GCode(cx, cy);            
-    }
-    
-    
-    @Override
-    public boolean movePoints(ArrayList<GCode> selectedPoints, double dx, double dy) {
-        boolean moved = false;
-        moved = selectedPoints.stream().map((p) -> movePoint(p, dx, dy)).reduce(moved, (accumulator, _item) -> accumulator | _item);
-        return moved;
     }
 
     @Override
@@ -714,7 +716,7 @@ public class GArc extends GElement {
     }
 
     /**
-     * move center according to start & end points and update arcStart, arcLen.
+     * move center according to start and end points and update arcStart, arcLen.
      */
     public void revalidate() {
         flatten = null;   

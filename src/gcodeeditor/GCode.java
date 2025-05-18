@@ -340,7 +340,7 @@ public class GCode extends Point2D implements Iterable<GWord> {
 
     /**
      * @param groupOfPoints
-     * @return true if one element of disscareIt is at smae posiion ((x==x) && (y==y)) of this point
+     * @return true if one element of disscareIt is at smae posiion ((x==x) and (y==y)) of this point
      */
     public boolean isIn(ArrayList<GCode> groupOfPoints) {
         if ( groupOfPoints == null) return false;

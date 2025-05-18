@@ -1067,4 +1067,5 @@ public class GGroup extends GElement implements Iterator<GElement> {
                 el.removeComments();
         }
     }
+
 }

@@ -66,10 +66,8 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
 
     ArrayList<ListDataListener> dataListener = new ArrayList<>();
 
-    public EngravingProperties properties = new EngravingProperties();
+    EngravingProperties properties = new EngravingProperties();
 
-    ;
-    
     /**
      * Create a new GElement with a uniq ID.
      * @param name0 
@@ -77,6 +75,12 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     public GElement(String name0) {
         id = curID++;
         name = name0;
+        properties.addChangeListener( new EngravingProperties.PropertieChangeListener() {
+            @Override
+            public void propertyChanged(int type) {
+                informAboutChange();
+            }
+        });
     }
 
     static GCode getPolarPoint(double radius, double angle) {
@@ -86,6 +90,17 @@ public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
     /** Used in code editor list */
     public String getName() {
         return name;
+    }
+    
+    public void setEngravingProperties( EngravingProperties newProps, boolean informTheChange)
+    {
+        properties = newProps;
+        if ( informTheChange) informAboutChange();
+    }
+    
+    public EngravingProperties getEngravingProperties(boolean cloned)
+    {
+        return cloned ? properties : properties.clone();
     }
 
     /**

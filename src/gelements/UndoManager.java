@@ -202,9 +202,9 @@ public class UndoManager {
     /**
      * Save all modifications of the document into the stack if needed.
      * @param document
-     * @param editedElement 
+     * @param editedElementID 
      */
-    public void saveState( GGroup document, int editedElement) {
+    public void saveState( GGroup document, int editedElementID) {
         // Remove unused saved states
         while( undoStackPosition < undoStack.size()) {
             undoStack.remove(undoStack.size()-1);
@@ -220,7 +220,7 @@ public class UndoManager {
             r.modified[i++] = e.cloneWithSameID();           
         }
 
-        r.editedElement = editedElement;
+        r.editedElement = editedElementID;
         System.out.println("Add: " + r);
         undoStack.add(r);
         undoStackPosition++;

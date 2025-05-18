@@ -16,7 +16,6 @@
  */
 package gcodeeditor;
 
-import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.ArrayList;
 import gcodeeditor.gui.JProjectEditorPanel;
@@ -44,11 +43,9 @@ public class GCodeDocumentRender implements Runnable {
     
     // Read only variables to know what is currently doing.
     GGroup document, currentGroup;
-    GElement currentPath, lastBlock;
-    String currentGLine;
+    GElement currentPath;//, lastBlock;
     int currentBlockNumber, currentBlockLine;
     int currentPass, currentPassCount;
-    double currentFeed, currentPower;
     boolean laserMode;   
     double currentZ, currentZStart, currentZEnd, currentZPassDepth;
 
@@ -71,7 +68,6 @@ public class GCodeDocumentRender implements Runnable {
         currentBlockNumber=0;
         currentPath = null;
         currentBlockLine=0;
-        currentGLine=null;
         currentPass=0;
         currentZ=currentZStart=currentZEnd=Double.NaN;   
         outputFile = null;
@@ -138,17 +134,18 @@ public class GCodeDocumentRender implements Runnable {
             sendCmd("M2");
             sendCmd(";End of Job");
             long t2 = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
-            System.out.println("Rendering duration (s) = " + (t2-t1)/1000);
-                        
-            while (grbl.isConnected() && ! stopThread && 
-                    ((grbl.getState() == GRBLControler.GRBL_STATE_RUN)  ||
-                     (grbl.getState() == GRBLControler.GRBL_STATE_HOLD) ||
-                      ! grbl.isControlerIdle())) {
+              
+            if ( outputFile != null) outputFile.close();
+            else while   (grbl.isConnected() && ! stopThread && 
+                         ((grbl.getState() == GRBLControler.GRBL_STATE_RUN)  ||
+                          (grbl.getState() == GRBLControler.GRBL_STATE_HOLD) ||
+                           ! grbl.isControlerIdle())) {
                 updateGUI();
                 try { Thread.sleep(330); } catch ( InterruptedException e) { }            
             }
-
-            grbl.stopFileLogger();                            
+            
+            System.out.println("Rendering duration (s) = " + (t2-t1)/1000); 
+            grbl.stopFileLogger();
         }
         catch ( Exception e) { 
             e.printStackTrace(); 
@@ -163,11 +160,11 @@ public class GCodeDocumentRender implements Runnable {
                 outputFile = null;
             } else {
                 //grbl.stopFileLogger();
-                grbl.softReset();  
+                grbl.holdAndReset();
             }
             listener.error("Exception in GCode Execution Thread :\n"+e.getLocalizedMessage());
         }    
-        listener.executionFinished();
+        listener.executionFinished();       
     }
 
     /**
@@ -179,13 +176,13 @@ public class GCodeDocumentRender implements Runnable {
     private void sendCmd(String cmd) throws IOException {
         if ( stopThread) return;
         
-        if ( outputFile != null) outputFile.append(cmd);
+        if ( outputFile != null) outputFile.append(cmd+'\n');
         else {    
             while ( grbl.isConnected() && (grbl.getWaitingCommandQueueSize() > 3)) 
                 try { Thread.sleep(20); } catch ( InterruptedException e) { }
             grbl.pushCmd( cmd);
         }
-        state.updateContextWith(new GCode(cmd)); // TODO: use grbl.parserState ?
+        state.updateContextWith(new GCode(cmd));
     }
 
     /**
@@ -199,7 +196,7 @@ public class GCodeDocumentRender implements Runnable {
         if ( ! group.isEnabled()) return;
         currentGroup=group;
         
-        final EngravingProperties groupProp = group.properties;
+        final EngravingProperties groupProp = group.getEngravingProperties(true);
 
         if ( currentProperties.isAllAtOnce()) { 
             // We are into a one time flat execution at fixed Z : parse one time without Pass parameters
@@ -252,7 +249,7 @@ public class GCodeDocumentRender implements Runnable {
             
         } else {
             // Normal sequential/recursive mode, remplace properties and execute content sequentially
-            currentProperties = EngravingProperties.udateHeritedProps(currentProperties, group.properties);
+            currentProperties = EngravingProperties.udateHeritedProps(currentProperties, group.getEngravingProperties(true));
 
             for ( GElement b : group.getAll()) {
                 currentGroup=group;
@@ -278,11 +275,11 @@ public class GCodeDocumentRender implements Runnable {
         boolean onePass = currProps.isAllAtOnce();
 
         sendCmd(";BEGIN_ELEMENT: " + path.getName());
-        currProps = EngravingProperties.udateHeritedProps(currProps, path.properties);
+        currProps = EngravingProperties.udateHeritedProps(currProps, path.getEngravingProperties(true));
 
         // remplace Feed and Spindle if needed
-        if ( ! Double.isNaN(currProps.getFeed())) sendCmd("F" + (currentFeed=currProps.getFeed()));
-        if ( currProps.getPower() != -1) sendCmd("S" + GWord.GCODE_NUMBER_FORMAT.format(currentPower=currProps.getPower()));
+        if ( ! Double.isNaN(currProps.getFeed())) sendCmd("F" + (currProps.getFeed()));
+        if ( currProps.getPower() != -1) sendCmd("S" + GWord.GCODE_NUMBER_FORMAT.format(currProps.getPower()));
 
         if ( onePass) {
             // flat execution mode of the path wiout Z positioning
@@ -326,8 +323,7 @@ public class GCodeDocumentRender implements Runnable {
                         sendAllLines(path);
                     }
                 }  
-            }
-            lastBlock=path;           
+            }        
         }
         sendCmd(";END_ELEMENT: "+path.getName());
     }
@@ -343,8 +339,6 @@ public class GCodeDocumentRender implements Runnable {
         assert( ! (path instanceof GGroup));
 
         path = path.flatten();
-   //     if ( !(path instanceof G1Path))
-    //        path = path.flatten();
 
         for( currentBlockLine = 0; ! stopThread && (currentBlockLine < path.size()); currentBlockLine++) {
 
@@ -352,13 +346,12 @@ public class GCodeDocumentRender implements Runnable {
             GCode l = (GCode) path.getLine(currentBlockLine).clone();
             if ( l.isComment()) continue;
           
-            if (l.getG()==0) {
-                safeMoveTo(l, currentZ, conf.safeZHeightForMoving);   
-
-            } else
-                sendCmd(currentGLine=l.toGRBLString());
+            if (l.getG()==0)
+                safeMoveTo(l, currentZ, conf.safeZHeightForMoving);  
+                
+            sendCmd(l.toGRBLString());
+            
         }    
-        lastBlock = path;
     }
     
     /**
@@ -375,7 +368,7 @@ public class GCodeDocumentRender implements Runnable {
      */
     private void sendGDrillPoint(GDrillPoint path, EngravingProperties herited) throws IOException {
         if ( laserMode ) return;
-        EngravingProperties.udateHeritedProps(herited, path.properties);
+        EngravingProperties.udateHeritedProps(herited, path.getEngravingProperties(true));
                 
         currentPath = path;
         currentZStart = herited.zStart;
@@ -383,7 +376,7 @@ public class GCodeDocumentRender implements Runnable {
  
         GCode l = path.getLine(1);
         double safeZ = Double.isNaN(l.getValue('R')) ? conf.safeZHeightForMoving : l.getValue('R');
-        currentZPassDepth = Double.isNaN(l.getValue('Q')) ? path.properties.getPassDepth() : l.getValue('Q');
+        currentZPassDepth = Double.isNaN(l.getValue('Q')) ? path.getEngravingProperties(true).getPassDepth() : l.getValue('Q');
         
         if ( Double.isNaN(currentZStart) || Double.isNaN(currentZEnd) || Double.isNaN(currentZPassDepth)) {
             currentPassCount = -1;
@@ -439,42 +432,37 @@ public class GCodeDocumentRender implements Runnable {
      */
     private void safeMoveTo(GCode destinationXYPoint, double zLevelDestination, double moveAtZSafeheight) throws IOException {
         assert( destinationXYPoint.isAPoint());
-        destinationXYPoint = new GCode(0, destinationXYPoint.getX(), destinationXYPoint.getY());
         
-        // remove potential wrong Z value masked by zLevelDestination
-        if ( destinationXYPoint.get('Z') != null) destinationXYPoint.remove('Z');
-        
-        if ( Double.isNaN(zLevelDestination) || Double.isNaN(moveAtZSafeheight)) {
-            // nothing to do just go to destination
-            sendCmd(destinationXYPoint.toGRBLString());
-            return;
-        }        
-             
         final GCode curPos = state.getGXYPositon();
-        final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;     
         if ( ! curPos.isAPoint() || ! curPos.isAtSamePosition(destinationXYPoint)) {
-            // We have to move to dest (X,Y)                                              
-                
-            if ( laserMode) {
-                // go to destination with Z change at same time
-                destinationXYPoint.set('Z', zLevelDestination);                
+            
+            // We have to move to dest (X,Y)     
+            destinationXYPoint = new GCode(0, destinationXYPoint.getX(), destinationXYPoint.getY());
+
+            // but first go as safe Z level
+            if ( Double.isNaN(zLevelDestination) && Double.isNaN(moveAtZSafeheight)) {
+                // no Z level at all, just go to destination
+                sendCmd(destinationXYPoint.toGRBLString());
 
             } else {
-                // goto Z level moveAtZheight before moving
-                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(moveAtZSafeheight));  
-                // then move to destination
-                sendCmd(destinationXYPoint.toGRBLString());  
-            }                
-        }
-        
-        // We are in place now, juste change Z if needed
-        if ( Double.isNaN(curZ) || (Math.abs(curZ - zLevelDestination) > 0.00001)) {  
-            if (laserMode)
-                sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
-            else
-                sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
+                // if we have a save Z level to move, then going to this safe Z first
+                if ( ! Double.isNaN( moveAtZSafeheight))
+                    sendCmd("G"+(laserMode?0:1)+"Z"+GWord.GCODE_NUMBER_FORMAT.format(moveAtZSafeheight));  
 
-        }                
+                // then move to destination
+                sendCmd(destinationXYPoint.toGRBLString());
+                
+                // now we are in place, juste change Z if needed           
+                final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;        
+                if ( Double.isNaN(curZ) || (Math.abs(curZ - zLevelDestination) > 0.00001)) {  
+                    if (laserMode)
+                        sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
+                    else
+                        sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination)); // safe to use G1 here !
+                }
+
+            }
+        }
         updateGUI();
     }
     

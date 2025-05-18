@@ -20,6 +20,7 @@ import gcodeeditor.Configuration;
 import gcodeeditor.GCodeDocumentRender;
 import gelements.GGroup;
 import gcodeeditor.GRBLControler;
+import gcodeeditor.GWord;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Window;
@@ -156,11 +157,11 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
         jToggleButtonCoolant.setEnabled( grbl.isConnected());
         jToggleButtonCoolant.setSelected(grbl.isCoolantEnabled());
   
-        jToggleButtonMist.setEnabled(grbl.getOPT().contains("M"));
+        jToggleButtonMist.setEnabled(grbl.isConnected() && grbl.getOPT().contains("M"));
         jLabelGRBLState.setText( grbl.getStateStr());
         jTextFieldFeed.setText(Double.toString(conf.feedRate));
         jTextFieldPower.setText(Integer.toString(conf.spindleLaserPower));
-                jCheckBoxSaveToFile.setEnabled( sender==null);
+        jCheckBoxSaveToFile.setEnabled( sender==null);
         
         if ( grbl.getWPos() != null) jLabelCurrentZheight.setText(""+grbl.getWPos().getZ());
         updateFeedSpindleValues();
@@ -235,9 +236,8 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
     
     public void stopPrint() {
         if ( grbl.isConnected()) grbl.hold();
-        gcodeRunner.stop();
-        if ( grbl.isConnected()) grbl.holdAndReset();     
         
+        gcodeRunner.stop();  
         int i = 0;
         while ( (sender != null) )
             try { 
@@ -247,9 +247,9 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
                     break;
                 }
             } catch ( InterruptedException e) { }
-        
-        grbl.holdAndReset();
-        gcodeRunner.stop();
+       
+        if ( grbl.isConnected()) grbl.holdAndReset();   
+        grbl.pushCmd( "G0Z"+ GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving));
     }
     
     /**
@@ -926,7 +926,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
                             
             try { 
                 
-                boolean canSaveToFile = (saveToFile && (jTextFieldOutputToFile.getText().length() != 0));
+                boolean canSaveToFile = ( (! grbl.isConnected() || saveToFile) && (jTextFieldOutputToFile.getText().length() != 0));
                                 
                 if ( ! canSaveToFile && ! grbl.isConnected()) return; // can't save to file nor send GCode.
                 
