@@ -110,6 +110,8 @@ import org.xml.sax.SAXException;
 /**
  * A panel the permit to display a GCodeProject, and modify it with mouse and keyboard.
  * 
+ * TODO: afficher l'ancien bound box de la sélection avant déplacement
+ * 
  * @author Clément
  */
 public final class JProjectEditorPanel extends javax.swing.JPanel implements BackgroundPictureParameters.ParameterChangedListenerInterface, MouseListener, MouseMotionListener, MouseWheelListener, KeyListener {
@@ -142,6 +144,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     
     /** Current selected paths. */
     private final ArrayList<GElement> selectedElements;
+    
+    /** contains a clone of the ellements currently moved */
+    private final ArrayList<GElement> movedSelectionShadow = new ArrayList<>();
     
     /** The current edited path. If null we are not in "edit mode" */
     private GElement editedElement;
@@ -578,6 +583,13 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         paintGroup(pc, document, false, true, null);
         // paint non selected
         paintGroup(pc, document, false, false, null);
+              
+        if ( (mouseMode == MOUSE_MODE_MOVE_SEL) && ! movedSelectionShadow.isEmpty()) {
+            // paint origine of movedElement
+            pc.color = Color.YELLOW;
+            for( GElement el2 : movedSelectionShadow) el2.paint(pc);
+        }
+
         // paint selection after
         if ( ! selectedElements.isEmpty()) {
             paintGroup(pc, document, true, true, null);     
@@ -1960,6 +1972,11 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                                     selectedPoints.add( pt);
                                 snapWithoutSelection = true;
                                 mouseMode = MOUSE_MODE_MOVE_SEL;
+                                if ( ! selectedElements.isEmpty()) {
+                                    movedSelectionShadow.clear();
+                                    for ( GElement el : selectedElements) 
+                                            movedSelectionShadow.add(el.clone());
+                                }
                                 selectionHasChanged=true;
                                 invalidate();                              
                             }
@@ -2019,8 +2036,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         
         if ( e.getClickCount() > 1) return;
        
-        switch (mouseMode) {
-            
+        switch (mouseMode) {          
             case MOUSE_MODE_SET_2D_CURSOR:
                 snapWithoutSelection=false;
                 coord2DCursor = getCoordSnapPointFor(e.getX(), e.getY());
@@ -2028,8 +2044,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 inform(String.format("Cursor at %.5f x %.5f",coord2DCursor.getX(),coord2DCursor.getY()));
                 mouseMode = MOUSE_MODE_NONE;
                 ignoreClick=true;
-                break;
-                        
+                break;                       
             case MOUSE_MODE_ADD_OVAL:
                 GCode dest = getCoordSnapPointFor(e.getX(), e.getY());
                 double rx, ry;
@@ -2055,7 +2070,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     }
                 }
                 screenMousePressPosition= mouseRectangleP2 = null;
-                break;
+                break;               
             case MOUSE_MODE_ADD_CIRCLES :
                 dest = getCoordSnapPointFor(e.getX(), e.getY());
                 if ( ctrlDown) {
@@ -2097,8 +2112,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     clearMouseMode();
                     setEditedElement(curve);
                 }            
-                break;
-                
+                break;         
             case MOUSE_MODE_ADD_RECTANGLES :
                 inform("Press and drag, (right to quit)");
                 if ( mouseRectangleP2 == null) break;
@@ -2119,18 +2133,15 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 }
                 add(G1Path.newRectangle(new GCode(r.x, r.y), new GCode(r.x+r.width, r.y+r.height)));                                      
                 mouseRectangleP2 = null;
-                break;  
-                
+                break;                 
             case MOUSE_MODE_NONE_AT_RELEASE: 
                 clearMouseMode();
-                break;
-                
+                break;             
             case MOUSE_MODE_SHOW_ANGLE:
             case MOUSE_MODE_SHOW_DISTANCE :
                 if ( e.getButton()!=MouseEvent.BUTTON1) clearMouseMode();
                 invalidateWithoutUpdateGCodeListViewer();
-                break;           
-                
+                break;                         
             case MOUSE_MODE_ADD_G23_ARC:
                 if ( e.getButton() == 1) {    
                     GCode pt = getCoordSnapPointFor(e.getX(), e.getY());   
@@ -2152,8 +2163,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                         }
                     }                  
                 }
-                break;
-                
+                break;               
             case MOUSE_MODE_ADD_LINES:
                 if ( e.getButton() == 1) {                   
                     GCode pt = getCoordSnapPointFor(e.getX(), e.getY());                
@@ -2164,20 +2174,18 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                         saveState(false);
                     }  
                 }
-                break;  
-                
+                break;                  
             case MOUSE_MODE_ROTATION:
                 finalRotationAngle=Double.NaN;
                 saveState(true);
                 clearMouseMode();
-                break;  
-                
+                break;                 
             case MOUSE_MODE_SCALE:
                 saveState(true);
                 clearMouseMode();
-                break; 
-                
+                break;                
             case MOUSE_MODE_MOVE_SEL:
+                movedSelectionShadow.clear();
                 clearMouseMode();
                 if ( stateHasChanged) saveState(true);
                 else return;

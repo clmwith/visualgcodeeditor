@@ -343,11 +343,6 @@ public class JJoGFrame extends javax.swing.JFrame {
         jPanelCoordValues.add(jTextFieldMx);
 
         jTextFieldMy.setFont(new java.awt.Font("DejaVu Sans", 1, 17)); // NOI18N
-        jTextFieldMy.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldMyActionPerformed(evt);
-            }
-        });
         jPanelCoordValues.add(jTextFieldMy);
 
         jTextFieldMz.setFont(new java.awt.Font("DejaVu Sans", 1, 17)); // NOI18N
@@ -625,10 +620,6 @@ public class JJoGFrame extends javax.swing.JFrame {
         jog( 0, 0, 1);
     }//GEN-LAST:event_jButtonTopActionPerformed
 
-    private void jTextFieldMyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldMyActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jTextFieldMyActionPerformed
-
     private void jButtonZ0ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonZ0ActionPerformed
         grbl.pushCmd("G10L20P1Z0");
     }//GEN-LAST:event_jButtonZ0ActionPerformed
@@ -682,6 +673,10 @@ public class JJoGFrame extends javax.swing.JFrame {
             if ( grbl.isConnected() )
                 grbl.jog(d * x, d * y, d * z, 5000, true);
         }
+    }
+    
+    void toFront(boolean b) {
+        super.toFront();
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

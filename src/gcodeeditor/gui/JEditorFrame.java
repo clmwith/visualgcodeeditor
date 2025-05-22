@@ -76,6 +76,7 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
@@ -321,7 +322,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             @Override
             public void receivedError(int errorno, String line) {
                 stopShowBoundariesThread=true;
-                if ((activeWindow == thisFrame) && (! jPrintDialog.isVisible()))
+                if ((activeWindow == thisFrame) && ((jPrintDialog == null) || ! jPrintDialog.isVisible()))
                     showGRBLError(errorno, line);
             }
             @Override
@@ -3234,6 +3235,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemGRBLJogWindowActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemGRBLJogWindowActionPerformed
         if ( jJogWindow == null) jJogWindow = new JJoGFrame(grbl);
         if ( ! jJogWindow.isVisible()) jJogWindow.setLocationRelativeTo(this);
+        jJogWindow.toFront(true);
         jJogWindow.setVisible(true);
     }//GEN-LAST:event_jMenuItemGRBLJogWindowActionPerformed
 
@@ -4520,7 +4522,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                                                                             != JOptionPane.OK_OPTION) 
                                             return;
                                         else 
-                                            senderPanel.stopPrint();
+                                            senderPanel.stopPrint(true);
                                     }
                                     jPrintDialog.setVisible(false);
                                 }   

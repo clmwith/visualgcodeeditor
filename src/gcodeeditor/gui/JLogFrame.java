@@ -222,7 +222,9 @@ public class JLogFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
     private void jTextFieldCmdActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldCmdActionPerformed
-        if ( grbl.isConnected()) grbl.pushCmd( jTextFieldCmd.getText());
+        if ( grbl.isConnected()) {
+            grbl.pushCmd( jTextFieldCmd.getText());
+        }
     }//GEN-LAST:event_jTextFieldCmdActionPerformed
     
     private void jCheckBoxSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxSaveActionPerformed

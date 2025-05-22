@@ -204,7 +204,7 @@ public final class GDrillPoint extends G1Path {
         } else
             lines.add(new GCode(DRILL_COMMENT));
         
-        if ( gcl.isADrill()) // TODO use getFirstPoint to find drill GCODE
+        if ( gcl.isADrill())
             setLine(DRILL_GCODE_LINE_NUMBER, gcl);
         else 
             throw new Error("No drill point read");

@@ -64,7 +64,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
             @Override
             public void receivedError(int errorNo, String line) {
                 if ( isPrinting()) {
-                    stopPrint();
+                    stopPrint( true);
                     EventQueue.invokeLater(() -> { 
                         JOptionPane.showMessageDialog(parent, "GRBL Error " + errorNo + " :\n" + GRBLControler.getErrorMsg(errorNo) + "\nFor line ["+line+"]\n\nJob arborted.", "Error encountred", JOptionPane.ERROR_MESSAGE);     
                     });
@@ -73,7 +73,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
             @Override
             public void receivedAlarm(int alarmno) {
                 if ( isPrinting()) {
-                    stopPrint();
+                    stopPrint( true);
                     EventQueue.invokeLater(() -> { 
                         JOptionPane.showMessageDialog(parent, "Alarm received from GRBL, job arborted.", "ALAMR received", JOptionPane.ERROR_MESSAGE);     
                     });
@@ -96,7 +96,7 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
             public void receivedMessage(String substring) { }
             @Override
             public void exceptionInGRBLComThread(Exception ex) {
-                stopPrint();
+                stopPrint( true);
             }
             @Override
             public void settingsReady() { }
@@ -234,22 +234,22 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
         updateGUI();
     }
     
-    public void stopPrint() {
+    public void stopPrint(boolean resetToo) {
         if ( grbl.isConnected()) grbl.hold();
         
         gcodeRunner.stop();  
         int i = 0;
         while ( (sender != null) )
             try { 
-                Thread.sleep(1000); 
-                if ( i++ == 10 ) {
+                Thread.sleep(100); 
+                if ( i++ == 100 ) {
                     System.out.println("Warning stopPrint(): document sender thread not finished after 10s");
                     break;
                 }
             } catch ( InterruptedException e) { }
        
-        if ( grbl.isConnected()) grbl.holdAndReset();   
-        grbl.pushCmd( "G0Z"+ GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving));
+        if ( resetToo ) grbl.softReset();    
+        else grbl.clearBuffer();
     }
     
     /**
@@ -906,7 +906,8 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
 
     @SuppressWarnings("SleepWhileInLoop")
     private void jButtonStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonStopActionPerformed
-        stopPrint();
+        stopPrint(false);
+        grbl.pushCmd( "G0Z"+ GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving));
         parent.setVisible(false);
     }//GEN-LAST:event_jButtonStopActionPerformed
 

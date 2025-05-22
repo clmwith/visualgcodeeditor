@@ -32,6 +32,7 @@ import com.fazecast.jSerialComm.SerialPort;
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
 import com.fazecast.jSerialComm.SerialPortInvalidPortException;
+import java.awt.EventQueue;
 
 import java.awt.geom.Point2D;
 import java.io.FileWriter;
@@ -189,7 +190,12 @@ public class GRBLControler implements Runnable,
     HashMap<Integer,Point3D> grblWCOValues = new HashMap<>(9,1f);
     TreeMap<Integer, Double> grblSettings = new TreeMap<>();
     
+    /** If true, the Thread that send command to GRBL exit */
     boolean stopGRBLSenderThread;
+    
+    /** if true the pushCmd dont restart senderThread. */
+    boolean pauseSendingGCODE =  false;
+    
     String grblVersion, grblAccessory = "", grblOptions = "";
     
     /** Realtime GRBL Override values. */
@@ -317,10 +323,25 @@ public class GRBLControler implements Runnable,
         restartSenderThread(); 
     }
     
+    /** Unpause the send
+    public void continueSending() {
+        pauseSendingGCODE = false;
+        restartSenderThread();
+    }
+    
+    public void holdAndStopSending() {
+        hold();
+        pauseSendingGCODE = true;
+        stopGRBLSenderThread = true;
+        while ( cmdSenderThread != null) try { Thread.sleep(100); } catch ( InterruptedException e) {}    
+    }
+    
     /**
      * Eventualy start Thread to send new commands to GRBL if it was stopped.
      */
     private synchronized void restartSenderThread() {
+        if ( pauseSendingGCODE ) return;
+        
         if ( cmdSenderThread == null ) { // start sender
             stopGRBLSenderThread = false;
             cmdSenderThread = new Thread( this , "GRBLSenderThread");
@@ -335,8 +356,12 @@ public class GRBLControler implements Runnable,
     private void sendRTCmd( char c) {
         if ( isComOpen()) {
             synchronized (serialOut) {
-                serialWriter.print(c);
-                if ( serialWriter != null ) serialWriter.flush();
+                synchronized (serialWriter) {
+                    if ( serialWriter != null ) {
+                        serialWriter.print(c);
+                        serialWriter.flush();
+                    }
+                }
             }
         }
     }
@@ -355,47 +380,51 @@ public class GRBLControler implements Runnable,
                 gcodeDebugFileLogger.write(s);
             
             if (isComOpen()) {
+                if ( pauseSendingGCODE ) return;
+                
                 if ( s.length() > grblBufferFree) {
+                    // else wait free space in GRBL buffer 
                     while ( ! stopGRBLSenderThread && (s.length() > grblBufferFree)) {
                         try { Thread.sleep(10); } catch (InterruptedException ex) { }
                     }
-                } 
-                
-                if ( stopGRBLSenderThread) return;                              
+                }                                    
+                synchronized (serialOut) {
+                    synchronized (serialWriter) {
+                        serialWriter.print(s);
+                        serialWriter.flush();
+                    }
+                }
                 grblBufferContent.add(s);
                 grblBufferFree -= s.length();
-                synchronized (serialOut) {
-                    serialWriter.print(s);
-                    serialWriter.flush();
-                }
                              
                 // Update Gx states.
                 grblParserState.updateContextWith(cmd);
             
                 final String line = cmd + comment;
-                listeners.forEach((li) -> { li.sendedLine(line+"; => " + s); });   
+                SwingUtilities.invokeLater( () -> { listeners.forEach( (li) -> { li.sendedLine(line+"; => " + s); } ); } ); 
             }
 
         }            
     }
     
     /** 
+     * The SenderThread stuff.
      * Used to send commands through serial port to GRBL if any is ready.<br>
+     * 
      * Dont call it directly nor start a Thread with it, all is automatic !
      */
     @Override
     @SuppressWarnings("CallToPrintStackTrace")
     public void run() {
         try {
-
             while( ! stopGRBLSenderThread ) {
                 while(  ! stopGRBLSenderThread && grblCmdQueue.isEmpty()) 
                     try {
-                        //System.out.println("senderThread=>slepping");
                         Thread.sleep(100);
                     } catch ( InterruptedException e) {
-                        //System.out.println("senderThread=>interrupted");
+                        System.out.println("senderThread sleep was interrupted");
                     }
+                
                 if ( ! stopGRBLSenderThread)
                     switch ( grblState) {
                         case GRBL_STATE_ALARM:
@@ -864,6 +893,7 @@ public class GRBLControler implements Runnable,
                     else if( l.startsWith(GRBL_INIT_STRING_HEADER)) {
                         grblCmdQueue.clear();
                         grblBufferContent.clear();
+                        pauseSendingGCODE = false;
                         grblBufferFree = grblBufferSize;
                         grblParserState = new ParserState();    // reset parserState
                         System.out.println("reset");
@@ -1079,6 +1109,8 @@ public class GRBLControler implements Runnable,
     }
     
     public void killAlarm() {
+        clearCmdQueue();
+        pauseSendingGCODE = false;
         pushCmd("$X");
     }
 
@@ -1087,20 +1119,21 @@ public class GRBLControler implements Runnable,
      */
     public void softReset() {
         clearCmdQueue();
-        sendRTCmd((char)0x18);       
+        pauseSendingGCODE = true;      
+        sendRTCmd((char)0x18); 
     }
     
     @SuppressWarnings("SleepWhileInLoop")
-    public void holdAndReset() {
+    public void holdAndReset() {      
         hold();
         // wait hold 
         int i = 0;
-        while( isComOpen() && (grblState != GRBL_STATE_HOLD) && (grblState != GRBL_STATE_ALARM))
+        while( isComOpen() && (grblState != GRBL_STATE_HOLD) && (grblState != GRBL_STATE_ALARM) )
             try { 
                 Thread.sleep(100); 
                 if ( i++ > 30) break;
-            } catch (InterruptedException e) { }    
-        grblCmdQueue.clear();
+            } catch (InterruptedException e) { }   
+
         softReset();
     }
     
@@ -1464,6 +1497,10 @@ public class GRBLControler implements Runnable,
             res += "G" + v + ":" + p.toString() + "\n";
         }
         return res;
+    }
+
+    public void clearBuffer() {
+        grblCmdQueue.clear();
     }
 
     /**

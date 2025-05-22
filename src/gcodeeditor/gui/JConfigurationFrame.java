@@ -145,9 +145,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jCheckBoxAdaptativePower.setSelected(conf.adaptativePower);
         jTextFieldJogSpeed.setText(Integer.toString(conf.jogSpeed));
         jCheckBoxBackLash.setSelected(conf.useBackLash);
-        jTextFieldBSX.setText(df.format(conf.backLashX));
-        jTextFieldBSY.setText(df.format(conf.backLashY));
-        jTextFieldBSZ.setText(df.format(conf.backLashZ));
+        jTextFieldBLX.setText(df.format(conf.backLashX));
+        jTextFieldBLY.setText(df.format(conf.backLashY));
+        jTextFieldBLZ.setText(df.format(conf.backLashZ));
         jTextFieldShowLaserPosition.setText("" + conf.showLaserPowerValue);
         jTextFieldMinG1Move.setText("" + conf.minG1move);
         jCheckBoxDarkTheme.setSelected( conf.guiTheme.equals("dark"));
@@ -223,9 +223,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         jLabel14 = new javax.swing.JLabel();
         jLabel15 = new javax.swing.JLabel();
         jLabel16 = new javax.swing.JLabel();
-        jTextFieldBSX = new javax.swing.JTextField();
-        jTextFieldBSY = new javax.swing.JTextField();
-        jTextFieldBSZ = new javax.swing.JTextField();
+        jTextFieldBLX = new javax.swing.JTextField();
+        jTextFieldBLY = new javax.swing.JTextField();
+        jTextFieldBLZ = new javax.swing.JTextField();
         jPanelGCode = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
@@ -761,38 +761,33 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         gridBagConstraints.insets = new java.awt.Insets(0, 5, 0, 0);
         jPanelBackLash.add(jLabel16, gridBagConstraints);
 
-        jTextFieldBSX.setColumns(8);
-        jTextFieldBSX.setText("jTextField1");
+        jTextFieldBLX.setColumns(8);
+        jTextFieldBLX.setText("jTextField1");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 1;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
-        jPanelBackLash.add(jTextFieldBSX, gridBagConstraints);
+        jPanelBackLash.add(jTextFieldBLX, gridBagConstraints);
 
-        jTextFieldBSY.setColumns(8);
-        jTextFieldBSY.setText("jTextField2");
-        jTextFieldBSY.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldBSYActionPerformed(evt);
-            }
-        });
+        jTextFieldBLY.setColumns(8);
+        jTextFieldBLY.setText("jTextField2");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 2;
         gridBagConstraints.gridwidth = 5;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
-        jPanelBackLash.add(jTextFieldBSY, gridBagConstraints);
+        jPanelBackLash.add(jTextFieldBLY, gridBagConstraints);
 
-        jTextFieldBSZ.setColumns(8);
-        jTextFieldBSZ.setText("jTextField3");
+        jTextFieldBLZ.setColumns(8);
+        jTextFieldBLZ.setText("jTextField3");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 1;
         gridBagConstraints.gridy = 3;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
         gridBagConstraints.insets = new java.awt.Insets(0, 0, 5, 0);
-        jPanelBackLash.add(jTextFieldBSZ, gridBagConstraints);
+        jPanelBackLash.add(jTextFieldBLZ, gridBagConstraints);
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
@@ -981,9 +976,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             conf.jogSpeed = Integer.parseInt(jTextFieldJogSpeed.getText());
 
             conf.useBackLash = jCheckBoxBackLash.isSelected();
-            conf.backLashX = Double.parseDouble(jTextFieldBSX.getText());
-            conf.backLashY = Double.parseDouble(jTextFieldBSY.getText());
-            conf.backLashZ = Double.parseDouble(jTextFieldBSZ.getText());
+            conf.backLashX = Double.parseDouble(jTextFieldBLX.getText());
+            conf.backLashY = Double.parseDouble(jTextFieldBLY.getText());
+            conf.backLashZ = Double.parseDouble(jTextFieldBLZ.getText());
             
             conf.minG1move = Double.parseDouble( jTextFieldMinG1Move.getText());
             
@@ -1071,10 +1066,6 @@ public class JConfigurationFrame extends javax.swing.JFrame {
         conf.adaptativePower = jCheckBoxAdaptativePower.isSelected();
     }//GEN-LAST:event_jCheckBoxAdaptativePowerActionPerformed
 
-    private void jTextFieldBSYActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldBSYActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jTextFieldBSYActionPerformed
-
     private void jButtonDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonDeleteActionPerformed
         if ( conf.getSavedNames().contains(selected)) {
             conf.delete(selected);
@@ -1160,9 +1151,9 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JTextArea jTextArea2;
     private javax.swing.JTextArea jTextArea3;
-    private javax.swing.JTextField jTextFieldBSX;
-    private javax.swing.JTextField jTextFieldBSY;
-    private javax.swing.JTextField jTextFieldBSZ;
+    private javax.swing.JTextField jTextFieldBLX;
+    private javax.swing.JTextField jTextFieldBLY;
+    private javax.swing.JTextField jTextFieldBLZ;
     private javax.swing.JTextField jTextFieldDiameter;
     private javax.swing.JTextField jTextFieldFeedR;
     private javax.swing.JTextField jTextFieldHeight;

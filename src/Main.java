@@ -30,9 +30,6 @@ public class Main {
             // do something with each thread
             System.out.println(t);
             }*/
-            
-            // TODO code application logic here
-            // java.awt.EventQueue.invokeLater(() -> {
                                
             try {
                 if ( System.getProperty("user.home").startsWith("/")) {
