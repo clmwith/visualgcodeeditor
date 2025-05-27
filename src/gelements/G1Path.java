@@ -1339,11 +1339,11 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return false;
     }
     
-    public static G1Path newRectangle(GCode p1, GCode p2) {
+    public static G1Path makeRectangle(GCode p1, GCode p2) {
         final double w = p2.getX()-p1.getX();
         final double h = p2.getY()-p1.getY();
         
-        G1Path res = new G1Path("rectangle");  
+        G1Path res = new G1Path("rect"+getUniqID());  
         res.add(p1);
         res.add(new GCode(p2.getX(), p1.getY()));
         res.add(p2);
@@ -1365,7 +1365,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
                 GCode p;
                 Segment2D s = null;
                 do {
-                    while( ! (p=lines.get(curLine++)).isAPoint());
+                    while( ! (p=lines.get(curLine)).isAPoint()) curLine++;
                     n++;
                     if ( lastPoint == null ) lastPoint = p;
                     else s = new Segment2D(lastPoint, p);

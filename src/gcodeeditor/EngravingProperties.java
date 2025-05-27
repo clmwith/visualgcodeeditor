@@ -16,7 +16,7 @@
  */
 package gcodeeditor;
 
-import gcodeeditor.Configuration;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -24,7 +24,7 @@ import java.util.Iterator;
  * Contains GCODE engraving properties
  * @author Clément
  */
-public class EngravingProperties {
+public class EngravingProperties implements Serializable {
     public static final String HEADER_STRING = "(Prop:";
     
     boolean enabled;

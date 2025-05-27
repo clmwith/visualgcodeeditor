@@ -37,6 +37,7 @@ import gcodeeditor.PaintContext;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Composite;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -44,6 +45,7 @@ import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
@@ -82,6 +84,9 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TreeModelListener;
+import javax.swing.tree.TreeModel;
+import javax.swing.tree.TreePath;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.kabeja.dxf.DXFArc;
@@ -239,6 +244,109 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     
     /** Listen for changes at edition of the gcode of the editedElement */
     private final ListDataListener editedElementListener;
+    
+    /** contains the element to search from when outside of editedElement */
+    private GElement findFrom;
+
+    /** 
+     * Find (and select) the next gcode line that contains substring in 'into'
+     */
+    private boolean findNextGCODE( String substring, GElement into, boolean inEditedElement) {
+        if ( into == null) return false;
+        
+        if ( into instanceof GGroup) {
+            for ( GElement e : ((GGroup) into).getAll()) {
+                if (findFrom != null) {
+                    if (findFrom == e) findFrom = null;
+                    continue;
+                }
+                if ( findNextGCODE(substring, e, false)) return true;
+            }
+            
+        } else {
+                GCode fromLine = inEditedElement ? (getSelectedLines().isEmpty() ? null : getSelectedLines().getFirst()) : null;
+
+                for ( GCode l : into) {
+                    if (fromLine != null) { 
+                        // find start
+                        if (fromLine == l) fromLine = null;
+                        continue; 
+                    }
+                    
+                    if ( l.toGRBLString().contains(substring)) {
+                        setEditedElement(into);     
+                        selectedPoints.add(l);
+                        selectionHasChanged = true;
+                        invalidate();
+                        return true;
+                    }
+                }
+                
+                // Not found in this GElement.
+                // if searching in editedElement restart in parent from it
+                if ( inEditedElement) findFrom = editedElement;
+                else if ( selectedElements.contains(into)) {
+                    // or if searching in selection, fin in next one
+                    if ( selectedElements.getLast() == into) return false;
+                    else return findNextGCODE(substring, selectedElements.get( selectedElements.indexOf(into)+1), false);
+                }
+        }
+        return false;
+    }
+
+
+    TreeModel treeModel;
+    TreeModel getTreeModel() {
+        if ( treeModel == null) {
+            treeModel = new TreeModel() {
+                @Override
+                public Object getRoot() {
+                    return document;
+                }
+
+                @Override
+                public Object getChild(Object o, int i) {
+                     if ( o instanceof GGroup) return ((GGroup)o).get(i);
+                     else return null;
+                }
+
+                @Override
+                public int getChildCount(Object o) {
+                    if ( o instanceof GGroup) return ((GGroup)o).size();
+                    return 0;                        
+                }
+
+                @Override
+                public boolean isLeaf(Object o) {
+                    return ! (o instanceof GGroup);
+                }
+
+                @Override
+                public void valueForPathChanged(TreePath tp, Object o) {
+                    o = null;
+                }
+
+                @Override
+                public int getIndexOfChild(Object o, Object o1) {
+                    if ( o instanceof GGroup) ((GGroup)o).indexOf((GElement) o1);
+                    return 0;
+                }
+
+                ArrayList<TreeModelListener> treeListeners = new ArrayList<>();
+                @Override
+                public void addTreeModelListener(TreeModelListener tl) {
+                    treeListeners.add( tl);
+                }
+
+                @Override
+                public void removeTreeModelListener(TreeModelListener tl) {
+                    treeListeners.remove( tl);
+                }
+            };
+                             
+        }
+        return treeModel;
+    }
    
     /** Class to show all paths in the list when no paths edited. */
     public class DocumentListModel implements ListModel<Object> { 
@@ -270,6 +378,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         selectedPoints = new ArrayList<>(100);
         undoManager = new UndoManager();
         
+        // used to receive change in editedElement and editedGroup
         editedElementListener = new ListDataListener() {
             @Override
             public void intervalAdded(ListDataEvent e) { if ( mousePressed) stateHasChanged=true; else saveState(false); }
@@ -1286,7 +1395,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                         g1p = G1Path.makeRounRect(w, h, Math.max(rx, ry)); // TODO: use ry !
                         g1p.translate(x, y);
                     } else                    
-                        g1p = G1Path.newRectangle(new GCode(x, y), new GCode(x+w, y+h));
+                        g1p = G1Path.makeRectangle(new GCode(x, y), new GCode(x+w, y+h));
                     
                     applySVGTransformation(transform, g1p);
                     parent.add( g1p);
@@ -1494,7 +1603,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         return res;
     } 
     
-        private void applySVGTransformation(String transform, GElement elem) {
+    private void applySVGTransformation(String transform, GElement elem) {
         if ( (transform != null) && ! transform.isBlank() ) {
             Pattern pat = Pattern.compile("^([^\\(]+)\\(([^\\)]+)\\)"); 
             Matcher m = pat.matcher(transform);
@@ -2131,7 +2240,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     else
                         r = new Rectangle2D.Double(coordMouseOrigin.getX() - w, coordMouseOrigin.getY() - h, w*2, h*2);
                 }
-                add(G1Path.newRectangle(new GCode(r.x, r.y), new GCode(r.x+r.width, r.y+r.height)));                                      
+                add(G1Path.makeRectangle(new GCode(r.x, r.y), new GCode(r.x+r.width, r.y+r.height)));                                      
                 mouseRectangleP2 = null;
                 break;                 
             case MOUSE_MODE_NONE_AT_RELEASE: 
@@ -2723,6 +2832,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public static final int ACTION_INVERSE_SEL               = 230; 
     public static final int ACTION_EXTRACT                   = 240;
     public static final int ACTION_FILTER                    = 250;
+    public static final int ACTION_FIND_IN_GCODE             = 251;
     public static final int ACTION_FLIP_G1GX                 = 260;
     public static final int ACTION_FLIP_H                    = 270;
     public static final int ACTION_FLIP_V                    = 280;
@@ -2746,6 +2856,8 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public static final int ACTION_ROTATE                    = 450;
     public static final int ACTION_SCALE                     = 460;
     public static final int ACTION_SELECT_ALL                = 470;
+    public static final int ACTION_SELECT_PREV               = 471;
+    public static final int ACTION_SELECT_NEXT               = 472;
     public static final int ACTION_SET_2D_CURSOR             = 480;
     public static final int ACTION_SET_AS_FOOTER             = 490;
     public static final int ACTION_SET_AS_HEADER             = 500;
@@ -3234,6 +3346,40 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                      saveState(true);
                  }
                  break;
+                 
+            case ACTION_FIND_IN_GCODE:
+                boolean found = false;
+                if ( object instanceof String) {
+                    if ( editedElement != null)
+                        found = findNextGCODE( (String)object, editedElement, true); 
+                    
+                    if ( ! found && (editedElement != null)) {
+                            // not found in the current edited element, continue in all the document from it
+                            findFrom = editedElement;
+                            found = findNextGCODE((String)object, document.getParent(editedElement), false);
+                    }
+                    
+                    if ( !found && ! selectedElements.isEmpty()) 
+                        found = findNextGCODE( (String)object, selectedElements.getFirst(), false);
+                    
+                    if ( ! found)
+                        found = findNextGCODE(  (String)object, editedGroup, false);
+                    
+                    if ( ! found && (editedGroup != document)) {
+                        findFrom = editedGroup;
+                        found = findNextGCODE(  (String)object, editedGroup, false);
+                        
+                        if ( ! found) {
+                            findFrom = null;
+                            found = findNextGCODE(  (String)object, document, false);
+                        }
+                    }
+                    
+                }
+                if ( ! found)
+                        inform("not found");
+                break;
+                
             case ACTION_FLIP_H:
                 if ( selectedElements.isEmpty()) return false;
                 center = getCenterOfSelection();
@@ -3642,6 +3788,72 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 invalidate();
                 break;                
                 
+            case ACTION_SELECT_PREV:
+                // select previous element
+                GElement prev;
+                if ( editedElement != null) {
+                    prev = document.getPreviousFrom( editedElement);
+                  
+                } else {
+                    if ( selectedElements.size() == 1) {
+                        prev = document.getPreviousFrom( selectedElements.get(0));
+                    } else 
+                        prev = document.getPreviousFrom( editedGroup);
+                }
+                
+                if ( prev == null) {
+                    inform("can't go up");
+                    return false;
+                }
+                else {
+                    // recurs at end line of last sub element of this group
+                    while ( prev instanceof GGroup) {
+                        GElement e2 = ((GGroup)prev).get( prev.size()-1);
+                        if ( e2 == null) break;
+                        else prev = e2;
+                    }
+                    setEditedElement( prev);  
+                    if ( editedElement == null) break;
+                    selectedPoints.add( editedElement.getLine( editedElement.size()-1));
+                    selectionHasChanged = true;
+                    invalidate();
+                    gCodeListViewer.requestFocusInWindow();   
+                }             
+                break;
+                
+            case ACTION_SELECT_NEXT:
+                // select previous element
+                GElement next;
+                if ( editedElement != null) {
+                    next = document.getNextTo( editedElement);
+                  
+                } else {
+                    if ( selectedElements.size() == 1) {
+                        next = document.getNextTo(selectedElements.get(0));
+                    } else 
+                        next = document.getNextTo(editedGroup);
+                }
+                
+                if ( next == null) {
+                    inform("can't go down");
+                    return false;
+                }
+                else {
+                    // recurs at start line of first sub element of this group
+                    while ( next instanceof GGroup) {
+                        GElement e2 = ((GGroup)next).get( 0);
+                        if ( e2 == null) break;
+                        else next = e2;
+                    }
+                    setEditedElement( next);   
+                    if ( editedElement == null) break;
+                    selectedPoints.add( editedElement.getLine( 0));
+                    selectionHasChanged = true;
+                    invalidate();
+                    gCodeListViewer.requestFocusInWindow();   
+                }             
+                break;
+                    
             case ACTION_SET_2D_CURSOR:
                 mouseMode = MOUSE_MODE_SET_2D_CURSOR;
                 inform("Click to set the new position of 2D cursor");
@@ -3912,6 +4124,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     
                 }
             } else {
+                // update selected elements list
                 if (gCodeListViewer.getModel() != documentListModel ) 
                     gCodeListViewer.setModel(documentListModel);
                 else {// remplace block selection
@@ -3928,16 +4141,20 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                         i++;
                     }
                     if ( first != -1) gCodeListViewer.addSelectionInterval(first, i-1);
-                }
+                }                
             }
             inform(null);
             gCodeListViewer.invalidate();
-            gCodeListViewer.repaint();           
+            gCodeListViewer.repaint();    
+            
+            
         }
+        
         selectionHasChanged=false;
         super.invalidate();
         repaint();
     }
+    
     
     /** call inform(null) and repaint(). */
     protected void invalidateWithoutUpdateGCodeListViewer() {
@@ -3956,14 +4173,18 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
      * @param msg 
      */
     private void inform(String msg) {
+        Component focusedComponent = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        
         if (listener == null) return;
         
         if (selectionHasChanged)
-            EventQueue.invokeLater(() -> {listener.updatePropertiesPanel(); });
+            EventQueue.invokeLater(() -> { listener.updatePropertiesPanel(); });
         if (msg == null)
-            EventQueue.invokeLater(() -> {listener.updateGUIAndStatus(); });
+            EventQueue.invokeLater(() -> { listener.updateGUIAndStatus(); });
         else 
-            EventQueue.invokeLater(() -> {listener.inform(msg); });
+            EventQueue.invokeLater(() -> { listener.inform(msg); });
+        
+        if ( focusedComponent == gCodeListViewer) focusedComponent.requestFocusInWindow();
     }
 
     public void exportToDXF( String filename, boolean onlySelection, boolean flattenSPline) throws IOException {
@@ -4243,7 +4464,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
 
             if ( element instanceof GGroup) {
                 if ( (editedGroup == element ) && ! exitingEditing)  return;                
+                if ( editedGroup != null) editedGroup.removeListDataListener(editedElementListener);
                 editedGroup = (GGroup) element;
+                editedGroup.addListDataListener( editedElementListener);          
             }
             else {
                 editedElement = element;
@@ -4251,7 +4474,9 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 highlitedPoint=editedElement.getCloserPoint(coordSnapPosition, 10 / zoomFactor, null, false);
             }    
         } else {
-            editedGroup = document;            
+            if ( editedGroup != null) editedGroup.removeListDataListener(editedElementListener);
+            editedGroup = document;   
+            editedGroup.addListDataListener( editedElementListener);   
         }
         
         selectionHasChanged=true;        
@@ -4265,7 +4490,6 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         SwingUtilities.invokeLater(() -> {
             editedElement.setLine(row, new GCode(value));
             invalidateWithoutUpdateGCodeListViewer();
-            //if ( listener != null) listener.updatePropertiesPanel();
         }); 
     }
 
@@ -4623,7 +4847,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
 
     /** Scale each selected element with this ratio */
     public void scaleEachOfTheSelection(double sx, double sy, int count, boolean fromCenter, boolean keepOriginal) {
-        ArrayList<GElement> els = (ArrayList<GElement>)selectedElements.clone();
+        ArrayList<GElement> els = new ArrayList<>(selectedElements);
         for( GElement e : els)
         {
             selectedElements.clear();
@@ -4974,7 +5198,8 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     } else {
                         GGroup p;
                         setEditedElement(document.getParent(p=editedGroup));
-                        selectedElements.add(p);    
+                        selectedElements.add(p);  
+                        selectionHasChanged = true;                      
                     }
                 }
         }

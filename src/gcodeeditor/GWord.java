@@ -19,7 +19,6 @@ package gcodeeditor;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Locale;
-import javax.accessibility.AccessibleText;
 
 /**
  * A word [char][numeric_value] that compose a line of G-Code

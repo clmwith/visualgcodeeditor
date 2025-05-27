@@ -31,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -46,7 +47,7 @@ import javax.swing.event.ListDataListener;
  *
  * @author Clément
  */
-public abstract class GElement implements ListModel<Object>, Iterable<GCode> {
+public abstract class GElement implements Serializable, ListModel<Object>, Iterable<GCode> {
 
     /**
      * Used to create uniq element ID.

@@ -32,6 +32,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import javax.swing.plaf.basic.BasicHTML;
 
 
 /**
@@ -369,7 +370,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
         else {
             for( GElement e : elements) 
                 if ((e instanceof GGroup) && (((GGroup)e).getParent(el) != null)) 
-                    return (GGroup) e;
+                    return ((GGroup)e).getParent(el);
         }
         return null;
     }
@@ -1066,6 +1067,36 @@ public class GGroup extends GElement implements Iterator<GElement> {
             else
                 el.removeComments();
         }
+    }
+
+    /** 
+     * Return the previous element in the GCODE sequence into this group.
+     * 
+     * @param element
+     * @return return null if 'element' is the first
+     */
+    public GElement getPreviousFrom(GElement element) {
+        
+        if ( elements.contains(element) && (elements.getFirst() == element)) return null;
+        
+        GGroup p = getParent( element);
+        if ( p == null) return null;
+        
+        int i = p.indexOf(element);
+        if ( i > 0) return p.get( i-1);
+        else return getParent(p).getPreviousFrom(p);
+
+    }
+
+    public GElement getNextTo(GElement element) {
+        if ( elements.contains(element) && (elements.getLast()== element)) return null;
+        
+        GGroup p = getParent( element);
+        if ( p == null) return null;
+        
+        int i = p.indexOf(element);
+        if ( i < p.size()-1) return p.get( i+1);
+        else return getParent(p).getNextTo(p);
     }
 
 }

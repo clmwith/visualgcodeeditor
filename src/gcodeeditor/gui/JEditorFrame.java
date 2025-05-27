@@ -47,8 +47,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -144,6 +146,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     public static File lastImportDir = null;
     private JGRBLInfoDialog grblinfodialog;
     
+    /** the last string searched in the GCODE */
+    private String lastSearchString;
+    
     /**
      * Creates new form NewJFrame
      * @param addHeaderFooter
@@ -205,7 +210,37 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });
         
         // Configure some actions and keys relative to the GCode list editor.
-        ListActionConfigurator la = new ListActionConfigurator(jListGCode);   
+        ListActionConfigurator la = new ListActionConfigurator(jListGCode);  
+        // Add a KeyListener to the JList
+        jListGCode.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int selectedIndex;
+                // Check if the UP arrow key was pressed
+                switch ( e.getKeyCode()) {
+                    case KeyEvent.VK_UP:
+                    case KeyEvent.VK_KP_UP:              
+                        selectedIndex = jListGCode.getSelectedIndex();
+                        if (selectedIndex == 0) {
+                            // find and edit prev element
+                            projectViewer.doAction(JProjectEditorPanel.ACTION_SELECT_PREV, 0, null);
+                            e.consume();
+                        }
+                    break;
+                
+                    case KeyEvent.VK_DOWN:
+                    case KeyEvent.VK_KP_DOWN:
+                        selectedIndex = jListGCode.getSelectedIndex();
+                        if (selectedIndex == jListGCode.getModel().getSize()-1) {
+                            // find and edit next element
+                            projectViewer.doAction(JProjectEditorPanel.ACTION_SELECT_NEXT, 0, null);
+                            e.consume();
+                        }
+                    break;
+                }
+            }
+        });
+        
         la.setAction(ListActionConfigurator.ENTER, new EditListAction(projectViewer));
         la.setAction(ListActionConfigurator.INSERT, new AbstractAction() { // called when INSERT key on the jList
             @Override
@@ -232,7 +267,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         la.setAction(ListActionConfigurator.ESCAPE, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                Component focusedComponent = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();        
                 projectViewer.editParentOrClearSelection();
+                if ( focusedComponent != null) focusedComponent.requestFocusInWindow();                
             }
         });
         la.setAction(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_DOWN_MASK), new AbstractAction() {
@@ -617,6 +654,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jMenuItemQuit = new javax.swing.JMenuItem();
         jMenuEdit = new javax.swing.JMenu();
         jMenuItemSelectAll = new javax.swing.JMenuItem();
+        jMenuItemFind = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JPopupMenu.Separator();
         jMenuItemUndo = new javax.swing.JMenuItem();
         jMenuItemRedo = new javax.swing.JMenuItem();
@@ -655,6 +693,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jCheckBoxMenuItemShowWorkspace = new javax.swing.JCheckBoxMenuItem();
         jSeparator28 = new javax.swing.JPopupMenu.Separator();
         jMenuItemFocus = new javax.swing.JMenuItem();
+        jMenuItem3 = new javax.swing.JMenuItem();
         jMenuSelection = new javax.swing.JMenu();
         jMenuItemInverseSelection = new javax.swing.JMenuItem();
         jSeparator9 = new javax.swing.JPopupMenu.Separator();
@@ -1347,6 +1386,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             }
         });
         jMenuEdit.add(jMenuItemSelectAll);
+
+        jMenuItemFind.setText("Find ...");
+        jMenuItemFind.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemFindActionPerformed(evt);
+            }
+        });
+        jMenuEdit.add(jMenuItemFind);
         jMenuEdit.add(jSeparator16);
 
         jMenuItemUndo.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, java.awt.event.InputEvent.CTRL_DOWN_MASK));
@@ -1624,6 +1671,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             }
         });
         jMenuView.add(jMenuItemFocus);
+
+        jMenuItem3.setText("Tree view");
+        jMenuItem3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItem3ActionPerformed(evt);
+            }
+        });
+        jMenuView.add(jMenuItem3);
 
         jMenuBar.add(jMenuView);
 
@@ -3862,7 +3917,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         String m = JOptionPane.showInputDialog(this, "Marge", "0");
         try {
             double marge = Double.parseDouble(m);
-            addGElement(G1Path.newRectangle(new GCode(bounds.getX()-marge, bounds.getY()-marge), 
+            addGElement(G1Path.makeRectangle(new GCode(bounds.getX()-marge, bounds.getY()-marge), 
                     new GCode(bounds.getX()+bounds.getWidth()+marge, bounds.getY()+bounds.getHeight()+marge)));
         } catch ( NumberFormatException e) { }
     }//GEN-LAST:event_jMenuItemAddBoundsActionPerformed
@@ -4039,6 +4094,33 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         if ( ! grblinfodialog.isVisible()) grblinfodialog.setLocationRelativeTo(this);
         grblinfodialog.setVisible(true);
     }//GEN-LAST:event_jMenuItemGRBLInfoActionPerformed
+
+    private void jMenuItemFindActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFindActionPerformed
+         String searchInGCODE = (String)JOptionPane.showInputDialog(null, 
+                "Enter the search string:", 
+                "Search in GCODE", 
+                JOptionPane.PLAIN_MESSAGE,
+                null,    // No icon
+                null,    // No input validation
+                lastSearchString); // Default value
+
+        // If the user cancels or closes the input dialog, exit the program
+        if ( (searchInGCODE != null) && ! searchInGCODE.isBlank()) {
+            lastSearchString = searchInGCODE;
+            projectViewer.doAction( JProjectEditorPanel.ACTION_FIND_IN_GCODE, 0, searchInGCODE);
+        }
+    }//GEN-LAST:event_jMenuItemFindActionPerformed
+
+    JFrame TreeViewFrame;
+    private void jMenuItem3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem3ActionPerformed
+        if ( TreeViewFrame == null) {
+            TreeViewFrame = new JFrame("Tree view");
+            TreeViewFrame.add( new TreeViewPanel(projectViewer));
+            TreeViewFrame.pack();
+        }
+        if ( ! TreeViewFrame.isVisible()) TreeViewFrame.setLocationRelativeTo(this);
+        TreeViewFrame.setVisible(true);
+    }//GEN-LAST:event_jMenuItem3ActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -4619,6 +4701,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenu jMenuHelp;
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItem2;
+    private javax.swing.JMenuItem jMenuItem3;
     private javax.swing.JMenuItem jMenuItemAbout;
     private javax.swing.JMenuItem jMenuItemAddArc;
     private javax.swing.JMenuItem jMenuItemAddAtCenter;
@@ -4672,6 +4755,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenuItem jMenuItemExportSVG;
     private javax.swing.JMenuItem jMenuItemExtract;
     private javax.swing.JMenuItem jMenuItemFilter;
+    private javax.swing.JMenuItem jMenuItemFind;
     private javax.swing.JMenuItem jMenuItemFlipG1G2;
     private javax.swing.JMenuItem jMenuItemFlipG1G5;
     private javax.swing.JMenuItem jMenuItemFlipH;

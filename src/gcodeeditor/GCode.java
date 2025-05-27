@@ -20,6 +20,7 @@ package gcodeeditor;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -37,7 +38,7 @@ import java.util.Iterator;
  * 
  * @author Clément
  */
-public class GCode extends Point2D implements Iterable<GWord> {
+public class GCode extends Point2D implements Serializable, Iterable<GWord> {
           
     /** List of Gword that compose the line. */
     ArrayList<GWord> words;  

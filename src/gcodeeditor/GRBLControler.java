@@ -57,9 +57,7 @@ import javax.swing.SwingUtilities;
  * A GRBL 1.1 Command Controler.
  * @author Clément
  */
-public class GRBLControler implements Runnable, 
-                    SerialPortDataListener { // avec jSerialComm
-                    // SerialPortEventListener {   // avec RXTX
+public class GRBLControler implements Runnable, SerialPortDataListener {
       
     public static final String GRBL_INIT_STRING_HEADER = "Grbl 1.1";
     
