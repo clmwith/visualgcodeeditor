@@ -16,10 +16,10 @@
  */
 package gcodeeditor.gui.dialogs;
 
+import gelements.GScad2DComposition;
 import java.awt.Color;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
-import net.objecthunter.exp4j.ExpressionBuilder;
 
 /**
  * Used to simplify GUI dialogs managments
@@ -98,11 +98,9 @@ public abstract class ManagedPanel extends javax.swing.JPanel {
      */
     public static double parseExpression( String value) {
         try {
-            return new ExpressionBuilder(value).variables("pi").build().setVariable("pi", Math.PI).evaluate();
-            //return Double.parseDouble(value);
+            return (Double)GScad2DComposition.evaluate(value + ";");
         } catch ( Exception e) {
-            //System.out.println("err:"+e);
-            return Double.NaN;
+            throw new RuntimeException("Wrong numerical expression");
         }
     }
     

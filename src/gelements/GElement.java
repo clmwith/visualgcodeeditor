@@ -115,7 +115,7 @@ public abstract class GElement implements Serializable, ListModel<Object>, Itera
     /**
      * Change my ID to a new uniq ID.
      */
-    public void newID() {
+    public void changeID() {
         id = curID++;
     }
 
@@ -140,7 +140,7 @@ public abstract class GElement implements Serializable, ListModel<Object>, Itera
     abstract public int getSize();
 
     /**
-     * Used to list all lines in the editor.
+     * Used to list all lines in the editor (the JEditorFrame.jListGCode).
      *
      * @param index the index to get
      * @return a G-Code line
@@ -559,6 +559,9 @@ public abstract class GElement implements Serializable, ListModel<Object>, Itera
         }
         if (line.startsWith(GArc.HEADER_STRING)) {
             return GArc.class;
+        }
+        if (line.startsWith(GScad2DComposition.HEADER_STRING)) {
+            return GScad2DComposition.class;
         }
         if (line.startsWith(GCylindricalPocket.HEADER_STRING)) {
             return GCylindricalPocket.class;

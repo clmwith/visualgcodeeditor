@@ -34,6 +34,7 @@ import gelements.GPocket3D;
 import gelements.GSpline;
 import gelements.GTextOnPath;
 import gcodeeditor.PaintContext;
+import gelements.GScad2DComposition;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -126,10 +127,14 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public static final String SVGE_RELEASE = "0.8.8";
 
     Configuration conf = new Configuration();
+    
+    /** used to propagate internal changes */
     JProjectEditorPanelListenerInterface listener;
     
     /** List of all elements of the document. */
     GGroup document;
+    
+    /** contains the current edited GGroup */
     GGroup editedGroup;
     
     /** Visual Zoom factor of the view. */
@@ -2896,7 +2901,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 inform("Press on first point and drag");
                 setCursor(crossCursor);
                 screenMousePressPosition=mouseRectangleP2=null;
-                break;
+                break;                
                 
             case ACTION_ADD_MIXED_PATH:
                 clearMouseMode();
@@ -4041,7 +4046,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     public String getSelectedElementsInfo() {
         if ( editedElement != null) return "Edited: " + editedElement +  
                     ((selectedPoints.size()>1)?selectedPoints.size()+" selected":
-                        (selectedPoints.size()>0)?" selected n° " + editedElement.getIndexOfPoint(selectedPoints.get(0)):"");
+                        (!selectedPoints.isEmpty())?" selected n° " + editedElement.getIndexOfPoint(selectedPoints.get(0)):"");
         else 
             if ( selectedElements.isEmpty()) return "";
             else {
@@ -4057,7 +4062,8 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             }
     }
     
-    /** Return the bounds of each selected elements */
+    /** 
+     * @return the bounds of each selected elements */
     public ArrayList<Rectangle2D> getSelectedElementsBounds()
     {
         ArrayList<Rectangle2D> res = new ArrayList<>();
@@ -4460,13 +4466,12 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         clearMouseMode();       
         selectedElements.clear(); 
         
-        if ( element != null) {
-
+        if ( element != null) {            
             if ( element instanceof GGroup) {
                 if ( (editedGroup == element ) && ! exitingEditing)  return;                
                 if ( editedGroup != null) editedGroup.removeListDataListener(editedElementListener);
                 editedGroup = (GGroup) element;
-                editedGroup.addListDataListener( editedElementListener);          
+                editedGroup.addListDataListener( editedElementListener);  
             }
             else {
                 editedElement = element;
@@ -4569,8 +4574,11 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
      * @param selectedIndex 
      */
     public void editElement(int selectedIndex) {
-        if ( selectedIndex != -1)
-            setEditedElement(editedGroup.get(selectedIndex));
+        if ( selectedIndex != -1) {
+            GElement e = editedGroup.get(selectedIndex);
+            if ( e instanceof GScad2DComposition.Code2DElement comp)  listener.editCodeOf((GScad2DComposition) document.getParent(e));
+            else setEditedElement(e);
+        }
     }
     
     /**

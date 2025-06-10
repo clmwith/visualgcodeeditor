@@ -16,6 +16,7 @@
  */
 package gcodeeditor.gui;
 
+import gelements.GScad2DComposition;
 import java.awt.geom.Point2D;
 
 /**
@@ -34,4 +35,6 @@ public interface JProjectEditorPanelListenerInterface {
     public void setVirtualMachinePosition(Point2D coordSnapPointFor);
 
     public void inform(String msg);
+
+    public void editCodeOf(GScad2DComposition comp);
 }

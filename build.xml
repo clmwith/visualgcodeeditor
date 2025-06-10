@@ -70,4 +70,19 @@
     nbproject/build-impl.xml file. 
 
     -->
+    
+    
+   <target name="gen-antlr" description="Generate parser from ANTLR grammar">
+    <!-- <mkdir dir="src/scad2d" /> -->
+    <java classname="org.antlr.v4.Tool" fork="true" failonerror="true">
+        <classpath>
+            <pathelement location="/home/moi/NetBeansProjects/VisualGCodeEditor/ext/antlr4-4.13.1-complete.jar" />
+        </classpath>
+        <arg value="-Dlanguage=Java" />
+        <arg value="-visitor" />
+        <arg value="-o" />
+        <arg value="." />
+        <arg value="src/scad2d/Scad2D.g4" />
+    </java>
+    </target>
 </project>

@@ -23,6 +23,7 @@ package gcodeeditor.gui;
 
 import gelements.GGroup;
 import gelements.GElement;
+import gelements.GScad2DComposition;
 import gelements.GTextOnPath;
 import java.awt.Container;
 import java.awt.Dimension;
@@ -61,11 +62,11 @@ public class EditListAction extends AbstractAction
 	private JPopupMenu editPopup;
 	private JTextField editTextField;
         
-        private final JProjectEditorPanel shapeviewer;
+        private final JProjectEditorPanel projectViewer;
 
 	public EditListAction(JProjectEditorPanel v)
 	{
-            shapeviewer = v;
+            projectViewer = v;
         }
 
 	/*
@@ -77,17 +78,29 @@ public class EditListAction extends AbstractAction
             list = (JList)e.getSource();
             ListModel model = list.getModel();
             if ( list.getSelectedIndex() == -1) return;
-
+            
+            if ( model instanceof GScad2DComposition.Code2DElement code2D) {
+                Container p = projectViewer.getParent();
+                do {
+                    p = p.getParent();
+                    if ( p instanceof JEditorFrame ) {
+                        ((JEditorFrame)p).editCodeOf(code2D.getCompositionElement());
+                        return;
+                    }
+                } while (p != null);
+            }
+            
             // Enter in a Group ?
             if ( (model instanceof GGroup) || (model instanceof JProjectEditorPanel.DocumentListModel)) { 
                 // we are not in a block then no line to edit
-                shapeviewer.editElement(list.getSelectedIndex());
+                projectViewer.editElement(list.getSelectedIndex());
                 return;
             }
-                   
+            
+               
             if ( (model instanceof GTextOnPath) && (list.getSelectedIndex() == 0)) {
                 // Edit the Font (line 0) of this TextOnPath
-                Container p = shapeviewer.getParent();
+                Container p = projectViewer.getParent();
                 do {
                     p = p.getParent();
                     if ( p instanceof JEditorFrame ) {
@@ -132,12 +145,12 @@ public class EditListAction extends AbstractAction
                 editTextField.addFocusListener( new FocusListener() {
                     @Override
                     public void focusGained(FocusEvent e) {
-                        shapeviewer.setKeyFocus(false);
+                        projectViewer.setKeyFocus(false);
                     }
 
                     @Override
                     public void focusLost(FocusEvent e) {                       
-                        shapeviewer.setKeyFocus(true);
+                        projectViewer.setKeyFocus(true);
                     }
                 });
 		//  Add an Action to the text field to save the new value to the model
@@ -146,7 +159,7 @@ public class EditListAction extends AbstractAction
                     ListModel model = list.getModel();
                     int row = list.getSelectedIndex();
                     editPopup.setVisible(false);
-                    shapeviewer.updateEditedRow(value, model, row);                    
+                    projectViewer.updateEditedRow(value, model, row);                    
                 });
 
 		//  Add the editor to the popup

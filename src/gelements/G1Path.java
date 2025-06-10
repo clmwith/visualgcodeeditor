@@ -478,7 +478,7 @@ public class G1Path extends GElement implements Iterable<GCode> {
     @Override
     public G1Path flatten() {
         G1Path clone = (G1Path)clone();
-        clone.newID();
+        clone.changeID();
         return clone;
     }
 
@@ -608,12 +608,8 @@ public class G1Path extends GElement implements Iterable<GCode> {
     /** Color used to paint line and points in editionMode */
     public static Color editionColor = new Color(127, 127, 255);
     
-    @Override
-    public void paint(PaintContext pc) {
-        if ( renderedShape == null) {
-            // recalculate visualisation shape
-            
-            // TODO verrify wind
+    void updateRenderShape() {
+         // TODO verrify wind
             renderedShape = new GeneralPath.Double(GeneralPath.WIND_EVEN_ODD, lines.size());
             final Iterable<GCode> pi = getPointsIterator();
             GCode g0 = null;
@@ -632,6 +628,14 @@ public class G1Path extends GElement implements Iterable<GCode> {
 
                 }
             }
+    }
+    
+    @Override
+    public void paint(PaintContext pc) {
+        if ( renderedShape == null) {
+            // recalculate visualisation shape
+           updateRenderShape(); 
+           
             if ( bounds == null) {
                 bounds = (Rectangle2D.Double)renderedShape.getBounds2D();
                 if (bounds.width == 0) bounds.width = 10e-6;
@@ -942,23 +946,27 @@ public class G1Path extends GElement implements Iterable<GCode> {
         return g;
     }
     
+    /** Create a list of GElement according to the shape */
     public static ArrayList<GElement> makeFromShape(String name, Shape shape, String rem) {
         final ArrayList<GElement> res = new ArrayList<>();      
         G1Path currentBlock = null;
         FlatteningPathIterator iter = new FlatteningPathIterator(shape.getPathIterator(new AffineTransform()), 0.1);
         final float[] coords=new float[6];
-        float lastX = 0, lastY = 0;
+        float startX = 0, startY = 0, lastX = 0, lastY = 0;
+        GCode lastPosition = null, pt;
+    
         while (!iter.isDone()) {
             switch ( iter.currentSegment(coords)) {
                 case PathIterator.SEG_MOVETO:
-                    //System.out.println("M("+param[0]+" , "+ param[1]);
+                    if ( ! res.isEmpty() && (res.getLast().getNbPoints() < 2)) res.remove(res.getLast());
                     res.add(currentBlock = new G1Path(name));
                     if ( rem != null) currentBlock.add(new GCode('('+rem+')'));
-                    currentBlock.add(new GCode(0, lastX = coords[0], lastY = coords[1]));
+                    currentBlock.add(lastPosition = new GCode(0, startX = lastX = coords[0], startY = lastY = coords[1]));
                     break;
             case PathIterator.SEG_LINETO:
-               // System.out.println("   L("+param[0]+" , "+ param[1]);
-                    currentBlock.add(new GCode(lastX = coords[0], lastY = coords[1]));
+                    pt = new GCode(coords[0], coords[1]);
+                    if ( ! lastPosition.isAtSamePosition(pt))
+                        currentBlock.add( lastPosition = pt);
                     break;
             case PathIterator.SEG_QUADTO:
                 iter=new FlatteningPathIterator(new QuadCurve2D.Double(coords[0], coords[1], coords[2], coords[3], lastX = coords[4], lastY = coords[5]).getPathIterator(new AffineTransform()), 0.1);
@@ -979,13 +987,16 @@ public class G1Path extends GElement implements Iterable<GCode> {
                 }
                 break;
             case PathIterator.SEG_CLOSE:
+                if ( ! lastPosition.isAtSamePosition( pt = new GCode(startX, startY)))
+                    currentBlock.add( pt);
                 break;
             }
             iter.next();
         }
-     
+        
         return res;
     }
+ 
     
     public static ArrayList<G1Path> getPathFor() {
         final ArrayList<G1Path> res = new ArrayList<>();

@@ -42,6 +42,7 @@ import gcodeeditor.gui.dialogs.DialogManager;
 import gcodeeditor.gui.dialogs.JMovePanel;
 import gcodeeditor.gui.dialogs.ManagedPanel;
 import gelements.GMixedPath;
+import gelements.GScad2DComposition;
 import gelements.GTextOnPath;
 import java.awt.Color;
 import java.awt.Component;
@@ -50,6 +51,7 @@ import java.awt.Font;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -521,7 +523,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         else 
             curDir = new File(".");
         
-        
         projectViewer.setContent(JProjectEditorPanel.importGCODE(gcodeFileName, projectViewer.getBackgroundPictureParameters()), true);
         documentFileName = gcodeFileName;
         updateTitle();
@@ -716,6 +717,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jMenuAdds = new javax.swing.JMenu();
         jMenuItemAddMixedPath = new javax.swing.JMenuItem();
         jMenuItemAddCustom = new javax.swing.JMenuItem();
+        jMenuItem4 = new javax.swing.JMenuItem();
         jSeparator33 = new javax.swing.JPopupMenu.Separator();
         jMenu1 = new javax.swing.JMenu();
         jMenuItemAddOval = new javax.swing.JMenuItem();
@@ -1846,6 +1848,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             }
         });
         jMenuAdds.add(jMenuItemAddCustom);
+
+        jMenuItem4.setText("Scad2D Composition");
+        jMenuItem4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItem4ActionPerformed(evt);
+            }
+        });
+        jMenuAdds.add(jMenuItem4);
         jMenuAdds.add(jSeparator33);
 
         jMenu1.setText("Circle");
@@ -2544,7 +2554,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         JFileChooser fc = new JFileChooser(".");
         if ( lastImportDir != null) fc.setCurrentDirectory(lastImportDir);
         fc.addChoosableFileFilter(new FileNameExtensionFilter("Drawing Exchange File (*.dxf)", "dxf"));
-        fc.addChoosableFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode)", "ngc", "nc", "tap","gcode"));
+        fc.addChoosableFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode,*.gcp)", "ngc", "nc", "tap","gcode", "gcp"));
         fc.addChoosableFileFilter(new FileNameExtensionFilter("Scalable Vector Graphics (*.svg)", "svg"));        
         fc.setMultiSelectionEnabled(true);
         if ( curDir != null) fc.setCurrentDirectory(curDir);
@@ -2700,7 +2710,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         String r = JOptionPane.showInputDialog("Enter the minimal distance between 2 adjacent points.", "2.0");
         if ( r == null) return;
         double d;
-        try { d = Double.parseDouble(r); } catch ( NumberFormatException e) { 
+        try { d = GScad2DComposition.evaluate(r); } catch ( NumberFormatException e) { 
             JOptionPane.showMessageDialog(this, "Distance invalid.");
             return; 
         }
@@ -2767,23 +2777,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             }           
             addGElement( p);
         }
-            
-       /* String res = JOptionPane.showInputDialog(this, "Enter length", "50");
-        double len;
-        try {
-            len = Double.parseDouble(res);
-            G1Path.makePolygon( );
-            G1Path s = new G1Path("square"+GElement.getUniqID());
-            s.add( new Point(0, 0, 0));
-            s.add( new Point(len, 0, 0));
-            s.add( new Point(len, len, 0));
-            s.add( new Point(0, len, 0));
-            s.add( new Point(0, 0, 0));
-            s.translate(projectViewer.get2DCursor());
-            addGElement( s);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Invalid number", "Error", JOptionPane.ERROR_MESSAGE);
-        }*/
     }//GEN-LAST:event_jMenuItemAddPolygonActionPerformed
 
     private void jMenuItemAddCircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCircleActionPerformed
@@ -2798,7 +2791,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         try {    
             String d = JOptionPane.showInputDialog(this, "Enter diameter", "10.0");
             if ( d == null) return;
-            diameter = Double.parseDouble(d);
+            diameter = GScad2DComposition.evaluate(d);
             String nbpts = JOptionPane.showInputDialog(this, "<html>Number of point in the circle ?<br><i>(Choose a multiple of 2,3,4,5,6,8,9 for best accuray)</i></html>", 12*(int)(2*Math.PI*diameter/6));
             if ( nbpts == null) return;
             np = Integer.parseInt(nbpts);         
@@ -2824,7 +2817,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             String nr = JOptionPane.showInputDialog(this, "Enter number of ripple", "10");
             if ( nr == null) return;    
             int nbR = Integer.parseInt(nr);
-            double scaleFactor = Double.parseDouble(JOptionPane.showInputDialog(this, "Scale factor", "10"));
+            double scaleFactor = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Scale factor", "10"));
             double angle=0, a = Math.PI * 2 /p, stepX = (double)2/p, x= 0;
             G1Path s = new G1Path("ripple"+GElement.getUniqID());
             for ( int ripple = 0; ripple < nbR; ripple++)
@@ -2876,8 +2869,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemAddStarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddStarActionPerformed
         try {
             int b = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of branches ", "5"));
-            double br = Double.parseDouble(JOptionPane.showInputDialog(this, "Branches radius", "20"));
-            double r = Double.parseDouble(JOptionPane.showInputDialog(this, "Center radius", "6.66666666"));
+            double br = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Branches radius", "20"));
+            double r = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Center radius", "6.66666666"));
             double angle=Math.PI/2, a = 2* Math.PI/b, x, y;
 
             G1Path s = new G1Path("star"+GElement.getUniqID());
@@ -2953,7 +2946,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
     private void jMenuItemSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveAsActionPerformed
         JFileChooser f = new JFileChooser();
-        f.setFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode)", "ngc", "nc", "tap","gcode"));
+        f.setFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode,*.gcp)", "ngc", "nc", "tap","gcode", "gcp"));
         if ( lastImportDir == null) {
             if ( projectViewer.getName() != null) {
                 lastImportDir = new File(projectViewer.getName()).getParentFile();
@@ -2968,7 +2961,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             lastImportDir = f.getSelectedFile().getParentFile();
             String fname = f.getSelectedFile().getAbsolutePath();
             if ( fname.indexOf('.') == -1) 
-                fname = fname.concat(".gcode");
+                fname = fname.concat(".gcp");
             if (new File( fname).exists())
                 if ( JOptionPane.showConfirmDialog(this, fname + "\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;
@@ -3016,7 +3009,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
     private void jMenuItemAddSpiralActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddSpiralActionPerformed
         try {          
-            double radius = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter start radius", "5.0"));
+            double radius = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Enter start radius", "5.0"));
             int np = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of points per turn", 24));
             int nt = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of turns", 10));
             double gd = Double.parseDouble(JOptionPane.showInputDialog(this, "Distance between each turns", "5"));
@@ -3053,8 +3046,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
     private void jMenuItemAddRectangleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddRectangleActionPerformed
         try {          
-            double w = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter width", "50"));
-            double h = Double.parseDouble(JOptionPane.showInputDialog(this, "Enter height", "50"));
+            double w = ManagedPanel.parseExpression(JOptionPane.showInputDialog(this, "Enter width", "50"));
+            double h = ManagedPanel.parseExpression(JOptionPane.showInputDialog(this, "Enter height", "50"));
              
             G1Path s = new G1Path("rectangle"+GElement.getUniqID());
             s.add( new Point(0, 0, 0));
@@ -3149,7 +3142,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                     case 0: return("$" + GRBLControler.GRBL_SETTING_STR[rowIndex*2]);
                     case 1: return (settings.get(Integer.valueOf(GRBLControler.GRBL_SETTING_STR[rowIndex*2])));
                     case 2: return (GRBLControler.GRBL_SETTING_STR[rowIndex*2+1]);
-                    default: return ("??unknow??");
+                    default: return ("none");
                 }
             }
             @Override
@@ -3447,7 +3440,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemAddPocketActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddPocketActionPerformed
         String l = JOptionPane.showInputDialog(this, "Offset distance (near tool diameter) ?", projectViewer.getConfiguration().toolDiameter/2);
         if ( l != null)
-            projectViewer.doAction(JProjectEditorPanel.ACTION_MAKE_POCKET, Double.parseDouble(l), null);
+            projectViewer.doAction(JProjectEditorPanel.ACTION_MAKE_POCKET, GScad2DComposition.evaluate(l), null);
     }//GEN-LAST:event_jMenuItemAddPocketActionPerformed
 
     private void jMenuItemSimplifyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSimplifyActionPerformed
@@ -3651,9 +3644,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
     private void jMenuItemAddRoubndRectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddRoubndRectActionPerformed
         try {
-            double w = Double.parseDouble(JOptionPane.showInputDialog(this, "Width ?", ""));
-            double h = Double.parseDouble(JOptionPane.showInputDialog(this, "Height ?", ""));
-            double r = Double.parseDouble(JOptionPane.showInputDialog(this, "Corner radius ?", Math.min(w,h)/10));
+            double w = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Width ?", ""));
+            double h = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Height ?", ""));
+            double r = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Corner radius ?", Math.min(w,h)/10));
             G1Path p = G1Path.makeRounRect(w,h,r);
             p.translate(projectViewer.get2DCursor());
             addGElement(p);
@@ -3758,7 +3751,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
     private void jMenuItemAddCurvesCircleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddCurvesCircleActionPerformed
         try {
-            double len = Double.parseDouble(JOptionPane.showInputDialog(this, "Diameter ?", "10"));
+            double len = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Diameter ?", "10"));
             Point2D center = new Point2D.Double();
         
             final double delta = 0.552284749831; // (4/3)*tan(pi/8) = 4*(sqrt(2)-1)/3 = 0.552284749831
@@ -3800,8 +3793,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void jMenuItemAddGearActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddGearActionPerformed
         try {
             int nbTeeth = Integer.parseInt(JOptionPane.showInputDialog(this, "Number of teeth ?", 12));
-            double pressureA = Double.parseDouble(JOptionPane.showInputDialog(this, "Pressure angle (> 0) ?", 14));
-            double circularPitch = Double.parseDouble(JOptionPane.showInputDialog(this, "Circular pitch ?", 10));
+            double pressureA = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Pressure angle (> 0) ?", 14));
+            double circularPitch = GScad2DComposition.evaluate(JOptionPane.showInputDialog(this, "Circular pitch ?", 10));
             GGroup g = GearHelper.makeGear(nbTeeth, pressureA, circularPitch);
             g.translate(projectViewer.get2DCursor());
             addGElement( g);
@@ -3916,7 +3909,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         Rectangle2D bounds = projectViewer.getSelectionBoundary(false);
         String m = JOptionPane.showInputDialog(this, "Marge", "0");
         try {
-            double marge = Double.parseDouble(m);
+            double marge = GScad2DComposition.evaluate(m);
             addGElement(G1Path.makeRectangle(new GCode(bounds.getX()-marge, bounds.getY()-marge), 
                     new GCode(bounds.getX()+bounds.getWidth()+marge, bounds.getY()+bounds.getHeight()+marge)));
         } catch ( NumberFormatException e) { }
@@ -3988,6 +3981,41 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 e.setText(jFontChooser.getChoosedText());
                 e.changeFont(jFontChooser.getChoosedFont(), jFontChooser.getChoosedSize());
             }
+        }
+    }
+    
+    
+    @Override
+    public void editCodeOf(GScad2DComposition gScad2DComposition) {
+        if ( gScad2DComposition instanceof GScad2DComposition e) {
+             
+            JFrame frame = new JFrame("Scad2D Editor - " + e.getName());
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                   
+            final JScadEditorPanel p = new JScadEditorPanel(true);
+            p.addListenner( new ActionListener() {
+                JScadEditorPanel panel;
+                public ActionListener initPanel( JScadEditorPanel p) {
+                    panel = p;
+                    return this;
+                }                
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    //System.out.println("Returned:" + ae.getActionCommand());
+                    if ( ae.getID() != 0) {
+                        SwingUtilities.invokeLater(() -> {
+                            e.setCode(panel.getCode());
+                            projectViewer.invalidate(); 
+                        });
+                    }
+                    frame.dispose();
+                }}.initPanel(p));
+            
+            frame.add( p );            
+            frame.setSize(800, 600);
+            frame.pack();
+            frame.setVisible(true);
+            p.setCode(e.getCode());
         }
     }
     
@@ -4121,6 +4149,14 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         if ( ! TreeViewFrame.isVisible()) TreeViewFrame.setLocationRelativeTo(this);
         TreeViewFrame.setVisible(true);
     }//GEN-LAST:event_jMenuItem3ActionPerformed
+
+    private void jMenuItem4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem4ActionPerformed
+        GScad2DComposition compo = new GScad2DComposition("Compo"+ GElement.getUniqID());
+        SwingUtilities.invokeLater(() -> {
+            editCodeOf(compo);
+            projectViewer.add( compo);
+        });        
+    }//GEN-LAST:event_jMenuItem4ActionPerformed
 
     /** 
      * Called by BlockViewer to change GRBL gantry position.
@@ -4297,8 +4333,6 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         }
         
         jLabelFormInfo.setText(projectViewer.getSelectedElementsInfo());
-        //jLabelFormInfo.invalidate();
-        //jLabelFormInfo.repaint();
 
         boolean noEdition = ((getFocusOwner() == null) || ! (getFocusOwner() instanceof JTextField) || (projectViewer.hasFocus())) ;
 
@@ -4702,6 +4736,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItem2;
     private javax.swing.JMenuItem jMenuItem3;
+    private javax.swing.JMenuItem jMenuItem4;
     private javax.swing.JMenuItem jMenuItemAbout;
     private javax.swing.JMenuItem jMenuItemAddArc;
     private javax.swing.JMenuItem jMenuItemAddAtCenter;
@@ -4878,4 +4913,5 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JToggleButton jToggleButtonZoom;
     private javax.swing.JToolBar jToolBar1;
     // End of variables declaration//GEN-END:variables
+
 }

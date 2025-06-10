@@ -17,6 +17,7 @@
 package gcodeeditor.gui.dialogs;
 
 
+import gelements.GScad2DComposition;
 import java.awt.geom.Rectangle2D;
 import java.util.Locale;
 import javax.swing.JOptionPane;
@@ -333,7 +334,7 @@ public class JScalePanel extends ManagedPanel {
 
     private void jTextFieldXFactorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldXFactorActionPerformed
         try {
-            xScale = Double.parseDouble(jTextFieldXFactor.getText());
+            xScale = GScad2DComposition.evaluate(jTextFieldXFactor.getText());
             jLabelWidth.setText(String.format(Locale.ROOT, "= %.3f", xScale * dim.getWidth()));
             jTextFieldYFactor.requestFocus();
         } catch ( NumberFormatException e) {
@@ -343,7 +344,7 @@ public class JScalePanel extends ManagedPanel {
 
     private void jTextFieldYFactorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldYFactorActionPerformed
         try {         
-            yScale = Double.parseDouble(jTextFieldYFactor.getText());
+            yScale = GScad2DComposition.evaluate(jTextFieldYFactor.getText());
             jLabelHeight.setText(String.format(Locale.ROOT, "= %.3f", yScale * dim.getHeight()));
             jTextFieldCopies.requestFocus();
         } catch ( NumberFormatException e) {
@@ -354,7 +355,7 @@ public class JScalePanel extends ManagedPanel {
     private void jTextFieldWidthActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldWidthActionPerformed
         if ( jCheckBoxIso.isSelected()) {
             try {
-                xScale = yScale = Double.parseDouble(jTextFieldWidth.getText()) / dim.getWidth();
+                xScale = yScale = GScad2DComposition.evaluate(jTextFieldWidth.getText()) / dim.getWidth();
                 jTextFieldHeight.setText( String.format(Locale.ROOT, "%f", xScale * dim.getHeight()));
                 jTextFieldHeight.requestFocus();
             } catch ( NumberFormatException e) { 
@@ -366,7 +367,7 @@ public class JScalePanel extends ManagedPanel {
     private void jTextFieldHeightActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldHeightActionPerformed
         if ( jCheckBoxIso.isSelected()) {
             try {
-                xScale = yScale = Double.parseDouble(jTextFieldHeight.getText()) / dim.getHeight();
+                xScale = yScale = GScad2DComposition.evaluate(jTextFieldHeight.getText()) / dim.getHeight();
                 jTextFieldWidth.setText( String.format(Locale.ROOT, "%f", yScale * dim.getWidth()));
                 jTextFieldWidth.requestFocus();
             } catch ( NumberFormatException e) { 

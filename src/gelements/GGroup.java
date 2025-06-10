@@ -32,8 +32,6 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import javax.swing.plaf.basic.BasicHTML;
-
 
 /**
  * A group of GElement
@@ -179,7 +177,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     
     @Override
     public GElement remove( int i) {
-        GElement e = elements.remove(i); 
+        GElement e = elements.get(i); 
         informAboutChange();
         return e;
     }
@@ -213,9 +211,9 @@ public class GGroup extends GElement implements Iterator<GElement> {
     }
 
     @Override
-    public void translate(double d, double d0) {
+    public void translate(double dx, double dy) {
         elements.forEach((e) -> { 
-            e.translate(d, d0);
+            e.translate(dx, dy);
         });
     }
     
@@ -635,6 +633,22 @@ public class GGroup extends GElement implements Iterator<GElement> {
         return null;
     }
     
+    /**
+     * Find element or sub-element of this group.
+     * @param id
+     * @return the GElement with same 'name' or null
+     */
+    public GElement getElementName(String name0) {
+        if ( name.equals(name0)) return this;
+        GElement res;
+        for( GElement e : elements)
+            if ( e.getName().equals(name0)) return e;
+            else if ( (e instanceof GGroup) && 
+                      ((res=((GGroup)e).getElementName(name0))!=null)) 
+                        return res;
+        return null;
+    }
+    
     public static double moveLength;
     /**
      * Sort this array of GElement to optimise CNC move between each.
@@ -809,9 +823,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
     
     @Override
     public boolean movePoint(GCode point, double dx, double dy) {
-        ArrayList<GCode> l = new ArrayList<>();
-        l.add(point);
-        return movePoints(l, dx, dy);
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -871,14 +883,6 @@ public class GGroup extends GElement implements Iterator<GElement> {
         res = elements.stream().map((e) -> e.getNbPoints()).reduce(res, Integer::sum);
         return res;
     }
-
-    /*@Override
-    public GCode getPoint(int p) {
-        for( GElement e : elements)
-            if ( p < e.getNbPoints()) return e.getPoint(p);
-            else p -= e.getNbPoints();
-        return null;
-    }*/
 
     @Override
     public double getLenOfSegmentTo(GCode highlitedPoint) {
@@ -1039,12 +1043,14 @@ public class GGroup extends GElement implements Iterator<GElement> {
     }
 
     /**
-     * Put all points of all shap in this group into the array <i>points</i>
+     * Put all points of all shap in this group into the array <i>points</i> (can be null)
      * 
      * @param points the array to put real points (do not modify it directly !)
+     * @return all points of this GElement
      */
-    public void addAllPointForHull(ArrayList<GCode> points) {
-        for( GElement el : elements) {
+    public ArrayList<GCode> addAllPointForHull(ArrayList<GCode> points) {
+        if ( points == null) points = new ArrayList<>();
+        for ( GElement el : elements) {
             if ( el instanceof GGroup) {
                 ((GGroup)el).addAllPointForHull(points);
             } else {
@@ -1057,6 +1063,7 @@ public class GGroup extends GElement implements Iterator<GElement> {
                 }
             }
         }
+        return points;
     }
 
     @Override

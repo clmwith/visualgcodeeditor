@@ -5,12 +5,7 @@
  */
 
 import gcodeeditor.gui.JEditorFrame;
-import gelements.GArc;
-import gelements.GMixedPath;
 import java.awt.EventQueue;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 
 
@@ -23,13 +18,7 @@ public class Main {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
-          /* Set<Thread> threads = Thread.getAllStackTraces().keySet();
-            
-            for (Thread t : threads) {
-            // do something with each thread
-            System.out.println(t);
-            }*/
+    public static void main(String[] args) { 
                                
             try {
                 if ( System.getProperty("user.home").startsWith("/")) {

@@ -309,8 +309,8 @@ public class GCode extends Point2D implements Serializable, Iterable<GWord> {
         
         final double px = point.getX();
         final double py = point.getY();
-        return (java.lang.Double.isNaN(px) || (Math.abs(getX() - px) < 0.00000001)) &&
-               (java.lang.Double.isNaN(py) || (Math.abs(getY() - py) < 0.00000001));      
+        return (java.lang.Double.isNaN(px) || (Math.abs(getX() - px) < 0.00001)) &&
+               (java.lang.Double.isNaN(py) || (Math.abs(getY() - py) < 0.00001));      
     }
     
     public boolean isComment() {
