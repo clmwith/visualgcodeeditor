@@ -124,7 +124,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
 
     public static final String CONTENT_HEADER = "(Content-Type: ";
     public static final String SVGE_HEADER = "(Simple G-Code Visual Editor Project: ";
-    public static final String SVGE_RELEASE = "0.8.8";
+    public static final String SVGE_RELEASE = "0.8.9";
 
     Configuration conf = new Configuration();
     
@@ -968,11 +968,6 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         g.drawLine(at.x, at.y-dim, at.x, at.y+dim);
     }
     
-    
-    public static final int GCREADER_UNKNOW_STATE = 0;
-    public static final int GCREADER_WAIT_EOL_STATE = 1;
-    public static final int GCREADER_READCMD_STATE = 2;
-    public static final int GCREADER_READCOORD_STATE = 3;
     /**
      * Try to import GCode blocks from raw GCODE file, or from a VGE Project file.
      * @param gCodeFileName
@@ -3400,9 +3395,6 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                 break;
 
             case ACTION_FOCUS_VIEW:
-               // if ( editedElement != null) 
-               //     r = editedElement.getBounds();
-                //else
                 r = getSelectionBoundary(false);
                 if ( r == null) {
                     if ( param == 1) {
@@ -3950,6 +3942,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             case ACTION_UNDO:
                 if ( undoManager.canUndo()) {
                     setEditedElement(undoManager.undo(document)); 
+                    selectionHasChanged = true;
                     invalidate();
                     stateHasChanged=false;
                 }
@@ -4354,7 +4347,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             screenMousePosition = coordToScreenPoint(
                     coordSnapPosition = getCoordSnapPointFor((int)screenMousePosition.getX(), (int)screenMousePosition.getY()));
             invalidate();
-            inform(null);
+            inform("");
         }
     }
 
@@ -4362,7 +4355,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         if ( snapToPoints != selected) {
             snapToPoints = selected;
             invalidate();
-            inform(null);
+            inform("");
         }
     }
 
@@ -4559,14 +4552,14 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     }
 
     /**
-     * if requestFocus is tgrue, request keyFocus to this JCompoment.
+     * if requestFocus is true, request keyFocus to this JCompoment.
      * @param requestFocus 
      */
     public void setKeyFocus(boolean requestFocus) {
         if ( requestFocus) this.requestFocus();
         keyFocus = requestFocus;
 
-        inform(null); 
+        inform(""); 
     }
 
     /**
@@ -4719,7 +4712,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
         
         EngravingProperties ep = document.getEngravingProperties(true);
         GGroup current = document;
-        while( (current.getParent(e) != null) &&(current.getParent(e) != current)) {
+        while( (current.getParent(e) != null) && (current.getParent(e) != current)) {
             current = current.getFirstParentOf(e, true);
             EngravingProperties p = current.getEngravingProperties(false);
             ep.setEnabled( ep.isEnabled() & p.isEnabled());
@@ -4771,19 +4764,19 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
     }
     
     /**
-     * @return a clone of EngravingProperties of the only one Gelement selected 
+     * @return EngravingProperties of the only one Gelement selected 
      * or the GGroup curently <i>openned</i> 
      * or a new <i>EngravingProperties</i> to modify all the selection.
      */
     public EngravingProperties getSelectionProperties() {
         if ( getEditedElement() != null) {
             selectionProperties = null;
-            return getEditedElement().getEngravingProperties(true);
+            return getEditedElement().getEngravingProperties(false);
         }   
         else if ( selectedElements.size() == 1) {
                         // return the properties of the only one selected element 
                         selectionProperties = null;
-                        return selectedElements.get(0).getEngravingProperties(true);
+                        return selectedElements.get(0).getEngravingProperties(false);
         }
         else if ( ! selectedElements.isEmpty()) {   
             // more than one element selected
@@ -5195,8 +5188,7 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
             }
         } else {        
             if ( ! selectedElements.isEmpty()) {
-                selectedElements.clear();
-                selectionHasChanged=true;              
+                selectedElements.clear();           
             } else       
                 if ( editedGroup != document) {              
                     if ( editedGroup.isEmpty()) {
@@ -5206,12 +5198,12 @@ public final class JProjectEditorPanel extends javax.swing.JPanel implements Bac
                     } else {
                         GGroup p;
                         setEditedElement(document.getParent(p=editedGroup));
-                        selectedElements.add(p);  
-                        selectionHasChanged = true;                      
+                        selectedElements.add(p);                       
                     }
                 }
         }
         
+        selectionHasChanged=true;
         invalidate();
     }
     

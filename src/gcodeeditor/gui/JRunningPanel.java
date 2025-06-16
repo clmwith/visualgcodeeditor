@@ -52,6 +52,8 @@ public class JRunningPanel extends javax.swing.JPanel implements GCodeDocumentRe
         this.parent = parent;
         this.grbl = grbl;
         initComponents();
+        if ( ! grbl.isConnected()) jCheckBoxSaveToFile.setSelected(true);
+        
         gcodeRunner = new GCodeDocumentRender(conf, this);
         
         grbl.addListenner(new GRBLControler.GRBLCommListennerInterface() {

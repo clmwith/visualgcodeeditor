@@ -367,8 +367,8 @@ public class GGroup extends GElement implements Iterator<GElement> {
         if ( elements.contains(el)) return this;
         else {
             for( GElement e : elements) 
-                if ((e instanceof GGroup) && (((GGroup)e).getParent(el) != null)) 
-                    return ((GGroup)e).getParent(el);
+                if ((e instanceof GGroup g) && (g.getParent(el) != null)) 
+                    return g.getParent(el);
         }
         return null;
     }
@@ -939,16 +939,16 @@ public class GGroup extends GElement implements Iterator<GElement> {
 
     /**
      * @param el the element to find in
-     * @param startWithMe if true, returns the child group instead of this object
-     * @return the furhest parent of el or null if el is not in this obkect or his hierarchi
+     * @param ignoreMe if true, returns the child group instead of this object
+     * @return the furhest parent of el or null if el is not in this object or in his hierarchi
      */
-    public GGroup getFirstParentOf(GElement el, boolean startWithMe) {
+    public GGroup getFirstParentOf(GElement el, boolean ignoreMe) {
         for (GElement e : elements) {
             if ( el == e) return this;
-            else if ( e instanceof GGroup) {
-                GGroup res = ((GGroup) e).getFirstParentOf(el, false);
+            else if ( e instanceof GGroup g) {
+                GGroup res = g.getFirstParentOf(el, false);
                 if (res != null) {
-                    if ( startWithMe) return (GGroup) e;
+                    if ( ignoreMe) return g;
                     else return this;
                 }
             }

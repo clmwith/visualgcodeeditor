@@ -55,7 +55,7 @@ ifStatement: 'if' '(' expr ')' body ('else' body)? ;
 forStatement: 'for' '(' ID '=' rangeExpr ')' body ;
 rangeExpr: '[' expr ':' expr (':' expr)? ']' ;
 
-echoCall       : 'echo' '(' strExpr ('+' strExpr)*  ')'  ';' ;
+echoCall       : 'echo' '(' strExpr (',' strExpr)*  ')'  ';' ;
 strExpr : STRING | expr ;
 
 colorCall      : 'color' '(' strExpr ('+' strExpr)* ')' body ;
@@ -75,9 +75,9 @@ paramList: ID (',' ID)* ;
 
 circleExpr: 'circle' '(' (ID '=')? expr (',' FN '=' expr)? ')' ';' ;
 rectangleExpr: ( 'square' | 'rect' | 'rectangle' | 'cube') '(' ( ID '=' expr ',' ID '=' expr | expr ) ')' ';' ;
-polygonExpr: ( 'poly' | 'polygon')  '(' (ID | list) ')' ';' ;
+polygonExpr: func=( 'poly' | 'polygon' | 'path' ) '(' (ID | list) ')' ';' ;
 
-list: '[' exprList (',' exprList)* ']' ;
+list: ('[' ']') | ('[' exprList (',' exprList)* ']') ;
 exprList : list | expr ;
 
 expr:
@@ -88,7 +88,7 @@ expr:
     | expr op=('=='| '!=') expr
     | expr op=('&&'| '||') expr
     | ('true'|'false'|'PI')
-    | ('abs'|'sin'|'cos'|'tan'|'int') '(' expr ')' 
+    | ('abs'|'sin'|'cos'|'tan'|'int'|'acos'|'asin'|'atan'|'len') '(' expr ')' 
     | ('min'|'max') '(' expr (',' expr)* ')' 
     | NUMBER
     | ID '[' expr ']' ('[' expr ']')*

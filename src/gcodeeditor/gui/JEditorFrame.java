@@ -645,8 +645,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         jSeparator1 = new javax.swing.JPopupMenu.Separator();
         jMenuItemSaveGCode = new javax.swing.JMenuItem();
         jMenuItemSaveAs = new javax.swing.JMenuItem();
-        jMenuItemExportSVG = new javax.swing.JMenuItem();
-        jMenuItemExportDXF = new javax.swing.JMenuItem();
+        jMenuExport = new javax.swing.JMenu();
+        jMenuItemExportToDXF = new javax.swing.JMenuItem();
+        jMenuItemExportToGCODE = new javax.swing.JMenuItem();
+        jMenuItemExportToSVG = new javax.swing.JMenuItem();
         jSeparator31 = new javax.swing.JPopupMenu.Separator();
         jMenuItem2 = new javax.swing.JMenuItem();
         jSeparator6 = new javax.swing.JPopupMenu.Separator();
@@ -1308,7 +1310,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });
         jMenuFile.add(jMenuItemNew);
 
-        jMenuItemOpenGCode.setText("Open");
+        jMenuItemOpenGCode.setText("Open ...");
         jMenuItemOpenGCode.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemOpenGCodeActionPerformed(evt);
@@ -1336,30 +1338,42 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });
         jMenuFile.add(jMenuItemSaveAs);
 
-        jMenuItemExportSVG.setText("Export as SVG ...");
-        jMenuItemExportSVG.setToolTipText("Export the document or selection to a SVG file");
-        jMenuItemExportSVG.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemExportSVGActionPerformed(evt);
-            }
-        });
-        jMenuFile.add(jMenuItemExportSVG);
+        jMenuExport.setText("Export ...");
 
-        jMenuItemExportDXF.setText("Export to DXF ...");
-        jMenuItemExportDXF.setToolTipText("Export document or selection to DXF file");
-        jMenuItemExportDXF.addActionListener(new java.awt.event.ActionListener() {
+        jMenuItemExportToDXF.setText("to DXF ...");
+        jMenuItemExportToDXF.setToolTipText("Export document or selection to DXF file");
+        jMenuItemExportToDXF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jMenuItemExportDXFActionPerformed(evt);
+                jMenuItemExportToDXFActionPerformed(evt);
             }
         });
-        jMenuFile.add(jMenuItemExportDXF);
+        jMenuExport.add(jMenuItemExportToDXF);
+
+        jMenuItemExportToGCODE.setText("to GCODE");
+        jMenuItemExportToGCODE.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemExportToGCODEActionPerformed(evt);
+            }
+        });
+        jMenuExport.add(jMenuItemExportToGCODE);
+
+        jMenuItemExportToSVG.setText("to SVG ...");
+        jMenuItemExportToSVG.setToolTipText("Export the document or selection to a SVG file");
+        jMenuItemExportToSVG.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemExportToSVGActionPerformed(evt);
+            }
+        });
+        jMenuExport.add(jMenuItemExportToSVG);
+
+        jMenuFile.add(jMenuExport);
         jMenuFile.add(jSeparator31);
 
         jMenuItem2.setText("Print ...");
         jMenuFile.add(jMenuItem2);
         jMenuFile.add(jSeparator6);
 
-        jMenuItemConf.setText("Configuration ...");
+        jMenuItemConf.setText("Configuration");
         jMenuItemConf.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jMenuItemConfActionPerformed(evt);
@@ -2554,8 +2568,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         JFileChooser fc = new JFileChooser(".");
         if ( lastImportDir != null) fc.setCurrentDirectory(lastImportDir);
         fc.addChoosableFileFilter(new FileNameExtensionFilter("Drawing Exchange File (*.dxf)", "dxf"));
-        fc.addChoosableFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode,*.gcp)", "ngc", "nc", "tap","gcode", "gcp"));
-        fc.addChoosableFileFilter(new FileNameExtensionFilter("Scalable Vector Graphics (*.svg)", "svg"));        
+        fc.addChoosableFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode)", "ngc", "nc", "tap","gcode"));
+        fc.addChoosableFileFilter(new FileNameExtensionFilter("Scalable Vector Graphics (*.svg)", "svg"));   
+        fc.addChoosableFileFilter( new FileNameExtensionFilter("VisualGCode Editor Project (*.vge)", "vge"));
         fc.setMultiSelectionEnabled(true);
         if ( curDir != null) fc.setCurrentDirectory(curDir);
 
@@ -2656,7 +2671,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         projectViewer.doAction(JProjectEditorPanel.ACTION_CHANGE_START_POINT, 0, null);
     }//GEN-LAST:event_jMenuItemChStartPosActionPerformed
 
-    private void jMenuItemExportSVGActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportSVGActionPerformed
+    private void jMenuItemExportToSVGActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportToSVGActionPerformed
         int res = 1;
         
         if ( projectViewer.getSelectionBoundary(false) != null)
@@ -2682,7 +2697,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 JOptionPane.showMessageDialog(this, "Error at export:\n"+ex.getLocalizedMessage(), "SVG Export error", JOptionPane.ERROR_MESSAGE);
             }
         }
-    }//GEN-LAST:event_jMenuItemExportSVGActionPerformed
+    }//GEN-LAST:event_jMenuItemExportToSVGActionPerformed
 
     private void jMenuItemExtractActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExtractActionPerformed
         projectViewer.doAction(JProjectEditorPanel.ACTION_EXTRACT, 0, null);
@@ -2721,7 +2736,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         JOptionPane.showMessageDialog(this, "A Simple 2D G-Code Visual Editor and CAD\n\n"+
                 "For laser engraving and simple milling projects\nInclude a realtime GRBL 1.1 controler\n\nVersion: "+
                 JProjectEditorPanel.SVGE_RELEASE+" - 2025\nAuthor: Clément Gérardin\n\nUse external libs:\n\t- kabeja-0.4.jar\n"
-                        + "\t- exp4j-0.4.8.jar\n\nSource:\nhttps://github.com/clmwith/visualgcodeeditor\n\nTry it WITHOUT ANY GUARANTEE and,\nat your own risk !!! !!!",
+                        + "\t- ANTLR4\n\nSource:\nhttps://github.com/clmwith/visualgcodeeditor\n\nTry it WITHOUT ANY GUARANTEE,\n and at your own risk !!! !!!",
                 "About this software", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_jMenuItemAboutActionPerformed
 
@@ -2946,7 +2961,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
 
     private void jMenuItemSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveAsActionPerformed
         JFileChooser f = new JFileChooser();
-        f.setFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode,*.gcp)", "ngc", "nc", "tap","gcode", "gcp"));
+        f.setFileFilter( new FileNameExtensionFilter("VisualGCode Editor Project (*.vge)", "vge"));
+        f.addChoosableFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode)", "ngc", "nc", "tap","gcode"));
         if ( lastImportDir == null) {
             if ( projectViewer.getName() != null) {
                 lastImportDir = new File(projectViewer.getName()).getParentFile();
@@ -2961,7 +2977,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             lastImportDir = f.getSelectedFile().getParentFile();
             String fname = f.getSelectedFile().getAbsolutePath();
             if ( fname.indexOf('.') == -1) 
-                fname = fname.concat(".gcp");
+                fname = fname.concat(".vge");
             if (new File( fname).exists())
                 if ( JOptionPane.showConfirmDialog(this, fname + "\nFile exits, overwrite it ?", "File Exist", JOptionPane.WARNING_MESSAGE)== JOptionPane.CANCEL_OPTION)
                         return;
@@ -3665,7 +3681,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         projectViewer.doAction(JProjectEditorPanel.ACTION_FOCUS_VIEW, 0, null);
     }//GEN-LAST:event_jMenuItemFocusActionPerformed
 
-    private void jMenuItemExportDXFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportDXFActionPerformed
+    private void jMenuItemExportToDXFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportToDXFActionPerformed
         int res = -1;
         if ( projectViewer.getSelectionBoundary(false) != null)
             res = JOptionPane.showConfirmDialog(this, "Export ony selection ?", "Export to DXF...", 
@@ -3698,7 +3714,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 JOptionPane.showMessageDialog(this, "Error:\n"+ex.getLocalizedMessage(), "DXF Export error", JOptionPane.ERROR_MESSAGE);
             }      
         }
-    }//GEN-LAST:event_jMenuItemExportDXFActionPerformed
+    }//GEN-LAST:event_jMenuItemExportToDXFActionPerformed
 
     private void jButtonKillAlarmActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonKillAlarmActionPerformed
         grbl.killAlarm();
@@ -3920,7 +3936,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         if ( jFontChooser == null)
             jFontChooser = new JFontChooserPanel();
         
-        GGroup g = jFontChooser.showFontChooserWindow();
+        GGroup g = jFontChooser.showFontChooserWindow(this);
         if ( g != null) {
             
             g.translate(projectViewer.get2DCursor());
@@ -3960,7 +3976,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         Class c = projectViewer.getFirtsSelectedElementClass();
         if ( (c != null) && (c != GGroup.class)) {
             if ( jFontChooser == null) jFontChooser = new JFontChooserPanel();
-            GGroup g = jFontChooser.showFontChooserWindow();
+            GGroup g = jFontChooser.showFontChooserWindow(this);
             if ( g != null) 
                 projectViewer.doAction(JProjectEditorPanel.ACTION_MAP_TEXT_TO_PATH, 0, 
                         new GTextOnPath(g.getName(), jFontChooser.getChoosedFont(), jFontChooser.getChoosedSize(), jFontChooser.getChoosedText(), g));
@@ -3977,7 +3993,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             jFontChooser.setText( e.getText());
             jFontChooser.setFont(e.getFont(), e.getFontSize());
             
-            if ( jFontChooser.showFontChooserWindow() != null) {
+            if ( jFontChooser.showFontChooserWindow(this) != null) {
                 e.setText(jFontChooser.getChoosedText());
                 e.changeFont(jFontChooser.getChoosedFont(), jFontChooser.getChoosedSize());
             }
@@ -3993,7 +4009,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                    
             final JScadEditorPanel p = new JScadEditorPanel(true);
-            p.addListenner( new ActionListener() {
+            p.setListenner( new ActionListener() {
                 JScadEditorPanel panel;
                 public ActionListener initPanel( JScadEditorPanel p) {
                     panel = p;
@@ -4001,10 +4017,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 }                
                 @Override
                 public void actionPerformed(ActionEvent ae) {
-                    //System.out.println("Returned:" + ae.getActionCommand());
                     if ( ae.getID() != 0) {
                         SwingUtilities.invokeLater(() -> {
-                            e.setCode(panel.getCode());
+                            e.setCode(panel.getCode(), ae.getID()>10);
+                            projectViewer.setEditedElement(e);
+                            projectViewer.doAction(JProjectEditorPanel.ACTION_FOCUS_VIEW, 1, null);
                             projectViewer.invalidate(); 
                         });
                     }
@@ -4014,7 +4031,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
             frame.add( p );            
             frame.setSize(800, 600);
             frame.pack();
-            frame.setVisible(true);
+            SwingUtilities.invokeLater(() -> {
+                frame.setLocationRelativeTo(this);
+                frame.setVisible(true);
+            });
             p.setCode(e.getCode());
         }
     }
@@ -4158,6 +4178,11 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         });        
     }//GEN-LAST:event_jMenuItem4ActionPerformed
 
+    private void jMenuItemExportToGCODEActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemExportToGCODEActionPerformed
+        JOptionPane.showMessageDialog(this, "To export a part, or the entire project to GCODE : use the 'Save' button of Execution window (in menu 'GRBL')");
+        jMenuItemExecuteAllActionPerformed( null);
+    }//GEN-LAST:event_jMenuItemExportToGCODEActionPerformed
+
     /** 
      * Called by BlockViewer to change GRBL gantry position.
      * @param position tell GRBL to move gantry at this position.
@@ -4177,7 +4202,8 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     @Override
     public void updatePropertiesPanel() {
         
-        if ( (curentEditedProperties = projectViewer.getSelectionProperties()) != null) {
+        curentEditedProperties = projectViewer.getSelectionProperties();
+        if ( curentEditedProperties != null) {
             EngravingProperties herited = projectViewer.getParentHeritedPropertiesOfSelection();
             if ( herited == null) herited = new EngravingProperties();
             
@@ -4206,19 +4232,19 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                 } else {
                     jCheckBoxAllAtOnce.setEnabled( true);
                     jCheckBoxAllAtOnce.setSelected( curentEditedProperties.isAllAtOnce()); 
-                    jLabelFeed.setForeground((Color)UIManager.get("text"));
-                    jLabelPower.setForeground((Color)UIManager.get("text"));
-                    jLabelPass.setForeground((Color)UIManager.get("text"));
-                    jLabelStart.setForeground((Color)UIManager.get("text"));
-                    jLabelEnd.setForeground((Color)UIManager.get("text"));
-                    jLabelDepth.setForeground((Color)UIManager.get("text"));
+                    jLabelFeed.setForeground((Color)UIManager.get("Label.foreground"));
+                    jLabelPower.setForeground((Color)UIManager.get("Label.foreground"));
+                    jLabelPass.setForeground((Color)UIManager.get("Label.foreground"));
+                    jLabelStart.setForeground((Color)UIManager.get("Label.foreground"));
+                    jLabelEnd.setForeground((Color)UIManager.get("Label.foreground"));
+                    jLabelDepth.setForeground((Color)UIManager.get("Label.foreground"));
                 }
                 
                 if ( Double.isNaN(curentEditedProperties.getFeed())) {
                     jTextFieldFeed.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldFeed.setText( Double.isNaN(herited.getFeed()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(herited.getFeed()));
                 } else {
-                    jTextFieldFeed.setForeground((Color)UIManager.get("text")); 
+                    jTextFieldFeed.setForeground((Color)UIManager.get("Textfield.foreground")); 
                     jTextFieldFeed.setText( GWord.GCODE_NUMBER_FORMAT.format( curentEditedProperties.getFeed()));            
                 }
                 
@@ -4226,7 +4252,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                     jTextFieldPower.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldPower.setText( (herited.getPower()== -1) ? "" : GWord.GCODE_NUMBER_FORMAT.format(herited.getPower()));
                 } else {
-                    jTextFieldPower.setForeground((Color)UIManager.get("text")); 
+                    jTextFieldPower.setForeground((Color)UIManager.get("Textfield.foreground")); 
                     jTextFieldPower.setText( GWord.GCODE_NUMBER_FORMAT.format( curentEditedProperties.getPower()));            
                 }
                 
@@ -4235,7 +4261,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                     jTextFieldPassCount.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldPassCount.setText( (ep.getPassCount() ==  -1) ? "" : GWord.GCODE_NUMBER_FORMAT.format(ep.getPassCount()));
                 } else {
-                    jTextFieldPassCount.setForeground((Color)UIManager.get("text")); 
+                    jTextFieldPassCount.setForeground((Color)UIManager.get("Textfield.foreground")); 
                     jTextFieldPassCount.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getPassCount()));            
                 }
                 
@@ -4247,7 +4273,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                         if ( curentEditedProperties.getZEnd() > ep.getZStart()) curentEditedProperties.setZEnd(ep.getZStart());
                     }
                 } else {
-                    jTextFieldZStart.setForeground((Color)UIManager.get("text"));   
+                    jTextFieldZStart.setForeground((Color)UIManager.get("Textfield.foreground"));   
                     jTextFieldZStart.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getZStart()));            
                 }
                 
@@ -4255,7 +4281,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                     jTextFieldPassDepht.setForeground(Color.LIGHT_GRAY);                 
                     jTextFieldPassDepht.setText( Double.isNaN(ep.getPassDepth()) ? "" : GWord.GCODE_NUMBER_FORMAT.format(ep.getPassDepth()));
                 } else {
-                    jTextFieldPassDepht.setForeground((Color)UIManager.get("text"));   
+                    jTextFieldPassDepht.setForeground((Color)UIManager.get("Textfield.foreground"));   
                     jTextFieldPassDepht.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getPassDepth()));            
                 }
             
@@ -4267,17 +4293,16 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
                         if ( curentEditedProperties.getZStart() < ep.getZEnd()) curentEditedProperties.setZStart(ep.getZEnd());
                     }
                 } else {
-                    jTextFieldZEnd.setForeground((Color)UIManager.get("text")); 
+                    jTextFieldZEnd.setForeground((Color)UIManager.get("Textfield.foreground")); 
                     jTextFieldZEnd.setText( GWord.GCODE_NUMBER_FORMAT.format ( curentEditedProperties.getZEnd()));            
                 }
-                
-               
-                jLabelFeed.setForeground(Double.isNaN(curentEditedProperties.getFeed()) ? (Color)UIManager.get("text") : Color.blue);
-                jLabelPower.setForeground( curentEditedProperties.getPower() != -1 ? Color.blue : (Color)UIManager.get("text"));
-                jLabelPass.setForeground(curentEditedProperties.getPassCount() == -1 ? (Color)UIManager.get("text") : Color.blue);
-                jLabelStart.setForeground( Double.isNaN(curentEditedProperties.getZStart()) ? (Color)UIManager.get("text") : Color.blue);
-                jLabelEnd.setForeground( Double.isNaN(curentEditedProperties.getZEnd()) ? (Color)UIManager.get("text") : Color.blue);
-                jLabelDepth.setForeground( Double.isNaN(curentEditedProperties.getPassDepth()) ? (Color)UIManager.get("text") : Color.blue );
+                            
+                jLabelFeed.setForeground(Double.isNaN(curentEditedProperties.getFeed()) ? (Color)UIManager.get("Label.foreground") : Color.blue);
+                jLabelPower.setForeground( curentEditedProperties.getPower() != -1 ? Color.blue : (Color)UIManager.get("Label.foreground"));
+                jLabelPass.setForeground(curentEditedProperties.getPassCount() == -1 ? (Color)UIManager.get("Label.foreground") : Color.blue);
+                jLabelStart.setForeground( Double.isNaN(curentEditedProperties.getZStart()) ? (Color)UIManager.get("Label.foreground") : Color.blue);
+                jLabelEnd.setForeground( Double.isNaN(curentEditedProperties.getZEnd()) ? (Color)UIManager.get("Label.foreground") : Color.blue);
+                jLabelDepth.setForeground( Double.isNaN(curentEditedProperties.getPassDepth()) ? (Color)UIManager.get("Label.foreground") : Color.blue );
                 
                 jPanelProperties.setVisible( curentEditedProperties != null);
             }
@@ -4287,17 +4312,23 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private void setPropertiesEnabled( boolean enabled, boolean onlyFeedPower) {
         if ( onlyFeedPower) setPropertiesEnabled(false, false);
         
-        jTextFieldFeed.setForeground( enabled ? Color.BLACK : Color.GRAY);
-        jTextFieldPower.setForeground( enabled ? Color.BLACK : Color.GRAY);
-        jLabelFeed.setForeground( enabled ? Color.BLACK : Color.GRAY);
-        jLabelPower.setForeground( enabled ? Color.BLACK : Color.GRAY);
+        Configuration conf = projectViewer.getConfiguration();
+        boolean darkMode = conf.guiTheme.equals("dark");
+        
+        jTextFieldFeed.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+        jTextFieldPower.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+        //jLabelFeed.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+        //jLabelPower.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+        jLabelFeed.setEnabled(enabled);
+        jLabelPower.setEnabled(enabled);
+        
         
         if ( ! onlyFeedPower) {
             jCheckBoxAllAtOnce.setEnabled(enabled);                           
-            jTextFieldPassCount.setForeground( enabled ? Color.BLACK : Color.GRAY);
-            jTextFieldZStart.setForeground( enabled ? Color.BLACK : Color.GRAY);
-            jTextFieldZEnd.setForeground( enabled ? Color.BLACK : Color.GRAY);
-            jTextFieldPassDepht.setForeground( enabled ? Color.BLACK : Color.GRAY);
+            jTextFieldPassCount.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+            jTextFieldZStart.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+            jTextFieldZEnd.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
+            jTextFieldPassDepht.setForeground( enabled ? darkMode?Color.WHITE:Color.BLACK : Color.GRAY);
             jLabelPass.setEnabled( enabled);
             jLabelStart.setEnabled( enabled);
             jLabelEnd.setEnabled( enabled);
@@ -4310,8 +4341,10 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     public void inform(String msg) {
         if ( msg != null) {
             jLabelMessage.setText(msg);
-            jLabelMessage.invalidate();
-        }        
+        } else {
+            jLabelMessage.setText("");
+        }     
+        jLabelMessage.invalidate();
     }
     
     @Override
@@ -4542,7 +4575,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
         if ( fileName == null) {
             JFileChooser f = new JFileChooser();
             f.setDialogTitle("Ouvrir un fichier G-Code");
-            f.setFileFilter(new FileNameExtensionFilter("G-Code", "gcode"));
+            f.setFileFilter(new FileNameExtensionFilter("G-Code (*.ngc,*.nc,*.tap,*.gcode,*.vge)", "ngc", "nc", "tap","gcode", "vge"));  
+            f.addChoosableFileFilter( new FileNameExtensionFilter("VisualGCode Editor Project (*.vge)", "vge"));
+        
             if ( lastImportDir != null) f.setCurrentDirectory(lastImportDir);
             int rVal = f.showOpenDialog(this);
             if ( rVal == JFileChooser.APPROVE_OPTION) {   
@@ -4728,6 +4763,7 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenuBar jMenuBar;
     private javax.swing.JMenu jMenuEdit;
     private javax.swing.JMenu jMenuElements;
+    private javax.swing.JMenu jMenuExport;
     private javax.swing.JMenu jMenuFile;
     private javax.swing.JMenu jMenuFlip;
     private javax.swing.JMenu jMenuGCODE;
@@ -4786,8 +4822,9 @@ public class JEditorFrame extends javax.swing.JFrame implements JProjectEditorPa
     private javax.swing.JMenuItem jMenuItemDuplicate;
     private javax.swing.JMenuItem jMenuItemExecuteAll;
     private javax.swing.JMenuItem jMenuItemExecuteSelected;
-    private javax.swing.JMenuItem jMenuItemExportDXF;
-    private javax.swing.JMenuItem jMenuItemExportSVG;
+    private javax.swing.JMenuItem jMenuItemExportToDXF;
+    private javax.swing.JMenuItem jMenuItemExportToGCODE;
+    private javax.swing.JMenuItem jMenuItemExportToSVG;
     private javax.swing.JMenuItem jMenuItemExtract;
     private javax.swing.JMenuItem jMenuItemFilter;
     private javax.swing.JMenuItem jMenuItemFind;

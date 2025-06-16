@@ -26,6 +26,7 @@ import gcodeeditor.PaintContext;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
+import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
@@ -416,9 +417,9 @@ public class JFontChooserPanel extends javax.swing.JPanel {
      * Show a modal dialog to choose a text and a font.
      * @return the new GElement corresponding to the text and font choosed.
      */
-    public GGroup showFontChooserWindow() {
+    public GGroup showFontChooserWindow(Frame parent) {
         if ( dialog == null) {
-            dialog = new JDialog((java.awt.Frame)null, true);
+            dialog = new JDialog(parent, true);
             dialog.getContentPane().add(this);
             dialog.pack();
         }

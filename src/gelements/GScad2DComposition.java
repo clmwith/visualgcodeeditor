@@ -58,6 +58,8 @@ public class GScad2DComposition extends GGroup {
     public static final String HEADER_STRING = "(Start Scad2DComposition-Group-name : ";
     public static final String TRANSLATE_HEADER_STRING = "(Origin : ";
 
+    AffineTransform cumulativeTransform = new AffineTransform();
+    
     String scad2DCode = 
 """
 /*
@@ -116,13 +118,21 @@ Biscuit();
 
     public GScad2DComposition(String name0) {
         super(name0);
+        scad2DCode = "";
+        elements.add(new Code2DElement(this));
+        modified = false;
     }
 
     public String getCode() {
         return scad2DCode;
     }
 
-    public void setCode(String newCode) {
+    public static final String GEN_NAME_HEANDER = "_gen";
+    
+    public void setCode(String newCode, boolean resetTransformations) {
+        if ( resetTransformations) cumulativeTransform = new AffineTransform();
+        
+        int id = 0;
         @SuppressWarnings("unchecked")
         ArrayList<GElement> newElements = new ArrayList<>();
 
@@ -138,10 +148,10 @@ Biscuit();
                     if (color.contains(":")) {
                         name = color.substring(color.indexOf(":") + 1);
                     } else {
-                        name = "gen" + GElement.getUniqID() + "_" + color;
+                        name = GEN_NAME_HEANDER + (id++) + "_" + color;
                     }
                 } else {
-                    name = "gen" + GElement.getUniqID();
+                    name = GEN_NAME_HEANDER + (id++);
                 }
 
                 // keep original properties if same name as old ones
@@ -150,12 +160,25 @@ Biscuit();
                     GElement orig = getElementName(el.getName());
                     if (orig != null) {
                         el.properties = orig.properties;
-                    }
+                    } else
+                        if ( el.getName().startsWith(GEN_NAME_HEANDER))
+                            el.properties.setEnabled(false);
                 }
                 if (p.size() == 1) {
                     newElements.add(p.get(0));
                 } else {
-                    newElements.add(new GGroup("grp_" + name + GElement.getUniqID(), p));
+                    GGroup g = new GGroup("grp_"+name);
+                    // append uniqID to each elements of the group     
+                    int i = 0;
+                    for ( GElement el : p ) {
+                        el.setName(name + i++);
+                        GElement orig = getElementName(el.getName());
+                        if (orig != null) el.properties = orig.properties;
+                        if ( el.getName().startsWith(GEN_NAME_HEANDER))
+                            el.properties.setEnabled(false);
+                        g.add(el);
+                    }
+                    newElements.add(g);
                 }
             }
         } catch (Exception e) {
@@ -164,7 +187,8 @@ Biscuit();
         }
         elements.clear();
         elements.addAll(newElements);
-        super.translate(origin);
+        super.transform(cumulativeTransform);
+        informAboutChange();
     }
 
     public static List<ColoredShape> buildShapeFrom(String code) {
@@ -206,6 +230,7 @@ Biscuit();
 
     public static class ShapeBuilder extends Scad2DBaseVisitor<java.util.List<ColoredShape>> {
 
+        private final Map<String, Object> globalVariables = new HashMap<>();
         private final Deque<Map<String, Object>> scopeStack = new ArrayDeque<>();
         private final Map<String, ModuleDef> modules = new HashMap<>();
         //private final int maxRecursionDepth = 10;
@@ -350,7 +375,7 @@ Biscuit();
         public java.util.List<ColoredShape> visitPolygonExpr(Scad2DParser.PolygonExprContext ctx) {
             Path2D.Double path = new Path2D.Double();
             boolean first = true;
-
+            
             // Vérifier si l'argument est un identifiant ou une liste de coordonnées
             if (ctx.ID() != null) {
                 String varName = ctx.ID().getText();
@@ -392,7 +417,7 @@ Biscuit();
                 }
             }
 
-            path.closePath();
+            if ( ! ctx.func.getText().equals("path") ) path.closePath();
             ArrayList<ColoredShape> res = new ArrayList<>();
             res.add(new ColoredShape(path, null));
             return res;
@@ -584,7 +609,7 @@ Biscuit();
             for (Scad2DParser.StrExprContext s : ctx) {
                 if (s.expr() != null) {
                     Object v = evalExpr(s.expr());
-                    s.expr();
+                    
                     if ((v instanceof Double d) && (Math.abs(d - d.intValue()) < 10e-10)) {
                         res += d.intValue();
                     } else {
@@ -701,10 +726,18 @@ Biscuit();
         }
 
         private void defineVar(String name, Object value) {
-            scopeStack.peek().put(name, value);
+            if ( Character.isUpperCase(name.charAt(0)))
+                globalVariables.put( name, value);
+            else
+                scopeStack.peek().put(name, value);
         }
 
         private Object resolveVarRaw(String name, int line, int column) {
+            if ( Character.isUpperCase(name.charAt(0))) {
+                if ( globalVariables.containsKey(name)) return globalVariables.get(name);
+                else throw new RuntimeException("line " + line + ":" + column + ", Global variable not found: " + name);
+
+            }              
             for (Map<String, Object> scope : scopeStack) {
                 if (scope.containsKey(name)) {
                     return scope.get(name);
@@ -823,12 +856,19 @@ Biscuit();
                             default ->
                                 throw new RuntimeException("Line " + line + ": Unknown boolean operator '" + op + "'.");
                         };
+                    } else if ( left instanceof List l1 && right instanceof List l2) {
+                        if ( op.equals("+")) {
+                            List res = new ArrayList<Object>(l1);
+                            res.addAll(l2);
+                            return res;
+                        }
+                        else throw new RuntimeException("Line " + line + ": Only '+' operator is allowed with lists" + op + "'.");
                     } else {
                         throw new RuntimeException("Line " + line + ": Incompatible types for operator '" + op + "'.");
                     }
                 }
 
-                if (ctx.expr().size() == 3 && ctx.op != null && ctx.op.getText().equals("?")) {
+                if (ctx.expr().size() == 3 && ctx.children.get(1).getText().equals("?")) {
                     Object cond = evalExpr(ctx.expr(0));
                     boolean result;
                     if (cond instanceof Boolean b) {
@@ -842,7 +882,7 @@ Biscuit();
                 }
 
                 // Handle functions
-                if (ctx.getText().matches("^(abs|sin|cos|tan|int|min|max)\\(.*\\)$")) {
+                if (ctx.getText().matches("^(abs|sin|cos|tan|asin|acos|atan|int|min|max|len)\\(.*\\)$")) {
                     String func = ctx.getText().split("\\(")[0];
                     List<Scad2DParser.ExprContext> args = ctx.expr();
                     return switch (func) {
@@ -854,12 +894,20 @@ Biscuit();
                             Math.cos(Math.toRadians(evalExprScalar(args.get(0))));
                         case "tan" ->
                             Math.tan(Math.toRadians(evalExprScalar(args.get(0))));
+                        case "asin" ->
+                            Math.asin(Math.toRadians(evalExprScalar(args.get(0))));
+                        case "acos" ->
+                            Math.acos(Math.toRadians(evalExprScalar(args.get(0))));
+                        case "atan" ->
+                            Math.atan(Math.toRadians(evalExprScalar(args.get(0))));
                         case "int" ->
                             (int) evalExprScalar(args.get(0));
                         case "min" ->
                             args.stream().mapToDouble(this::evalExprScalar).min().orElseThrow();
                         case "max" ->
                             args.stream().mapToDouble(this::evalExprScalar).max().orElseThrow();
+                        case "len" -> 
+                            evalExpr(args.get(0)) instanceof List l ? l.size() : 0;
                         default ->
                             throw new RuntimeException("Line " + line + ": Unknown function '" + func + "'.");
                     };
@@ -970,19 +1018,33 @@ Biscuit();
 
     @Override
     public void translate(double dx, double dy) {
-        origin.setLocation(origin.getX() + dx, origin.getY() + dy);
+        AffineTransform t = AffineTransform.getTranslateInstance(dx, dy);
+        cumulativeTransform.concatenate(t);  // Accumule la transformation
         super.translate(dx, dy);
+    }
+    
+    @Override
+    public void rotate(Point2D origin, double angle) {
+        AffineTransform t = AffineTransform.getRotateInstance(angle, origin.getX(), origin.getY());
+        cumulativeTransform.concatenate(t);  // Accumule la transformation
+        super.rotate(origin, angle);
+    }
+    
+    @Override
+    public void transform(AffineTransform t) {
+        cumulativeTransform.concatenate(t);  // Accumule la transformation
+        super.transform(t);
     }
 
     /*
     @Override
     public int getSize() {
         return 1;
-    }*/
+    }
     @Override
     public GElement getElementFromPoint(GCode pt, double dmin, ArrayList<GElement> intoThis) {
         return null;
-    }
+    }*/
 
     @Override
     public String loadFromStream(BufferedReader stream, GCode lastGState) throws IOException {
@@ -1003,15 +1065,14 @@ Biscuit();
         }
 
         Code2DElement c2d;
-        elements.add(c2d = new Code2DElement(this));
+        elements.set(0, c2d = new Code2DElement(this));
 
-        assert (c2d.getSummary().equals(scad2DCode));
+        if (c2d.getSummary().equals(scad2DCode)) System.out.println("c2d.getSummary().equals(scad2DCode) is false");
         return stream.readLine();
     }
 
     @Override
     public GCode saveToStream(FileWriter fw, GCode lastPoint) throws IOException {
-
         fw.append(HEADER_STRING + name + ")\n");
         fw.append(properties.toString() + "\n");
         fw.append(((GScad2DComposition.Code2DElement) elements.get(0)).getLine(0).toString() + "\n");
@@ -1028,19 +1089,15 @@ Biscuit();
 
     @Override
     public GElement remove(int i) {
-        if (i != 0) {
-            return super.remove(i);
-        } else {
-            throw new RuntimeException("Can't remove <Scad2SCode>");
-        }
+        if (i != 0) return super.remove(i);
+        return null;
     }
 
     @Override
     public boolean remove(GElement e) {
-        if (!(e instanceof GScad2DComposition.Code2DElement)) {
+        if (!(e instanceof GScad2DComposition.Code2DElement))
             return super.remove(e);
-        } else {
-            throw new RuntimeException("Can't remove <Scad2SCode>");
-        }
+        return false;
     }
+        
 }

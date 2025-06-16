@@ -123,7 +123,7 @@ public class UndoManager {
                 // that was a new element, we remove it
                 last = document.getElementID(m.getID()); 
                 GGroup g = document.getParent(last);
-                g.remove( last);
+                if ( ! (g instanceof GScad2DComposition)) g.remove( last);
                 g.modified = false;
                 return g;
             } else {

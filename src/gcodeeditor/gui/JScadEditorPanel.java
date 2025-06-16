@@ -30,6 +30,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
@@ -97,6 +99,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
      <pre>
  for (i = [start:end]) {
      // code to execute in each iteration
+     echo("i=",i);
  }
 
  for (i = [start:step:end]) {
@@ -122,11 +125,14 @@ public class JScadEditorPanel extends javax.swing.JPanel {
      <pre>
  x = 10;
  y = true;
+ l=[10,[20,30]];
      </pre>
 
      <h3>Lists</h3>
      <p>Lists are collections of values, which can be of any type. Lists are defined using square brackets.</p>
      <pre>
+ Points=[];  // <b>all global variables start with a uppercade</b>
+ Points=Points+[[x,y]]; // add a new point in Points
  myList = [1, 2, 3, [12,23], [15, [23,27] ,45]];
      </pre>
 
@@ -167,10 +173,11 @@ public class JScadEditorPanel extends javax.swing.JPanel {
  rect(width, height);
      </pre>
 
-     <h4>Polygon</h4>
+     <h4>Polygon or Paths</h4>
      <p>Creates a polygon from a list of points.</p>
      <pre>
- poly([[0,0], [10,0], [10,10]]);
+ poly([[0,0], [10,0], [10,10]]);    // a closed polygon
+ path([[0,0], [10,0], [10,10]]);    // only lines in a path
      </pre>
 
      <h3>Shape Modifiers</h3>
@@ -249,6 +256,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
     ArrayList<String> undoStack = new ArrayList<>();
     int undoStackIndex = 0;
     boolean ignoreUpdates = false;
+    boolean forceUpdate = false;
 
     /**
      * Creates new form JScadEditorPanel
@@ -400,7 +408,14 @@ public class JScadEditorPanel extends javax.swing.JPanel {
         Action indentAction = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                modifySelectedLines(jTextPaneCode, true);
+                if ( jTextPaneCode.getSelectedText() == null )
+                    try {
+                        jTextPaneCode.getDocument().insertString(jTextPaneCode.getCaretPosition(), "\t", null);
+                    } catch (BadLocationException ex) {
+                        Logger.getLogger(JScadEditorPanel.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                else 
+                    modifySelectedLines(jTextPaneCode, true);
             }
         };
 
@@ -451,11 +466,13 @@ public class JScadEditorPanel extends javax.swing.JPanel {
         }
     }
 
-    public void addListenner(ActionListener l) {
+    public void setListenner(ActionListener l) {
         listener = l;
     }
 
     public void setCode(String code) {
+        undoStack.clear();
+        undoStackIndex=0;
         SwingUtilities.invokeLater(() -> jTextPaneCode.setText(code));
     }
 
@@ -483,7 +500,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
         JFrame frame = new JFrame("JScad2D Editor");
 
         JScadEditorPanel p = new JScadEditorPanel(true);
-        p.addListenner(new ActionListener() {
+        p.setListenner(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 System.out.println("Returned:" + ae.getActionCommand());
@@ -526,9 +543,11 @@ public class JScadEditorPanel extends javax.swing.JPanel {
     }
 
     private void highlightSyntax(JTextPane textPane) {
-        if (jTextPaneCode.getText().equals(lastHighlightedText)) {
+        if (! forceUpdate && jTextPaneCode.getText().equals(lastHighlightedText)) {
             return;
         }
+        forceUpdate = false;
+        lineNumberComponent.invalidate();
 
         StyledDocument doc = jTextPaneCode.getStyledDocument();
         StyleContext sc = StyleContext.getDefaultStyleContext();
@@ -566,7 +585,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
         doc.setCharacterAttributes(0, text.length(), sc.getStyle(StyleContext.DEFAULT_STYLE), true);
 
         // Expressions régulières pour les mots-clés, les chaînes, les entiers et les commentaires
-        String keywordRegex = "\\b(pi|PI|sin|cos|tan|min|max|abs|int|module|mirror|color|trans|translate|scale|rotate|union|diff|difference|inter|intersection|hull|if|else|for|echo|circle|cube|square|rect|rectangle|poly|polygon)\\b";
+        String keywordRegex = "\\b(pi|PI|sin|cos|tan|asin|acos|atan|min|max|len|abs|int|module|mirror|color|trans|translate|scale|rotate|union|diff|difference|inter|intersection|hull|if|else|for|echo|circle|cube|square|rect|rectangle|poly|polygon|path)\\b";
         String stringRegex = "\"[^\"]*\"";
         String numberRegex = "\\b(\\d+|true|false)\\b";
 
@@ -647,6 +666,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
             // Appliquer la coloration syntaxique
             highlightSyntax(jTextPaneCode);
             jTextAreaLogs.invalidate();
+            jTextPaneCode.invalidate();
         });
     }
 
@@ -668,15 +688,19 @@ public class JScadEditorPanel extends javax.swing.JPanel {
         jTextAreaLogs = new javax.swing.JTextArea();
         jScrollPaneGraph = new javax.swing.JScrollPane();
         jPanelBottom = new javax.swing.JPanel();
-        jButton1 = new javax.swing.JButton();
+        jPanel1 = new javax.swing.JPanel();
+        jButtonDone = new javax.swing.JButton();
+        jCheckBoxReset = new javax.swing.JCheckBox();
         jLabel2 = new javax.swing.JLabel();
+        jButtonCancel = new javax.swing.JButton();
+        jPanel2 = new javax.swing.JPanel();
+        jButton1 = new javax.swing.JButton();
+        jLabel3 = new javax.swing.JLabel();
+        jButtonZoomPlus = new javax.swing.JButton();
         jButtonZoomMinus = new javax.swing.JButton();
         jCheckBoxDark = new javax.swing.JCheckBox();
-        jButtonZoomPlus = new javax.swing.JButton();
         jLabelSpace = new javax.swing.JLabel();
         jButtonView = new javax.swing.JButton();
-        jButtonDone = new javax.swing.JButton();
-        jButtonCancel = new javax.swing.JButton();
 
         jLabel1.setText("        ");
 
@@ -715,16 +739,51 @@ public class JScadEditorPanel extends javax.swing.JPanel {
 
         add(jSplitPane1, java.awt.BorderLayout.CENTER);
 
+        jPanelBottom.setLayout(new java.awt.BorderLayout());
+
+        jButtonDone.setText("Generate");
+        jButtonDone.setToolTipText("(re)Generate all content (only properties of named (colored) element are preserved.");
+        jButtonDone.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonDoneActionPerformed(evt);
+            }
+        });
+        jPanel1.add(jButtonDone);
+
+        jCheckBoxReset.setText("Reset positions");
+        jPanel1.add(jCheckBoxReset);
+
+        jLabel2.setText("     ");
+        jPanel1.add(jLabel2);
+
+        jButtonCancel.setText("Cancel");
+        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonCancelActionPerformed(evt);
+            }
+        });
+        jPanel1.add(jButtonCancel);
+
+        jPanelBottom.add(jPanel1, java.awt.BorderLayout.EAST);
+
         jButton1.setText("Help");
         jButton1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton1ActionPerformed(evt);
             }
         });
-        jPanelBottom.add(jButton1);
+        jPanel2.add(jButton1);
 
-        jLabel2.setText("     ");
-        jPanelBottom.add(jLabel2);
+        jLabel3.setText("      ");
+        jPanel2.add(jLabel3);
+
+        jButtonZoomPlus.setText("-");
+        jButtonZoomPlus.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButtonZoomPlusActionPerformed(evt);
+            }
+        });
+        jPanel2.add(jButtonZoomPlus);
 
         jButtonZoomMinus.setText("+");
         jButtonZoomMinus.addActionListener(new java.awt.event.ActionListener() {
@@ -732,7 +791,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
                 jButtonZoomMinusActionPerformed(evt);
             }
         });
-        jPanelBottom.add(jButtonZoomMinus);
+        jPanel2.add(jButtonZoomMinus);
 
         jCheckBoxDark.setText("Dark");
         jCheckBoxDark.addActionListener(new java.awt.event.ActionListener() {
@@ -741,49 +800,28 @@ public class JScadEditorPanel extends javax.swing.JPanel {
             }
         });
         jCheckBoxDark.setSelected(darkMode);
-        jPanelBottom.add(jCheckBoxDark);
-
-        jButtonZoomPlus.setText("-");
-        jButtonZoomPlus.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonZoomPlusActionPerformed(evt);
-            }
-        });
-        jPanelBottom.add(jButtonZoomPlus);
+        jPanel2.add(jCheckBoxDark);
 
         jLabelSpace.setText("           ");
-        jPanelBottom.add(jLabelSpace);
+        jPanel2.add(jLabelSpace);
 
         jButtonView.setText("View");
-        jButtonView.setToolTipText("or use F5 to generate result");
+        jButtonView.setToolTipText("or use F5 to display result");
         jButtonView.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButtonViewActionPerformed(evt);
             }
         });
-        jPanelBottom.add(jButtonView);
+        jPanel2.add(jButtonView);
 
-        jButtonDone.setText("Generate");
-        jButtonDone.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonDoneActionPerformed(evt);
-            }
-        });
-        jPanelBottom.add(jButtonDone);
-
-        jButtonCancel.setText("Cancel");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCancelActionPerformed(evt);
-            }
-        });
-        jPanelBottom.add(jButtonCancel);
+        jPanelBottom.add(jPanel2, java.awt.BorderLayout.WEST);
 
         add(jPanelBottom, java.awt.BorderLayout.SOUTH);
     }// </editor-fold>//GEN-END:initComponents
 
     private void jCheckBoxDarkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxDarkActionPerformed
         darkMode = jCheckBoxDark.isSelected();
+        forceUpdate = true;
         changeDisplayMode();
     }//GEN-LAST:event_jCheckBoxDarkActionPerformed
 
@@ -792,7 +830,7 @@ public class JScadEditorPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_jButtonCancelActionPerformed
 
     private void jButtonDoneActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonDoneActionPerformed
-        listener.actionPerformed(new ActionEvent(jButtonDone, 1, "btOk"));
+        listener.actionPerformed(new ActionEvent(jButtonDone, 1 + (jCheckBoxReset.isSelected()?10:0), "btOk"));
     }//GEN-LAST:event_jButtonDoneActionPerformed
 
     private void jButtonViewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonViewActionPerformed
@@ -802,13 +840,16 @@ public class JScadEditorPanel extends javax.swing.JPanel {
 
     private void jButtonZoomMinusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonZoomMinusActionPerformed
         Font f = jTextPaneCode.getFont();
+        forceUpdate = true;
         jTextPaneCode.setFont(new Font(f.getName(), f.getStyle(), f.getSize() + 1));
     }//GEN-LAST:event_jButtonZoomMinusActionPerformed
 
     private void jButtonZoomPlusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonZoomPlusActionPerformed
         Font f = jTextPaneCode.getFont();
-        if (f.getSize() > 5)
+        if (f.getSize() > 5) {
+            forceUpdate = true;
             jTextPaneCode.setFont(new Font(f.getName(), f.getStyle(), f.getSize() - 1));
+        }
     }//GEN-LAST:event_jButtonZoomPlusActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -835,9 +876,13 @@ public class JScadEditorPanel extends javax.swing.JPanel {
     private javax.swing.JButton jButtonZoomMinus;
     private javax.swing.JButton jButtonZoomPlus;
     private javax.swing.JCheckBox jCheckBoxDark;
+    private javax.swing.JCheckBox jCheckBoxReset;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabelSpace;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanelBottom;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPaneGraph;

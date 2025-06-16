@@ -54,6 +54,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
     }
     
     public interface JConfigurationChangeListener {
+        /** Called by a JConfigurationFrame when application configuration has changed */ 
         public void configurationChanged();
     }
     protected JConfigurationChangeListener listenner = null;
@@ -982,7 +983,7 @@ public class JConfigurationFrame extends javax.swing.JFrame {
             
             conf.minG1move = Double.parseDouble( jTextFieldMinG1Move.getText());
             
-            conf.guiTheme = jCheckBoxDarkTheme.isSelected() ? "dark" : "";
+            conf.guiTheme = jCheckBoxDarkTheme.isSelected() ? "dark" : "normal";
             
             int v = Integer.decode( jTextFieldShowLaserPosition.getText());
             if ( v > 10) {

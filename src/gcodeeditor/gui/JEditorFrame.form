@@ -19,7 +19,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemOpenGCode">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Open"/>
+                <Property name="text" type="java.lang.String" value="Open ..."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemOpenGCodeActionPerformed"/>
@@ -48,24 +48,39 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemSaveAsActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExportSVG">
+            <Menu class="javax.swing.JMenu" name="jMenuExport">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Export as SVG ..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Export the document or selection to a SVG file"/>
+                <Property name="text" type="java.lang.String" value="Export ..."/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExportSVGActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExportDXF">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Export to DXF ..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Export document or selection to DXF file"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExportDXFActionPerformed"/>
-              </Events>
-            </MenuItem>
+              <SubComponents>
+                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExportToDXF">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="to DXF ..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Export document or selection to DXF file"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExportToDXFActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExportToGCODE">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="to GCODE"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExportToGCODEActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemExportToSVG">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="to SVG ..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Export the document or selection to a SVG file"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemExportToSVGActionPerformed"/>
+                  </Events>
+                </MenuItem>
+              </SubComponents>
+            </Menu>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator31">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItem2">
@@ -77,7 +92,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuItemConf">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Configuration ..."/>
+                <Property name="text" type="java.lang.String" value="Configuration"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemConfActionPerformed"/>

@@ -119,7 +119,8 @@ public class GCodeDocumentRender implements Runnable {
                 sendCmd(conf.adaptativePower ? "M4" : "M3");
                 sendCmd("G0S0"); 
             } else {
-                sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving)+"M5S0");
+                if ( ! Double.isNaN(conf.safeZHeightForMoving))
+                    sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(conf.safeZHeightForMoving)+"M5S0");
             }
             
             // Execute laser/milling job with defaults values
@@ -452,15 +453,13 @@ public class GCodeDocumentRender implements Runnable {
                 // then move to destination
                 sendCmd(destinationXYPoint.toGRBLString());
                 
-                // now we are in place, juste change Z if needed           
-                final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;        
-                if ( Double.isNaN(curZ) || (Math.abs(curZ - zLevelDestination) > 0.00001)) {  
-                    if (laserMode)
-                        sendCmd("G0Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
-                    else
-                        sendCmd("G1Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination)); // safe to use G1 here !
+                // now we are in place, juste change Z if needed 
+                if ( ! Double.isNaN(zLevelDestination) ) {
+                    final double curZ = curPos.contains('Z') ?  curPos.get('Z').getValue() : Double.NaN;        
+                    if ( Double.isNaN(curZ) || (Math.abs(curZ - zLevelDestination) > 0.00001)) {  
+                        sendCmd("G"+(laserMode?0:1)+"Z"+GWord.GCODE_NUMBER_FORMAT.format(zLevelDestination));
+                    }
                 }
-
             }
         }
         updateGUI();

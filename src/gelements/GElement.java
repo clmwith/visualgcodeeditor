@@ -101,7 +101,7 @@ public abstract class GElement implements Serializable, ListModel<Object>, Itera
     
     public EngravingProperties getEngravingProperties(boolean cloned)
     {
-        return cloned ? properties : properties.clone();
+        return cloned ? properties.clone() : properties;
     }
 
     /**
